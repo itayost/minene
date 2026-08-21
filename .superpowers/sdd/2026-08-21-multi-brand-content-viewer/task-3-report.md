@@ -40,3 +40,18 @@ Implemented the framework-independent navigation model and versioned progress pe
 
 - Progress persistence is intentionally best-effort; storage failures are swallowed so navigation remains usable.
 - The reducer does not write progress itself because navigation is pure. The app integration should write the current viewer page index using `progressEntryKey` after page changes.
+
+## Review fix round 1
+
+The reducer now validates viewer `pageIndex` values in its incoming `Screen`:
+
+- negative and over-bound integer indices are clamped to the group's first/last page before the action is reduced;
+- non-integer and non-finite indices are rejected to home;
+- malformed indices can no longer survive `back`, page movement, or page selection.
+
+TDD evidence for this fix:
+
+1. Added focused tests for negative, over-bound, decimal, `Infinity`, and `NaN` viewer indices.
+2. RED: `pnpm vitest run tests/navigation.test.ts` → 1 file, 13 tests; 2 tests failed because malformed/out-of-range indices were retained or reduced from their malformed values.
+3. GREEN: after the `validScreen` normalization/rejection change, `pnpm vitest run tests/navigation.test.ts` → 1 file, 13 tests passed.
+4. Regression verification: `pnpm vitest run` → 4 files, 31 tests passed; `pnpm exec tsc --noEmit` passed.

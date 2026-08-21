@@ -69,7 +69,9 @@ function validScreen(brand: BrandManifest, screen: Screen): Screen {
   const subject = findSubject(brand, screen.subjectId)
   const group = subject && findGroup(subject, screen.groupId)
   if (!subject || !group || group.pages.length === 0) return createInitialScreen()
-  return screen
+  if (!Number.isFinite(screen.pageIndex) || !Number.isInteger(screen.pageIndex)) return createInitialScreen()
+  const pageIndex = Math.max(0, Math.min(group.pages.length - 1, screen.pageIndex))
+  return pageIndex === screen.pageIndex ? screen : { ...screen, pageIndex }
 }
 
 export function reduceNavigation(

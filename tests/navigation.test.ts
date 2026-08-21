@@ -105,4 +105,20 @@ describe('navigation', () => {
     expect(reduceNavigation(multiGroupBrand, { kind: 'home' }, { type: 'open-tool', toolId: 'missing' }, {})).toEqual({ kind: 'home' })
     expect(reduceNavigation(multiGroupBrand, { kind: 'menu', subjectId: 'missing' }, { type: 'back' }, {})).toEqual({ kind: 'home' })
   })
+
+  test('normalizes negative and over-bound viewer indices before reducing page actions', () => {
+    const negative: Screen = { kind: 'viewer', subjectId: 'multi', groupId: 'first', pageIndex: -1 }
+    const overBound: Screen = { kind: 'viewer', subjectId: 'multi', groupId: 'first', pageIndex: 99 }
+    expect(reduceNavigation(multiGroupBrand, negative, { type: 'page-next' }, {})).toEqual({ ...negative, pageIndex: 1 })
+    expect(reduceNavigation(multiGroupBrand, overBound, { type: 'page-previous' }, {})).toEqual({ ...overBound, pageIndex: 1 })
+  })
+
+  test('rejects non-integer and non-finite viewer indices to home', () => {
+    const decimal: Screen = { kind: 'viewer', subjectId: 'multi', groupId: 'first', pageIndex: 1.5 }
+    const infinite: Screen = { kind: 'viewer', subjectId: 'multi', groupId: 'first', pageIndex: Number.POSITIVE_INFINITY }
+    const notANumber: Screen = { kind: 'viewer', subjectId: 'multi', groupId: 'first', pageIndex: Number.NaN }
+    expect(reduceNavigation(multiGroupBrand, decimal, { type: 'page-select', pageIndex: 99 }, {})).toEqual({ kind: 'home' })
+    expect(reduceNavigation(multiGroupBrand, infinite, { type: 'back' }, {})).toEqual({ kind: 'home' })
+    expect(reduceNavigation(multiGroupBrand, notANumber, { type: 'page-next' }, {})).toEqual({ kind: 'home' })
+  })
 })
