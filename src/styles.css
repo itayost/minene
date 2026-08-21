@@ -626,13 +626,12 @@ button {
 }
 
 .share-sheet-overlay {
-  position: fixed;
+  position: absolute;
   z-index: 20;
   inset: 0;
   display: grid;
   align-items: end;
   padding: 16px;
-  padding-block-end: calc(16px + env(safe-area-inset-bottom));
   background: rgb(18 27 45 / .42);
 }
 

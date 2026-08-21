@@ -57,6 +57,12 @@ export const demoBrand: BrandManifest = {
           icon: '/brands/demo/group-two.svg',
           pages: [{ src: '/brands/demo/group-two-page.png', alt: 'Group two page' }],
         },
+        {
+          id: 'group-three',
+          label: 'Group three',
+          icon: '/brands/demo/group-three.svg',
+          pages: [{ src: '/brands/demo/group-three-page.png', alt: 'Group three page' }],
+        },
       ],
     },
   ],

@@ -64,8 +64,15 @@ describe('App', () => {
   it('resolves an explicitly selected brand', () => {
     render(<App pathname="/demo" registry={productionAndDemoRegistry} storage={new ObservedStorage()} />)
 
+    expect(document.documentElement).toHaveAttribute('dir', 'ltr')
+    expect(document.documentElement).toHaveAttribute('lang', 'en-US')
     expect(screen.getByRole('img', { name: 'Demo brand logo' })).toBeVisible()
+    expect(screen.getByText('Demo brand')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Single subject' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Multiple subject' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Notes' })).toBeVisible()
+    expect(screen.getByRole('navigation', { name: 'Demo destinations' })).toBeVisible()
+    expect(document.querySelector('.app-stage')).toHaveStyle('--primary: #246BCE')
   })
 
   it('renders an unknown brand without a branded shell', () => {
@@ -92,6 +99,7 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: 'Multiple subject' }))
     expect(screen.getByRole('heading', { name: 'Multiple subject' })).toBeVisible()
+    expect(screen.getAllByRole('button', { name: /Group (one|two|three)/ })).toHaveLength(3)
 
     await user.click(screen.getByRole('button', { name: 'Group two' }))
     expect(screen.getByRole('img', { name: 'Group two page' })).toBeVisible()
@@ -149,6 +157,19 @@ describe('App', () => {
 
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('keeps the page-action sheet within the branded theme scope', async () => {
+    const user = userEvent.setup()
+    renderDemo()
+
+    await user.click(screen.getByRole('button', { name: 'Single subject' }))
+    await user.click(screen.getByRole('button', { name: 'Share' }))
+
+    const appStage = document.querySelector('.app-stage')
+    const dialog = screen.getByRole('dialog', { name: 'Only group' })
+    expect(appStage).not.toBeNull()
+    expect(appStage).toContainElement(dialog)
   })
 
   it('persists a selected page and restores it after remount without repeated reads', async () => {

@@ -174,14 +174,14 @@ function BrandApplication({ brand, storage }: { brand: BrandManifest; storage: S
         onTool={(toolId) => navigate({ type: 'open-tool', toolId })}
       >
         {currentContent}
+        {isShareOpen && viewer ? (
+          <ShareSheet
+            context={viewer.context}
+            labels={brand.labels}
+            onClose={() => setIsShareOpen(false)}
+          />
+        ) : null}
       </BrandShell>
-      {isShareOpen && viewer ? (
-        <ShareSheet
-          context={viewer.context}
-          labels={brand.labels}
-          onClose={() => setIsShareOpen(false)}
-        />
-      ) : null}
     </>
   )
 }
