@@ -6,8 +6,10 @@ import { BrandNotFound } from '../src/components/BrandNotFound'
 import { BrandShell } from '../src/components/BrandShell'
 import { HomeScreen } from '../src/components/HomeScreen'
 import { PageViewer } from '../src/components/PageViewer'
+import { ShareSheet } from '../src/components/ShareSheet'
 import { SubjectMenu } from '../src/components/SubjectMenu'
 import { ToolScreen } from '../src/components/ToolScreen'
+import type { BrowserActionApis, PageActionContext } from '../src/core/page-actions'
 import type { Screen } from '../src/core/navigation'
 import { demoBrand } from './fixtures/demo-brand'
 
@@ -70,6 +72,42 @@ function SharedComponentHarness() {
         <ToolScreen tool={tool} />
       ) : null}
     </BrandShell>
+  )
+}
+
+function ShareSheetHarness() {
+  const [isOpen, setIsOpen] = useState(false)
+  const context: PageActionContext = {
+    brandId: demoBrand.id,
+    brandName: demoBrand.name,
+    groupId: 'group-two',
+    groupName: 'Group two',
+    page: { src: '/brands/demo/group-two-page.png', alt: 'Group two page' },
+    pageIndex: 0,
+    currentUrl: 'https://viewer.example/brands/demo/groups/group-two?page=1',
+  }
+  const browserApis: BrowserActionApis = {
+    fetch: async () => new Response(new Blob(['image bytes'], { type: 'image/png' })),
+    canShare: () => false,
+    share: async () => undefined,
+    clipboard: undefined,
+    createObjectURL: () => 'blob:test-page',
+    revokeObjectURL: () => undefined,
+    createAnchor: () => document.createElement('a'),
+  }
+
+  return (
+    <>
+      <button type="button" onClick={() => setIsOpen(true)}>Open page actions</button>
+      {isOpen ? (
+        <ShareSheet
+          browserApis={browserApis}
+          context={context}
+          labels={demoBrand.labels}
+          onClose={() => setIsOpen(false)}
+        />
+      ) : null}
+    </>
   )
 }
 
@@ -151,5 +189,34 @@ describe('shared branded components', () => {
     expect(screen.getByRole('heading', { name: 'Brand not found' })).toBeVisible()
     expect(screen.getByText(/missing-brand/)).toBeVisible()
     expect(screen.getByRole('link', { name: 'Go to the default brand' })).toHaveAttribute('href', '/')
+  })
+
+  it('focuses page sharing, announces completion, and returns focus after Escape', async () => {
+    const user = userEvent.setup()
+    render(<ShareSheetHarness />)
+    const trigger = screen.getByRole('button', { name: 'Open page actions' })
+
+    await user.click(trigger)
+
+    const dialog = screen.getByRole('dialog', { name: 'Group two' })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    expect(screen.getByRole('button', { name: 'Share' })).toHaveFocus()
+
+    await user.click(screen.getByRole('button', { name: 'Share' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Share ✓')
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+  })
+
+  it('closes the page action sheet when its overlay is selected', async () => {
+    const user = userEvent.setup()
+    render(<ShareSheetHarness />)
+
+    await user.click(screen.getByRole('button', { name: 'Open page actions' }))
+    await user.click(screen.getByTestId('share-sheet-overlay'))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })
