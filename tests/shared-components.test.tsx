@@ -75,7 +75,7 @@ function SharedComponentHarness() {
   )
 }
 
-function ShareSheetHarness() {
+function ShareSheetHarness({ openWindow }: { openWindow?: typeof window.open } = {}) {
   const [isOpen, setIsOpen] = useState(false)
   const context: PageActionContext = {
     brandId: demoBrand.id,
@@ -105,6 +105,7 @@ function ShareSheetHarness() {
           context={context}
           labels={demoBrand.labels}
           onClose={() => setIsOpen(false)}
+          openWindow={openWindow}
         />
       ) : null}
     </>
@@ -218,5 +219,15 @@ describe('shared branded components', () => {
     await user.click(screen.getByTestId('share-sheet-overlay'))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('reports an error when WhatsApp is blocked by the browser', async () => {
+    const user = userEvent.setup()
+    render(<ShareSheetHarness openWindow={() => null} />)
+
+    await user.click(screen.getByRole('button', { name: 'Open page actions' }))
+    await user.click(screen.getByRole('button', { name: 'Send with WhatsApp' }))
+
+    expect(screen.getByRole('status')).toHaveTextContent('Send with WhatsApp ⚠')
   })
 })

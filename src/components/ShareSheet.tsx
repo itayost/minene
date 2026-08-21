@@ -13,9 +13,10 @@ type ShareSheetProps = {
   labels: Pick<BrandManifest['labels'], 'share' | 'save' | 'whatsapp'>
   onClose: () => void
   browserApis?: BrowserActionApis
+  openWindow?: typeof window.open
 }
 
-export function ShareSheet({ context, labels, onClose, browserApis }: ShareSheetProps) {
+export function ShareSheet({ context, labels, onClose, browserApis, openWindow }: ShareSheetProps) {
   const shareButtonRef = useRef<HTMLButtonElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
   const closeRef = useRef(onClose)
@@ -61,7 +62,8 @@ export function ShareSheet({ context, labels, onClose, browserApis }: ShareSheet
   const openWhatsApp = () => {
     setFeedback(null)
     try {
-      window.open(whatsappUrl(context), '_blank', 'noopener,noreferrer')
+      const popup = (openWindow ?? window.open.bind(window))(whatsappUrl(context), '_blank', 'noopener,noreferrer')
+      if (popup === null) throw new Error('WhatsApp popup was blocked')
       setFeedback(`${labels.whatsapp} ✓`)
     } catch {
       setFeedback(`${labels.whatsapp} ⚠`)
