@@ -1,0 +1,123 @@
+import type { BrandManifest, PageAsset } from '../core/brand-types'
+
+const page = (number: number, alt: string): PageAsset => ({
+  src: `/brands/minene/pages/p${String(number).padStart(2, '0')}_0.png`,
+  alt,
+})
+
+export const mineneBrand: BrandManifest = {
+  id: 'minene',
+  name: 'Minene Cockpit',
+  title: 'MINENE COCKPIT',
+  locale: 'he-IL',
+  direction: 'rtl',
+  logo: { src: '/brands/minene/icons/logo-pink.svg', alt: 'לוגו Minene Cockpit' },
+  theme: {
+    primary: '#E8368F',
+    primaryStrong: '#C51F73',
+    text: '#1D2645',
+    muted: '#AEA9B4',
+    background: '#E9E9EE',
+    surface: '#FFFDFC',
+    border: '#E7E3E9',
+    fontFamily: 'Heebo, -apple-system, BlinkMacSystemFont, Arial, sans-serif',
+  },
+  labels: { home: 'בית', share: 'שיתוף', save: 'שמירה', whatsapp: 'שליחה בוואטסאפ' },
+  subjects: [
+    {
+      id: 'tasks',
+      label: 'משימות יומיות',
+      icon: '/brands/minene/icons/tasks.png',
+      cardColor: '#fef2f6',
+      groups: [{ id: 'daily-tasks', label: 'משימות יומיות', icon: '/brands/minene/icons/tasks.png', pages: [page(10, 'משימות יומיות')] }],
+    },
+    {
+      id: 'self',
+      label: 'לשמור על עצמי',
+      icon: '/brands/minene/icons/self.png',
+      cardColor: '#fcf4f0',
+      groups: [{ id: 'self-care', label: 'לשמור על עצמי', icon: '/brands/minene/icons/self.png', pages: [page(8, 'לשמור על עצמי')] }],
+    },
+    {
+      id: 'energy',
+      label: 'אנרגיות, הטעינה',
+      icon: '/brands/minene/icons/energy.png',
+      cardColor: '#f8f9f8',
+      groups: [{ id: 'recharge', label: 'אנרגיות, הטעינה', icon: '/brands/minene/icons/energy.png', pages: [page(16, 'אנרגיות, הטעינה')] }],
+    },
+    {
+      id: 'top',
+      label: 'הכי חשוב',
+      icon: '/brands/minene/icons/top.png',
+      cardColor: '#f9f5fa',
+      groups: [{ id: 'top-priorities', label: 'הכי חשוב', icon: '/brands/minene/icons/top.png', pages: [page(12, 'הכי חשוב'), page(13, 'הכי חשוב'), page(14, 'הכי חשוב')] }],
+    },
+    {
+      id: 'plan',
+      label: 'תוכנית חנות שנתית',
+      icon: '/brands/minene/icons/plan.png',
+      cardColor: '#f9f9fc',
+      groups: [{ id: 'annual-store-plan', label: 'תוכנית חנות שנתית', icon: '/brands/minene/icons/plan.png', pages: [page(18, 'תוכנית חנות שנתית')] }],
+    },
+    {
+      id: 'results',
+      label: 'תוצאות',
+      icon: '/brands/minene/icons/results.png',
+      cardColor: '#fdf9f6',
+      groups: [
+        { id: 'overview', label: 'סקירה כללית', icon: '/brands/minene/icons/results.png', pages: [page(20, 'סקירה כללית')] },
+        { id: 'target-exceptions', label: 'עמידה ביעד, ומה חורג', icon: '/brands/minene/icons/results.png', pages: [page(21, 'עמידה ביעד, ומה חורג'), page(22, 'עמידה ביעד, ומה חורג')] },
+        { id: 'conversion-basket-traffic', label: 'יחס המרה, סל קניה, טראפיק', icon: '/brands/minene/icons/results.png', pages: [page(23, 'יחס המרה, סל קניה, טראפיק'), page(24, 'יחס המרה, סל קניה, טראפיק'), page(25, 'יחס המרה, סל קניה, טראפיק')] },
+        { id: 'labor-expenses', label: 'הוצאות – שכר עבודה', icon: '/brands/minene/icons/results.png', pages: [page(26, 'הוצאות – שכר עבודה'), page(27, 'הוצאות – שכר עבודה')] },
+      ],
+    },
+    {
+      id: 'people',
+      label: 'שימור עובדים וגיוס',
+      icon: '/brands/minene/icons/people.png',
+      cardColor: '#fdf8f9',
+      groups: [
+        { id: 'employee-value-package', label: 'חבילת ערך לעובדת', icon: '/brands/minene/icons/people.png', pages: [page(86, 'חבילת ערך לעובדת'), page(42, 'חבילת ערך לעובדת'), page(43, 'חבילת ערך לעובדת'), page(44, 'חבילת ערך לעובדת'), page(45, 'חבילת ערך לעובדת'), page(46, 'חבילת ערך לעובדת'), page(47, 'חבילת ערך לעובדת'), page(48, 'חבילת ערך לעובדת')] },
+        { id: 'employee-encouragement', label: 'עידוד עובדות', icon: '/brands/minene/icons/people.png', pages: [page(87, 'עידוד עובדות'), page(88, 'עידוד עובדות'), page(89, 'עידוד עובדות'), page(36, 'עידוד עובדות'), page(37, 'עידוד עובדות'), page(39, 'עידוד עובדות'), page(40, 'עידוד עובדות'), page(41, 'עידוד עובדות')] },
+        { id: 'recruitment-onboarding', label: 'גיוס וקליטת עובדת חדשה', icon: '/brands/minene/icons/people.png', pages: [page(49, 'גיוס וקליטת עובדת חדשה'), page(51, 'גיוס וקליטת עובדת חדשה'), page(52, 'גיוס וקליטת עובדת חדשה'), page(53, 'גיוס וקליטת עובדת חדשה'), page(54, 'גיוס וקליטת עובדת חדשה')] },
+        { id: 'management-routines', label: 'ניהול קושי ושגרות ניהול', icon: '/brands/minene/icons/people.png', pages: [page(55, 'ניהול קושי ושגרות ניהול'), page(57, 'ניהול קושי ושגרות ניהול'), page(58, 'ניהול קושי ושגרות ניהול'), page(59, 'ניהול קושי ושגרות ניהול'), page(60, 'ניהול קושי ושגרות ניהול'), page(61, 'ניהול קושי ושגרות ניהול'), page(62, 'ניהול קושי ושגרות ניהול')] },
+      ],
+    },
+    {
+      id: 'training',
+      label: 'הדרכה',
+      icon: '/brands/minene/icons/training.png',
+      cardColor: '#f8f6fc',
+      groups: [
+        { id: 'training-menu', label: 'תפריט הדרכה', icon: '/brands/minene/icons/training.png', pages: [page(65, 'תפריט הדרכה')] },
+        { id: 'role-training', label: 'הדרכת תפקיד', icon: '/brands/minene/icons/training.png', pages: [page(66, 'הדרכת תפקיד'), page(68, 'הדרכת תפקיד'), page(69, 'הדרכת תפקיד'), page(70, 'הדרכת תפקיד')] },
+        { id: 'product-pages', label: 'דפי מוצר', icon: '/brands/minene/icons/training.png', pages: [page(72, 'דפי מוצר'), page(73, 'דפי מוצר'), page(74, 'דפי מוצר'), page(75, 'דפי מוצר'), page(76, 'דפי מוצר'), page(77, 'דפי מוצר')] },
+        { id: 'professionalism-training', label: 'הדרכה למקצוענות', icon: '/brands/minene/icons/training.png', pages: [page(78, 'הדרכה למקצוענות'), page(80, 'הדרכה למקצוענות')] },
+        { id: 'ai-training', label: 'הדרכת AI', icon: '/brands/minene/icons/training.png', pages: [page(81, 'הדרכת AI')] },
+      ],
+    },
+  ],
+  tools: [
+    {
+      id: 'campaign',
+      label: 'קמפיינר',
+      icon: '/brands/minene/icons/campaign.png',
+      note: 'תצוגה מקדימה – התכנים מתוך המסמך',
+      items: ['תבחרי נושא לקדם בצוות שלך', 'רוצה סרטון חד פעמי? תמונה חד פעמית?', 'רוצה קמפיין של שבוע, כל יום סרטון או תמונה?', 'נושא: מה יוצא לך ממיננה?', 'מכירת מוצר ספציפי', 'תרגיל אנרגיות טיל', 'פי 2 בטחון עצמי', 'חיבור למכירות', 'חששות ותשובות', 'שיפור יחס המרה', 'שיפור סל קניה', 'סטנדרד גבוה', 'המותג שלנו', 'עידוד עובדות', 'בחירת דמות וסגנון: אירופאי / ישראלי, בחור / בחורה, מבוגר / צעיר', 'מתלהב / רגוע, שפה גבוהה / עממית, בחנות / במקום אחר'],
+    },
+    {
+      id: 'persuade',
+      label: 'משכנע',
+      icon: '/brands/minene/icons/negotiate.png',
+      note: 'תצוגה מקדימה – התכנים מתוך המסמך',
+      items: ['לחייך', 'לעזוב טלפון', 'לקבל לקוחה בכניסה (משפיע על יחס המרה)', 'לתרגל אנרגיות טיל', 'ללמוד מוצרים', 'סל קניה – להציע מוצר', 'שימור – להישאר עוד', 'גיוס – להצטרף אלינו', 'פולואפ אישי: תזכורת לשתות מים', 'תזכורת לאכול בריא', 'לשלוח וואטסאפ לצוות שלי', 'להציע מוצרים / אפסייל'],
+    },
+    {
+      id: 'brain',
+      label: 'מוח ארגני',
+      icon: '/brands/minene/icons/brain.png',
+      note: 'תצוגה מקדימה – התכנים מתוך המסמך',
+      items: ['גיוס ידע בקרב 1500 סניפים', 'גידול בידע ב-13% לשבוע', 'כל הסניפים בטבלה', 'כל ידיעה נשמר אצלנו', 'עושי / אל תעשי', 'מקרים ותגובות', 'הגדרות המשקי', 'צ׳ק ליסט מקצועי', 'איך למדוד דברים', 'מה בד״כ מסתמסמים'],
+    },
+  ],
+}
