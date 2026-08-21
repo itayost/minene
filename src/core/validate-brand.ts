@@ -13,7 +13,7 @@ const themeTokens = [
   'fontFamily',
 ] as const
 
-const requiredLabelKeys = ['home', 'share', 'save', 'whatsapp'] as const
+const requiredLabelKeys = ['home', 'back', 'navigation', 'share', 'save', 'whatsapp'] as const
 
 export function assertBrandAssetPath(brandId: string, path: string): boolean {
   return path.startsWith(`/brands/${brandId}/`)

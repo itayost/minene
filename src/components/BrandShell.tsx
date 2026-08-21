@@ -119,7 +119,7 @@ export function BrandShell({ brand, screen, children, onBack, onHome, onShare, o
             </>
           ) : (
             <>
-              <button className="icon-button back-button" type="button" aria-label="Back" onClick={onBack}>
+              <button className="icon-button back-button" type="button" aria-label={brand.labels.back} onClick={onBack}>
                 <svg aria-hidden="true" viewBox="0 0 11 18"><path d="m1.5 1.5 7.5 7.5-7.5 7.5" /></svg>
               </button>
               <div className="app-header__titles">
@@ -140,7 +140,7 @@ export function BrandShell({ brand, screen, children, onBack, onHome, onShare, o
 
         <main className="shell-content">{children}</main>
 
-        <nav className="bottom-nav" aria-label="Primary">
+        <nav className="bottom-nav" aria-label={brand.labels.navigation}>
           <button
             className="bottom-nav__action"
             type="button"

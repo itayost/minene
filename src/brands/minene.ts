@@ -22,7 +22,14 @@ export const mineneBrand: BrandManifest = {
     border: '#E7E3E9',
     fontFamily: 'Heebo, -apple-system, BlinkMacSystemFont, Arial, sans-serif',
   },
-  labels: { home: 'בית', share: 'שיתוף', save: 'שמירה', whatsapp: 'שליחה בוואטסאפ' },
+  labels: {
+    home: 'בית',
+    back: 'חזרה',
+    navigation: 'ניווט ראשי',
+    share: 'שיתוף',
+    save: 'שמירה',
+    whatsapp: 'שליחה בוואטסאפ',
+  },
   subjects: [
     {
       id: 'tasks',

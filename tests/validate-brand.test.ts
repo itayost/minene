@@ -21,7 +21,14 @@ const validBrand: BrandManifest = {
     border: '#d4dce3',
     fontFamily: 'Heebo Variable',
   },
-  labels: { home: 'Home', share: 'Share', save: 'Save', whatsapp: 'WhatsApp' },
+  labels: {
+    home: 'Home',
+    back: 'Go back',
+    navigation: 'Primary navigation',
+    share: 'Share',
+    save: 'Save',
+    whatsapp: 'WhatsApp',
+  },
   subjects: [
     {
       id: 'mathematics',
@@ -106,6 +113,13 @@ describe('validateBrand', () => {
   test('requires every theme token', () => {
     expect(validateBrand({ ...validBrand, theme: { ...validBrand.theme, primary: '' } })).toContainEqual({
       path: 'theme.primary',
+      message: 'is required',
+    })
+  })
+
+  test.each(['back', 'navigation'] as const)('requires the localized %s accessibility label', (label) => {
+    expect(validateBrand({ ...validBrand, labels: { ...validBrand.labels, [label]: '' } })).toContainEqual({
+      path: `labels.${label}`,
       message: 'is required',
     })
   })

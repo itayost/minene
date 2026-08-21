@@ -44,7 +44,14 @@ export type BrandManifest = {
   direction: Direction
   logo: PageAsset
   theme: BrandTheme
-  labels: { home: string; share: string; save: string; whatsapp: string }
+  labels: {
+    home: string
+    back: string
+    navigation: string
+    share: string
+    save: string
+    whatsapp: string
+  }
   subjects: BrandSubject[]
   tools: BrandTool[]
 }

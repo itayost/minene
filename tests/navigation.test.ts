@@ -21,7 +21,14 @@ const singleGroupBrand: BrandManifest = {
     primary: '#000', primaryStrong: '#000', text: '#000', muted: '#000',
     background: '#000', surface: '#000', border: '#000', fontFamily: 'sans-serif',
   },
-  labels: { home: 'Home', share: 'Share', save: 'Save', whatsapp: 'WhatsApp' },
+  labels: {
+    home: 'Home',
+    back: 'Back',
+    navigation: 'Primary navigation',
+    share: 'Share',
+    save: 'Save',
+    whatsapp: 'WhatsApp',
+  },
   subjects: [{
     id: 'single', label: 'Single', icon: 'book', cardColor: '#fff',
     groups: [{ id: 'only', label: 'Only', pages: [page(1), page(2)] }],

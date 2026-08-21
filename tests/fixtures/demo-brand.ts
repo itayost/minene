@@ -19,6 +19,8 @@ export const demoBrand: BrandManifest = {
   },
   labels: {
     home: 'Home',
+    back: 'Return to previous screen',
+    navigation: 'Demo destinations',
     share: 'Share',
     save: 'Save',
     whatsapp: 'Send with WhatsApp',

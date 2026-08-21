@@ -74,7 +74,16 @@ describe('shared branded components', () => {
     expect(screen.getByText('Group two · 1 / 1')).toBeVisible()
   })
 
-  it('exposes back, home, share, and configured bottom-tool controls', async () => {
+  it('uses the brand accessibility labels for shell navigation', async () => {
+    const user = userEvent.setup()
+    render(<SharedComponentHarness />)
+
+    expect(screen.getByRole('navigation', { name: 'Demo destinations' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Multiple subject' }))
+    expect(screen.getByRole('button', { name: 'Return to previous screen' })).toBeVisible()
+  })
+
+  it('exposes home, share, and configured bottom-tool controls', async () => {
     const user = userEvent.setup()
     render(<SharedComponentHarness />)
 
@@ -82,10 +91,8 @@ describe('shared branded components', () => {
     expect(screen.getByRole('button', { name: 'Notes' })).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'Multiple subject' }))
-    expect(screen.getByRole('button', { name: 'Back' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Share' })).toBeVisible()
-
-    await user.click(screen.getByRole('button', { name: 'Back' }))
+    await user.click(screen.getByRole('button', { name: 'Return to previous screen' }))
     expect(screen.getByRole('button', { name: 'Single subject' })).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'Notes' }))
@@ -95,6 +102,14 @@ describe('shared branded components', () => {
 
     await user.click(screen.getByRole('button', { name: 'Home' }))
     expect(screen.getByRole('button', { name: 'Home' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('keeps tool items exposed as a list to assistive technologies', async () => {
+    const user = userEvent.setup()
+    render(<SharedComponentHarness />)
+
+    await user.click(screen.getByRole('button', { name: 'Notes' }))
+    expect(screen.getByRole('list')).toHaveAttribute('role', 'list')
   })
 
   it('applies and restores the brand document metadata', () => {
