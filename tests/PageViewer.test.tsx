@@ -1,8 +1,11 @@
+/// <reference types="vite/client" />
+
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { PageViewer } from '../src/components/PageViewer'
 import type { ContentGroup, Direction } from '../src/core/brand-types'
+import '../src/styles.css'
 
 const group: ContentGroup = {
   id: 'welcome',
@@ -34,6 +37,16 @@ function renderViewer({
   )
 }
 
+function observePointerCapture(element: HTMLElement) {
+  const setPointerCapture = vi.fn()
+  const releasePointerCapture = vi.fn()
+  Object.defineProperties(element, {
+    setPointerCapture: { configurable: true, value: setPointerCapture },
+    releasePointerCapture: { configurable: true, value: releasePointerCapture },
+  })
+  return { setPointerCapture, releasePointerCapture }
+}
+
 describe('PageViewer', () => {
   it('shows the selected page, page count, and accessible indicators', () => {
     renderViewer()
@@ -42,6 +55,26 @@ describe('PageViewer', () => {
     expect(screen.getByText('1 / 3')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Go to page 1 of 3' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('button', { name: 'Go to page 2 of 3' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('gives every indicator a 44px hit area around its compact visual dot', () => {
+    renderViewer()
+    const currentButton = screen.getByRole('button', { name: 'Go to page 1 of 3' })
+    const inactiveButton = screen.getByRole('button', { name: 'Go to page 2 of 3' })
+
+    expect(Number.parseFloat(getComputedStyle(currentButton).width)).toBeGreaterThanOrEqual(44)
+    expect(Number.parseFloat(getComputedStyle(currentButton).height)).toBeGreaterThanOrEqual(44)
+    expect(Number.parseFloat(getComputedStyle(inactiveButton).width)).toBeGreaterThanOrEqual(44)
+    expect(Number.parseFloat(getComputedStyle(inactiveButton).height)).toBeGreaterThanOrEqual(44)
+
+    const currentDot = currentButton.querySelector('[aria-hidden="true"]')
+    const inactiveDot = inactiveButton.querySelector('[aria-hidden="true"]')
+    expect(currentDot).not.toBeNull()
+    expect(inactiveDot).not.toBeNull()
+    expect(getComputedStyle(currentDot!).width).toBe('20px')
+    expect(getComputedStyle(currentDot!).height).toBe('7px')
+    expect(getComputedStyle(inactiveDot!).width).toBe('7px')
+    expect(getComputedStyle(inactiveDot!).height).toBe('7px')
   })
 
   it('requests the page selected with an indicator', async () => {
@@ -78,6 +111,59 @@ describe('PageViewer', () => {
 
     expect(onPageChange).toHaveBeenCalledOnce()
     expect(onPageChange).toHaveBeenCalledWith(2)
+  })
+
+  it('captures and releases the active pointer on a completed gesture', () => {
+    renderViewer({ pageIndex: 1 })
+    const viewer = screen.getByRole('region', { name: 'Welcome guide page viewer' })
+    const capture = observePointerCapture(viewer)
+
+    fireEvent.pointerDown(viewer, { clientX: 120, clientY: 20, isPrimary: true, pointerId: 8 })
+    expect(capture.setPointerCapture).toHaveBeenCalledWith(8)
+
+    fireEvent.pointerUp(viewer, { clientX: 64, clientY: 25, isPrimary: true, pointerId: 8 })
+    expect(capture.releasePointerCapture).toHaveBeenCalledWith(8)
+  })
+
+  it('clears and releases a cancelled gesture before a later pointer up', () => {
+    const onPageChange = vi.fn()
+    renderViewer({ pageIndex: 1, onPageChange })
+    const viewer = screen.getByRole('region', { name: 'Welcome guide page viewer' })
+    const capture = observePointerCapture(viewer)
+
+    fireEvent.pointerDown(viewer, { clientX: 120, clientY: 20, isPrimary: true, pointerId: 9 })
+    fireEvent.pointerCancel(viewer, { isPrimary: true, pointerId: 9 })
+    expect(capture.releasePointerCapture).toHaveBeenCalledWith(9)
+
+    fireEvent.pointerUp(viewer, { clientX: 20, clientY: 20, isPrimary: true, pointerId: 9 })
+    expect(onPageChange).not.toHaveBeenCalled()
+  })
+
+  it('clears a gesture when pointer capture is lost', () => {
+    const onPageChange = vi.fn()
+    renderViewer({ pageIndex: 1, onPageChange })
+    const viewer = screen.getByRole('region', { name: 'Welcome guide page viewer' })
+    observePointerCapture(viewer)
+
+    fireEvent.pointerDown(viewer, { clientX: 120, clientY: 20, isPrimary: true, pointerId: 10 })
+    fireEvent.lostPointerCapture(viewer, { isPrimary: true, pointerId: 10 })
+    fireEvent.pointerUp(viewer, { clientX: 20, clientY: 20, isPrimary: true, pointerId: 10 })
+
+    expect(onPageChange).not.toHaveBeenCalled()
+  })
+
+  it('does not begin a gesture from an indicator button', () => {
+    const onPageChange = vi.fn()
+    renderViewer({ pageIndex: 1, onPageChange })
+    const viewer = screen.getByRole('region', { name: 'Welcome guide page viewer' })
+    const indicator = screen.getByRole('button', { name: 'Go to page 2 of 3' })
+    const capture = observePointerCapture(viewer)
+
+    fireEvent.pointerDown(indicator, { clientX: 120, clientY: 20, isPrimary: true, pointerId: 11 })
+    fireEvent.pointerUp(viewer, { clientX: 20, clientY: 20, isPrimary: true, pointerId: 11 })
+
+    expect(capture.setPointerCapture).not.toHaveBeenCalled()
+    expect(onPageChange).not.toHaveBeenCalled()
   })
 
   it('ignores a gesture whose vertical movement dominates', () => {

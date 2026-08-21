@@ -89,14 +89,18 @@ export function PageViewer({ group, pageIndex, direction, onPageChange, onShare:
 
   const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
     if (event.isPrimary === false || (event.pointerType === 'mouse' && event.button !== 0)) return
+    if (event.target instanceof Element && event.target.closest('button')) return
+
+    event.currentTarget.setPointerCapture?.(event.pointerId)
     pointerOrigin.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY }
   }
 
   const handlePointerUp = (event: PointerEvent<HTMLElement>) => {
     const origin = pointerOrigin.current
-    pointerOrigin.current = null
     if (!origin || origin.pointerId !== event.pointerId) return
 
+    pointerOrigin.current = null
+    event.currentTarget.releasePointerCapture?.(event.pointerId)
     const dx = event.clientX - origin.x
     const dy = event.clientY - origin.y
     if (Math.abs(dx) <= SWIPE_THRESHOLD || Math.abs(dx) <= Math.abs(dy) * HORIZONTAL_DOMINANCE) return
@@ -104,12 +108,25 @@ export function PageViewer({ group, pageIndex, direction, onPageChange, onShare:
     requestPage(currentIndex + (dx < 0 ? 1 : -1))
   }
 
+  const handlePointerCancel = (event: PointerEvent<HTMLElement>) => {
+    const origin = pointerOrigin.current
+    if (!origin || origin.pointerId !== event.pointerId) return
+
+    pointerOrigin.current = null
+    event.currentTarget.releasePointerCapture?.(event.pointerId)
+  }
+
+  const handleLostPointerCapture = (event: PointerEvent<HTMLElement>) => {
+    if (pointerOrigin.current?.pointerId === event.pointerId) pointerOrigin.current = null
+  }
+
   return (
     <section
       className="page-viewer"
       aria-label={`${group.label} page viewer`}
       onKeyDown={handleKeyDown}
-      onPointerCancel={() => { pointerOrigin.current = null }}
+      onLostPointerCapture={handleLostPointerCapture}
+      onPointerCancel={handlePointerCancel}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       role="region"
@@ -128,7 +145,9 @@ export function PageViewer({ group, pageIndex, direction, onPageChange, onShare:
               aria-current={index === currentIndex ? 'page' : undefined}
               aria-label={`Go to page ${index + 1} of ${pageCount}`}
               onClick={() => requestPage(index)}
-            />
+            >
+              <span className="page-viewer__indicator-dot" aria-hidden="true" />
+            </button>
           ))}
         </div>
       </footer>

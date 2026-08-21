@@ -482,23 +482,30 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
 }
 
 .page-viewer__indicator {
   appearance: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.page-viewer__indicator-dot {
   width: 7px;
   height: 7px;
   display: block;
-  padding: 0;
-  border: 0;
   border-radius: 99px;
   background: color-mix(in srgb, var(--primary) 24%, var(--surface));
-  cursor: pointer;
   transition: width .18s ease, background-color .18s ease;
 }
 
-.page-viewer__indicator[aria-current='page'] {
+.page-viewer__indicator[aria-current='page'] .page-viewer__indicator-dot {
   width: 20px;
   background: var(--primary);
 }
