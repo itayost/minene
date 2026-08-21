@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { App } from '../src/App'
@@ -159,17 +159,30 @@ describe('App', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('keeps the page-action sheet within the branded theme scope', async () => {
+  it('covers the full branded shell and blocks its controls while page actions are modal', async () => {
     const user = userEvent.setup()
     renderDemo()
 
     await user.click(screen.getByRole('button', { name: 'Single subject' }))
     await user.click(screen.getByRole('button', { name: 'Share' }))
 
-    const appStage = document.querySelector('.app-stage')
+    const shell = document.querySelector('.brand-shell')
+    const shellBase = document.querySelector('.brand-shell__base')
+    const overlay = screen.getByTestId('share-sheet-overlay')
     const dialog = screen.getByRole('dialog', { name: 'Only group' })
-    expect(appStage).not.toBeNull()
-    expect(appStage).toContainElement(dialog)
+    expect(shell).not.toBeNull()
+    expect(shellBase).not.toBeNull()
+    if (!(shellBase instanceof HTMLElement)) throw new Error('Branded shell base was not rendered')
+    expect(overlay.parentElement).toBe(shell)
+    expect(shell).toContainElement(dialog)
+    expect(shellBase).toHaveAttribute('inert')
+    expect(shellBase).toHaveAttribute('aria-hidden', 'true')
+
+    fireEvent.click(within(shellBase).getByRole('button', { name: 'Home', hidden: true }))
+    expect(screen.getByRole('dialog', { name: 'Only group' })).toBeVisible()
+
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('region', { name: 'Only group page viewer' })).toBeVisible()
   })
 
   it('persists a selected page and restores it after remount without repeated reads', async () => {

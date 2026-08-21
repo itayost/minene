@@ -28,11 +28,15 @@ export function validateBrand(brand: BrandManifest): ValidationIssue[] {
   const validateId = (value: string, path: string) => {
     if (!urlSafeId.test(value)) addIssue(path, 'must be URL-safe')
   }
+  const validateAssetPath = (src: string, path: string) => {
+    requireValue(src, path)
+    if (!assertBrandAssetPath(brand.id, src)) {
+      addIssue(path, `must begin with /brands/${brand.id}/`)
+    }
+  }
   const validateAsset = (asset: PageAsset, path: string) => {
     requireValue(asset.alt, `${path}.alt`)
-    if (!assertBrandAssetPath(brand.id, asset.src)) {
-      addIssue(`${path}.src`, `must begin with /brands/${brand.id}/`)
-    }
+    validateAssetPath(asset.src, `${path}.src`)
   }
 
   validateId(brand.id, 'id')
@@ -52,7 +56,7 @@ export function validateBrand(brand: BrandManifest): ValidationIssue[] {
     if (subjectIds.has(subject.id)) addIssue(`${subjectPath}.id`, 'must be unique')
     subjectIds.add(subject.id)
     requireValue(subject.label, `${subjectPath}.label`)
-    requireValue(subject.icon, `${subjectPath}.icon`)
+    validateAssetPath(subject.icon, `${subjectPath}.icon`)
     requireValue(subject.cardColor, `${subjectPath}.cardColor`)
 
     if (subject.groups.length === 0) addIssue(`${subjectPath}.groups`, 'must contain at least one group')
@@ -63,6 +67,7 @@ export function validateBrand(brand: BrandManifest): ValidationIssue[] {
       if (groupIds.has(group.id)) addIssue(`${groupPath}.id`, 'must be unique')
       groupIds.add(group.id)
       requireValue(group.label, `${groupPath}.label`)
+      if (group.icon !== undefined) validateAssetPath(group.icon, `${groupPath}.icon`)
 
       if (group.pages.length === 0) addIssue(`${groupPath}.pages`, 'must contain at least one page')
       group.pages.forEach((page, pageIndex) => validateAsset(page, `${groupPath}.pages[${pageIndex}]`))
@@ -76,7 +81,7 @@ export function validateBrand(brand: BrandManifest): ValidationIssue[] {
     if (toolIds.has(tool.id)) addIssue(`${toolPath}.id`, 'must be unique')
     toolIds.add(tool.id)
     requireValue(tool.label, `${toolPath}.label`)
-    requireValue(tool.icon, `${toolPath}.icon`)
+    validateAssetPath(tool.icon, `${toolPath}.icon`)
     tool.items.forEach((item, itemIndex) => requireValue(item, `${toolPath}.items[${itemIndex}]`))
   })
 

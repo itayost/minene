@@ -172,15 +172,15 @@ function BrandApplication({ brand, storage }: { brand: BrandManifest; storage: S
         onHome={() => navigate({ type: 'home' })}
         onShare={openShare}
         onTool={(toolId) => navigate({ type: 'open-tool', toolId })}
-      >
-        {currentContent}
-        {isShareOpen && viewer ? (
+        modal={isShareOpen && viewer ? (
           <ShareSheet
             context={viewer.context}
             labels={brand.labels}
             onClose={() => setIsShareOpen(false)}
           />
-        ) : null}
+        ) : undefined}
+      >
+        {currentContent}
       </BrandShell>
     </>
   )

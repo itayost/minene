@@ -27,7 +27,7 @@ The asset-prefix rule is strict: every logo, subject icon, optional group icon, 
 
 ## Stable IDs and navigation behavior
 
-Treat `brand.id`, `subjects[].id`, `subjects[].groups[].id`, and `tools[].id` as permanent data keys, not display copy. IDs are used in URLs and brand-scoped saved progress. Changing an ID after release can invalidate bookmarks or make previously saved page progress unreachable. Change a `label` when copy changes; keep its ID stable.
+Treat `brand.id`, `subjects[].id`, `subjects[].groups[].id`, and `tools[].id` as permanent data keys, not display copy. Every ID must use lowercase letters, numbers, and single hyphens. The brand ID selects the `/<brand-id>` route and brand-scoped storage namespace. Subject and group IDs form saved-progress keys within that namespace. Tool IDs identify destinations in the brand's local bottom navigation. Changing a brand ID after release changes its route and storage namespace; changing a subject or group ID makes its previously saved page progress unreachable. Change a `label` when copy changes and keep its ID stable.
 
 A subject with exactly one group opens that group's viewer immediately. A subject with two or more groups opens the group chooser first. Each group must contain at least one page, and page order in the array is the viewing order. Group IDs need only be unique within their subject; subject and tool IDs must be unique within their respective brand collections.
 
@@ -56,17 +56,17 @@ A subject with exactly one group opens that group's viewer immediately. A subjec
 | `labels.save` | Image-download action label. |
 | `labels.whatsapp` | WhatsApp action label. |
 | `subjects` | Non-empty ordered list of home cards. |
-| `subjects[].id` | Stable subject key, unique within the brand. |
+| `subjects[].id` | Stable URL-safe subject key, unique within the brand; used with the group ID to key saved progress. |
 | `subjects[].label` | Visible subject and header text. |
 | `subjects[].icon` | Brand-prefixed home-card icon path. |
 | `subjects[].cardColor` | CSS color for the subject card surface. |
 | `subjects[].groups` | Non-empty ordered list of content groups. One group skips the chooser; multiple groups show it. |
-| `subjects[].groups[].id` | Stable group key, unique within the subject. |
+| `subjects[].groups[].id` | Stable URL-safe group key, unique within the subject; used with the subject ID to key saved progress. |
 | `subjects[].groups[].label` | Visible chooser/viewer label. |
 | `subjects[].groups[].icon` | Optional brand-prefixed chooser icon. If omitted, the subject icon is used. |
 | `subjects[].groups[].pages` | Non-empty ordered list of `{ src, alt }` page images. Every `alt` must describe its page. |
 | `tools` | Ordered list of bottom-navigation tools; it may be empty. |
-| `tools[].id` | Stable tool key, unique within the brand. |
+| `tools[].id` | Stable URL-safe tool key, unique within the brand; identifies a local bottom-navigation destination. |
 | `tools[].label` | Visible bottom-navigation and screen label. |
 | `tools[].icon` | Brand-prefixed bottom-navigation icon path. |
 | `tools[].note` | Optional introductory text shown above the tool list. |

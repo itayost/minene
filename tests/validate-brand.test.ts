@@ -33,18 +33,19 @@ const validBrand: BrandManifest = {
     {
       id: 'mathematics',
       label: 'Mathematics',
-      icon: 'calculate',
+      icon: '/brands/study-space/icons/calculate.svg',
       cardColor: '#d9ebf7',
       groups: [
         {
           id: 'algebra',
           label: 'Algebra',
+          icon: '/brands/study-space/icons/algebra.svg',
           pages: [{ src: '/brands/study-space/algebra/1.webp', alt: 'Algebra page 1' }],
         },
       ],
     },
   ],
-  tools: [{ id: 'formula-sheet', label: 'Formula sheet', icon: 'description', items: ['Formulas'] }],
+  tools: [{ id: 'formula-sheet', label: 'Formula sheet', icon: '/brands/study-space/icons/description.svg', items: ['Formulas'] }],
 }
 
 describe('validateBrand', () => {
@@ -127,6 +128,40 @@ describe('validateBrand', () => {
   test('requires brand-owned asset paths', () => {
     expect(validateBrand({ ...validBrand, logo: { ...validBrand.logo, src: '/brands/other/logo.svg' } })).toContainEqual({
       path: 'logo.src',
+      message: 'must begin with /brands/study-space/',
+    })
+  })
+
+  test('requires brand-owned subject icon paths', () => {
+    const subject = validBrand.subjects[0]!
+    expect(validateBrand({
+      ...validBrand,
+      subjects: [{ ...subject, icon: '/brands/other/calculate.svg' }],
+    })).toContainEqual({
+      path: 'subjects[0].icon',
+      message: 'must begin with /brands/study-space/',
+    })
+  })
+
+  test('requires brand-owned optional group icon paths', () => {
+    const subject = validBrand.subjects[0]!
+    const group = subject.groups[0]!
+    expect(validateBrand({
+      ...validBrand,
+      subjects: [{ ...subject, groups: [{ ...group, icon: '/brands/other/algebra.svg' }] }],
+    })).toContainEqual({
+      path: 'subjects[0].groups[0].icon',
+      message: 'must begin with /brands/study-space/',
+    })
+  })
+
+  test('requires brand-owned tool icon paths', () => {
+    const tool = validBrand.tools[0]!
+    expect(validateBrand({
+      ...validBrand,
+      tools: [{ ...tool, icon: '/brands/other/description.svg' }],
+    })).toContainEqual({
+      path: 'tools[0].icon',
       message: 'must begin with /brands/study-space/',
     })
   })
