@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { BrandNotFound } from '../src/components/BrandNotFound'
 import { BrandShell } from '../src/components/BrandShell'
 import { HomeScreen } from '../src/components/HomeScreen'
+import { PageViewer } from '../src/components/PageViewer'
 import { SubjectMenu } from '../src/components/SubjectMenu'
 import { ToolScreen } from '../src/components/ToolScreen'
 import type { Screen } from '../src/core/navigation'
@@ -29,8 +30,16 @@ function SharedComponentHarness() {
   }
 
   const goBack = () => setCurrentScreen({ kind: 'home' })
+  const changePage = (pageIndex: number) => {
+    setCurrentScreen((screen) => screen.kind === 'viewer' ? { ...screen, pageIndex } : screen)
+  }
   const subject = currentScreen.kind === 'menu'
     ? demoBrand.subjects.find((candidate) => candidate.id === currentScreen.subjectId)
+    : undefined
+  const viewerGroup = currentScreen.kind === 'viewer'
+    ? demoBrand.subjects
+      .find((candidate) => candidate.id === currentScreen.subjectId)
+      ?.groups.find((candidate) => candidate.id === currentScreen.groupId)
     : undefined
   const tool = currentScreen.kind === 'tool'
     ? demoBrand.tools.find((candidate) => candidate.id === currentScreen.toolId)
@@ -49,8 +58,14 @@ function SharedComponentHarness() {
         <HomeScreen subjects={demoBrand.subjects} onSubject={openSubject} />
       ) : currentScreen.kind === 'menu' && subject ? (
         <SubjectMenu subject={subject} onGroup={openGroup} />
-      ) : currentScreen.kind === 'viewer' ? (
-        <p>Opened group: {currentScreen.groupId}</p>
+      ) : currentScreen.kind === 'viewer' && viewerGroup ? (
+        <PageViewer
+          direction={demoBrand.direction}
+          group={viewerGroup}
+          pageIndex={currentScreen.pageIndex}
+          onPageChange={changePage}
+          onShare={() => undefined}
+        />
       ) : tool ? (
         <ToolScreen tool={tool} />
       ) : null}
@@ -70,7 +85,7 @@ describe('shared branded components', () => {
     expect(screen.getByRole('button', { name: 'Group two' })).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'Group two' }))
-    expect(screen.getByText('Opened group: group-two')).toBeVisible()
+    expect(screen.getByRole('img', { name: 'Group two page' })).toBeVisible()
     expect(screen.getByText('Group two · 1 / 1')).toBeVisible()
   })
 
