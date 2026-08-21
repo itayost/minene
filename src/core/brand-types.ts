@@ -36,6 +36,18 @@ export type BrandTheme = {
   fontFamily: string
 }
 
+export type BrandActionFeedbackLabels = {
+  sharedFile: string
+  sharedUrl: string
+  copied: string
+  shareFailed: string
+  saved: string
+  saveFailed: string
+  whatsappOpened: string
+  whatsappBlocked: string
+  whatsappFailed: string
+}
+
 export type BrandManifest = {
   id: string
   name: string
@@ -51,6 +63,7 @@ export type BrandManifest = {
     share: string
     save: string
     whatsapp: string
+    feedback: BrandActionFeedbackLabels
   }
   subjects: BrandSubject[]
   tools: BrandTool[]

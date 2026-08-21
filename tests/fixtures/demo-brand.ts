@@ -24,6 +24,17 @@ export const demoBrand: BrandManifest = {
     share: 'Share',
     save: 'Save',
     whatsapp: 'Send with WhatsApp',
+    feedback: {
+      sharedFile: 'Shared the page image',
+      sharedUrl: 'Shared a link to the page',
+      copied: 'Copied the page link',
+      shareFailed: 'Could not share the page',
+      saved: 'Saved the page image',
+      saveFailed: 'Could not save the page image',
+      whatsappOpened: 'Opened WhatsApp',
+      whatsappBlocked: 'WhatsApp popup was blocked',
+      whatsappFailed: 'Could not open WhatsApp',
+    },
   },
   subjects: [
     {

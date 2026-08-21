@@ -50,6 +50,19 @@ describe('progress persistence', () => {
     expect(readProgress(storage, 'different-brand')).toEqual({})
   })
 
+  test('sanitizes values before persisting progress', () => {
+    const storage = new MemoryStorage()
+
+    writeProgress(storage, 'minene', {
+      valid: 3,
+      negative: -1,
+      decimal: 1.5,
+      infinite: Number.POSITIVE_INFINITY,
+    })
+
+    expect(storage.getItem(progressStorageKey('minene'))).toBe('{"valid":3}')
+  })
+
   test('catches storage read and write exceptions', () => {
     const failingStorage = {
       getItem: () => { throw new Error('security') },

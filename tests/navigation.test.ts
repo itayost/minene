@@ -28,6 +28,17 @@ const singleGroupBrand: BrandManifest = {
     share: 'Share',
     save: 'Save',
     whatsapp: 'WhatsApp',
+    feedback: {
+      sharedFile: 'Shared image',
+      sharedUrl: 'Shared link',
+      copied: 'Copied link',
+      shareFailed: 'Share failed',
+      saved: 'Saved image',
+      saveFailed: 'Save failed',
+      whatsappOpened: 'Opened WhatsApp',
+      whatsappBlocked: 'WhatsApp blocked',
+      whatsappFailed: 'WhatsApp failed',
+    },
   },
   subjects: [{
     id: 'single', label: 'Single', icon: 'book', cardColor: '#fff',

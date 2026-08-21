@@ -17,6 +17,15 @@ const group: ContentGroup = {
   ],
 }
 
+const eightPageGroup: ContentGroup = {
+  id: 'eight-pages',
+  label: 'Eight page guide',
+  pages: Array.from({ length: 8 }, (_, index) => ({
+    src: `/pages/page-${index + 1}.png`,
+    alt: `Page ${index + 1}`,
+  })),
+}
+
 function renderViewer({
   pageIndex = 0,
   direction = 'ltr',
@@ -77,6 +86,45 @@ describe('PageViewer', () => {
     expect(getComputedStyle(inactiveDot!).height).toBe('7px')
   })
 
+  it('wraps eight 44px indicators within the available phone width', () => {
+    render(
+      <div style={{ width: '360px' }}>
+        <PageViewer
+          group={eightPageGroup}
+          pageIndex={0}
+          direction="ltr"
+          onPageChange={() => undefined}
+          onShare={() => undefined}
+        />
+      </div>,
+    )
+
+    const indicators = screen.getByRole('group', { name: 'Choose a page in Eight page guide' })
+    expect(getComputedStyle(indicators).flexWrap).toBe('wrap')
+    expect(getComputedStyle(indicators).maxWidth).toBe('100%')
+    for (const button of screen.getAllByRole('button', { name: /Go to page .* of 8/ })) {
+      expect(Number.parseFloat(getComputedStyle(button).width)).toBeGreaterThanOrEqual(44)
+      expect(Number.parseFloat(getComputedStyle(button).height)).toBeGreaterThanOrEqual(44)
+    }
+  })
+
+  it('mirrors screen-entry motion for RTL viewers', () => {
+    render(
+      <div dir="rtl">
+        <PageViewer
+          group={group}
+          pageIndex={0}
+          direction="rtl"
+          onPageChange={() => undefined}
+          onShare={() => undefined}
+        />
+      </div>,
+    )
+
+    expect(getComputedStyle(screen.getByRole('region', { name: 'Welcome guide page viewer' }))
+      .getPropertyValue('--screen-enter-x').trim()).toBe('8%')
+  })
+
   it('requests the page selected with an indicator', async () => {
     const user = userEvent.setup()
     const onPageChange = vi.fn()
@@ -111,6 +159,28 @@ describe('PageViewer', () => {
 
     expect(onPageChange).toHaveBeenCalledOnce()
     expect(onPageChange).toHaveBeenCalledWith(2)
+  })
+
+  it('does not swipe at exactly the 55px distance boundary', () => {
+    const onPageChange = vi.fn()
+    renderViewer({ pageIndex: 1, onPageChange })
+    const viewer = screen.getByRole('region', { name: 'Welcome guide page viewer' })
+
+    fireEvent.pointerDown(viewer, { clientX: 100, clientY: 20, isPrimary: true, pointerId: 12 })
+    fireEvent.pointerUp(viewer, { clientX: 45, clientY: 20, isPrimary: true, pointerId: 12 })
+
+    expect(onPageChange).not.toHaveBeenCalled()
+  })
+
+  it('does not swipe at exactly the 1.4 horizontal-dominance boundary', () => {
+    const onPageChange = vi.fn()
+    renderViewer({ pageIndex: 1, onPageChange })
+    const viewer = screen.getByRole('region', { name: 'Welcome guide page viewer' })
+
+    fireEvent.pointerDown(viewer, { clientX: 100, clientY: 100, isPrimary: true, pointerId: 13 })
+    fireEvent.pointerUp(viewer, { clientX: 30, clientY: 150, isPrimary: true, pointerId: 13 })
+
+    expect(onPageChange).not.toHaveBeenCalled()
   })
 
   it('captures and releases the active pointer on a completed gesture', () => {

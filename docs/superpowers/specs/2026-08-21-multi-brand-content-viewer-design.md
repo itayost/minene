@@ -104,7 +104,7 @@ Components receive typed brand data and callbacks. They do not import brand-spec
 
 Navigation state is local client state with four screen types: home, subject menu, page viewer, and bottom tool. The selected subject, selected group, current page index, and share-sheet visibility are explicit state values.
 
-Page progress is saved in `localStorage` under a versioned, brand-scoped key. Progress entries are keyed by stable subject and group IDs. Invalid, stale, or out-of-range stored values are ignored and replaced with the first valid page.
+Page progress is saved in `localStorage` under a versioned, brand-scoped key. Progress entries are keyed by stable subject and group IDs. Invalid saved values are ignored. A valid non-negative integer that is higher than a group's current last page is clamped to that last page, preserving the closest useful resume position when content shrinks.
 
 The application requires no network API. Page images and icons are served as versioned static Vercel assets.
 
@@ -134,10 +134,10 @@ On narrow screens, the app fills the available viewport and respects safe-area i
 
 A build-time validation script checks:
 
-- Unique brand, subject, group, and tool IDs.
+- Unique brand registration keys, manifest brand IDs, subject IDs, group IDs, and tool IDs, with each registry key matching its manifest ID.
 - At least one group per subject.
 - At least one page per content group.
-- The existence of every referenced logo, icon, and page image.
+- Every asset path is normalized, brand-owned, traversal-free, and resolves to a regular file beneath that brand's public directory.
 - Valid theme values required by the shared shell.
 
 The production UI handles unknown brands, image load failures, unavailable browser sharing APIs, invalid saved progress, and empty optional tool content without crashing.

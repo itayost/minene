@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   downloadPage,
+  openExternalWindow,
   sharePage,
   whatsappUrl,
   type BrowserActionApis,
@@ -19,7 +20,9 @@ const context: PageActionContext = {
 
 function browserApis(overrides: Partial<BrowserActionApis> = {}): BrowserActionApis {
   return {
-    fetch: vi.fn(async () => new Response(new Blob(['image bytes'], { type: 'image/png' }))) as typeof fetch,
+    fetch: vi.fn(async () => new Response('image bytes', {
+      headers: { 'content-type': 'image/png' },
+    })) as typeof fetch,
     canShare: undefined,
     share: undefined,
     clipboard: undefined,
@@ -98,5 +101,36 @@ describe('page actions', () => {
     expect(whatsappUrl(context)).toBe(
       'https://wa.me/?text=Demo%20brand%3A%20Group%20two%20%E2%80%94%20Group%20two%20page%0Ahttps%3A%2F%2Fviewer.example%2Fbrands%2Fdemo%2Fgroups%2Fgroup-two%3Fpage%3D1',
     )
+  })
+
+  it('opens a blank context, severs its opener, and then navigates it', () => {
+    const replace = vi.fn()
+    const close = vi.fn()
+    const popup = { opener: window, location: { replace }, close }
+    const openWindow = vi.fn(() => popup)
+
+    expect(openExternalWindow('https://wa.me/?text=hello', openWindow)).toBe('opened')
+
+    expect(openWindow).toHaveBeenCalledWith('about:blank', '_blank')
+    expect(popup.opener).toBeNull()
+    expect(replace).toHaveBeenCalledWith('https://wa.me/?text=hello')
+    expect(close).not.toHaveBeenCalled()
+  })
+
+  it('returns an unambiguous blocked result only when no context was created', () => {
+    expect(openExternalWindow('https://wa.me/?text=hello', () => null)).toBe('blocked')
+  })
+
+  it('closes the blank context and reports navigation failure', () => {
+    const close = vi.fn()
+    const popup = {
+      opener: window,
+      location: { replace: () => { throw new Error('navigation denied') } },
+      close,
+    }
+
+    expect(openExternalWindow('https://wa.me/?text=hello', () => popup)).toBe('failed')
+    expect(popup.opener).toBeNull()
+    expect(close).toHaveBeenCalledOnce()
   })
 })

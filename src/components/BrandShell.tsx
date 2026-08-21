@@ -125,7 +125,7 @@ export function BrandShell({ brand, screen, children, modal, onBack, onHome, onS
               <>
                 <span className="app-header__spacer" aria-hidden="true" />
                 <div className="brand-lockup">
-                  <img className="brand-lockup__logo" src={brand.logo.src} alt={brand.logo.alt} />
+                  <img className="brand-lockup__logo" src={brand.logo.src} alt="" />
                   <span className="brand-lockup__name">{brand.name}</span>
                 </div>
                 <span className="app-header__spacer" aria-hidden="true" />
@@ -139,14 +139,16 @@ export function BrandShell({ brand, screen, children, modal, onBack, onHome, onS
                   <div className="app-header__title">{header.title}</div>
                   {header.subtitle ? <div className="app-header__subtitle">{header.subtitle}</div> : null}
                 </div>
-                <button className="icon-button share-button" type="button" aria-label={brand.labels.share} onClick={onShare}>
-                  <svg aria-hidden="true" viewBox="0 0 18 20">
-                    <circle cx="13.5" cy="4.5" r="2.9" />
-                    <circle cx="4.5" cy="10" r="2.9" />
-                    <circle cx="13.5" cy="15.5" r="2.9" />
-                    <path d="m11.1 6-4.1 2.6M7 11.4l4.1 2.6" />
-                  </svg>
-                </button>
+                {screen.kind === 'viewer' ? (
+                  <button className="icon-button share-button" type="button" aria-label={brand.labels.share} onClick={onShare}>
+                    <svg aria-hidden="true" viewBox="0 0 18 20">
+                      <circle cx="13.5" cy="4.5" r="2.9" />
+                      <circle cx="4.5" cy="10" r="2.9" />
+                      <circle cx="13.5" cy="15.5" r="2.9" />
+                      <path d="m11.1 6-4.1 2.6M7 11.4l4.1 2.6" />
+                    </svg>
+                  </button>
+                ) : <span className="app-header__spacer" aria-hidden="true" />}
               </>
             )}
           </header>

@@ -29,6 +29,17 @@ export const mineneBrand: BrandManifest = {
     share: 'שיתוף',
     save: 'שמירה',
     whatsapp: 'שליחה בוואטסאפ',
+    feedback: {
+      sharedFile: 'תמונת העמוד שותפה',
+      sharedUrl: 'קישור לעמוד שותף',
+      copied: 'הקישור לעמוד הועתק',
+      shareFailed: 'לא ניתן לשתף את העמוד',
+      saved: 'תמונת העמוד נשמרה',
+      saveFailed: 'לא ניתן לשמור את תמונת העמוד',
+      whatsappOpened: 'וואטסאפ נפתח',
+      whatsappBlocked: 'החלון של וואטסאפ נחסם',
+      whatsappFailed: 'לא ניתן לפתוח את וואטסאפ',
+    },
   },
   subjects: [
     {

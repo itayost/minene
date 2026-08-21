@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { mineneBrand } from '../src/brands/minene'
-import { getBrand, resolveBrandId } from '../src/core/brand-registry'
+import { buildBrandRegistry, getBrand, resolveBrandId } from '../src/core/brand-registry'
 import type { BrandManifest } from '../src/core/brand-types'
 import { validateBrand } from '../src/core/validate-brand'
 
@@ -28,6 +28,17 @@ const validBrand: BrandManifest = {
     share: 'Share',
     save: 'Save',
     whatsapp: 'WhatsApp',
+    feedback: {
+      sharedFile: 'Shared image',
+      sharedUrl: 'Shared link',
+      copied: 'Copied link',
+      shareFailed: 'Share failed',
+      saved: 'Saved image',
+      saveFailed: 'Save failed',
+      whatsappOpened: 'Opened WhatsApp',
+      whatsappBlocked: 'WhatsApp blocked',
+      whatsappFailed: 'WhatsApp failed',
+    },
   },
   subjects: [
     {
@@ -132,6 +143,20 @@ describe('validateBrand', () => {
     })
   })
 
+  test.each([
+    '/brands/study-space/pages/../secret.png',
+    '/brands/study-space/pages/%2e%2e/secret.png',
+    '/brands/study-space/pages\\secret.png',
+    '/brands/study-space/pages//page.png',
+    '/brands/study-space/pages/page.png?download=1',
+    '/brands/study-space/pages/page.png#preview',
+  ])('rejects an unsafe or non-normalized asset path: %s', (src) => {
+    expect(validateBrand({ ...validBrand, logo: { ...validBrand.logo, src } })).toContainEqual({
+      path: 'logo.src',
+      message: 'must be a normalized path beneath /brands/study-space/ without dot segments, backslashes, query strings, or fragments',
+    })
+  })
+
   test('requires brand-owned subject icon paths', () => {
     const subject = validBrand.subjects[0]!
     expect(validateBrand({
@@ -164,5 +189,20 @@ describe('validateBrand', () => {
       path: 'tools[0].icon',
       message: 'must begin with /brands/study-space/',
     })
+  })
+})
+
+describe('buildBrandRegistry', () => {
+  test('rejects duplicate manifest IDs before constructing a Map', () => {
+    expect(() => buildBrandRegistry([
+      ['study-space', validBrand],
+      ['study-space', { ...validBrand, name: 'Duplicate Study Space' }],
+    ])).toThrow('duplicate manifest id "study-space"')
+  })
+
+  test('rejects a registry key that disagrees with its manifest ID', () => {
+    expect(() => buildBrandRegistry([
+      ['study-space-alias', validBrand],
+    ])).toThrow('registry key "study-space-alias" must match manifest id "study-space"')
   })
 })

@@ -4,6 +4,10 @@ import { afterEach, vi } from 'vitest'
 
 afterEach(() => {
   cleanup()
-  globalThis.localStorage?.clear()
+  try {
+    window.localStorage.clear()
+  } catch {
+    // Tests exercise unavailable browser storage; cleanup must tolerate it too.
+  }
   vi.restoreAllMocks()
 })

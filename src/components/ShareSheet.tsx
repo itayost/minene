@@ -2,18 +2,20 @@ import { useEffect, useRef, useState } from 'react'
 import type { BrandManifest } from '../core/brand-types'
 import {
   downloadPage,
+  openExternalWindow,
   sharePage,
   whatsappUrl,
   type BrowserActionApis,
+  type OpenExternalWindow,
   type PageActionContext,
 } from '../core/page-actions'
 
 type ShareSheetProps = {
   context: PageActionContext
-  labels: Pick<BrandManifest['labels'], 'share' | 'save' | 'whatsapp'>
+  labels: Pick<BrandManifest['labels'], 'share' | 'save' | 'whatsapp' | 'feedback'>
   onClose: () => void
   browserApis?: BrowserActionApis
-  openWindow?: typeof window.open
+  openWindow?: OpenExternalWindow
 }
 
 export function ShareSheet({ context, labels, onClose, browserApis, openWindow }: ShareSheetProps) {
@@ -42,10 +44,14 @@ export function ShareSheet({ context, labels, onClose, browserApis, openWindow }
   const completeShare = async () => {
     setFeedback(null)
     try {
-      await sharePage(context, browserApis)
-      setFeedback(`${labels.share} ✓`)
+      const outcome = await sharePage(context, browserApis)
+      setFeedback({
+        file: labels.feedback.sharedFile,
+        url: labels.feedback.sharedUrl,
+        copied: labels.feedback.copied,
+      }[outcome])
     } catch {
-      setFeedback(`${labels.share} ⚠`)
+      setFeedback(labels.feedback.shareFailed)
     }
   }
 
@@ -53,21 +59,20 @@ export function ShareSheet({ context, labels, onClose, browserApis, openWindow }
     setFeedback(null)
     try {
       await downloadPage(context, browserApis)
-      setFeedback(`${labels.save} ✓`)
+      setFeedback(labels.feedback.saved)
     } catch {
-      setFeedback(`${labels.save} ⚠`)
+      setFeedback(labels.feedback.saveFailed)
     }
   }
 
   const openWhatsApp = () => {
     setFeedback(null)
-    try {
-      const popup = (openWindow ?? window.open.bind(window))(whatsappUrl(context), '_blank', 'noopener,noreferrer')
-      if (popup === null) throw new Error('WhatsApp popup was blocked')
-      setFeedback(`${labels.whatsapp} ✓`)
-    } catch {
-      setFeedback(`${labels.whatsapp} ⚠`)
-    }
+    const outcome = openExternalWindow(whatsappUrl(context), openWindow)
+    setFeedback({
+      opened: labels.feedback.whatsappOpened,
+      blocked: labels.feedback.whatsappBlocked,
+      failed: labels.feedback.whatsappFailed,
+    }[outcome])
   }
 
   return (

@@ -8,7 +8,7 @@ A brand is a typed manifest plus static assets. Shared React components must not
 2. Create `public/brands/<id>/icons` and `public/brands/<id>/pages`.
 3. Copy `src/brands/minene.ts` to `src/brands/<id>.ts` as the manifest starting point.
 4. Replace all IDs, visible labels, locale, direction, theme values, and asset references. Remove Minene subjects, groups, pages, and tools that do not belong to the new brand.
-5. Import the manifest in `src/core/brand-registry.ts` and add `[newBrand.id, newBrand]` to `brandRegistry`.
+5. Import the manifest in `src/core/brand-registry.ts` and add an explicit `[brand-id, manifest]` entry to `brandManifestEntries`. The registry builder rejects duplicate keys, duplicate manifest IDs, and disagreement between a registration key and `manifest.id` before constructing the `Map`.
 6. Validate manifest fields and referenced public files:
 
    ```bash
@@ -23,7 +23,7 @@ A brand is a typed manifest plus static assets. Shared React components must not
 
 8. Start the app with `pnpm dev` and review `/<brand-id>` at phone and desktop widths. Exercise every subject, group, page, and bottom tool in both pointer and keyboard flows.
 
-The asset-prefix rule is strict: every logo, subject icon, optional group icon, page image, and tool icon must begin with `/brands/<brand-id>/`. These URL paths map to files below `public/brands/<brand-id>/`; do not include `public` in a manifest URL. The build-time validator also checks that every registered asset exists.
+The asset rule is strict: every logo, subject icon, optional group icon, page image, and tool icon must be a normalized URL path beneath `/brands/<brand-id>/`. Do not use `.` or `..` segments, backslashes, duplicate separators, query strings, or fragments. These URL paths map to regular files below `public/brands/<brand-id>/`; do not include `public` in a manifest URL. The build-time validator rejects cross-brand and escaping paths and checks that every registered asset is a regular file rather than a directory or symbolic link.
 
 ## Stable IDs and navigation behavior
 
@@ -40,7 +40,7 @@ A subject with exactly one group opens that group's viewer immediately. A subjec
 | `title` | Browser document title. |
 | `locale` | BCP 47 language tag applied to the document and brand shell, such as `en-US` or `he-IL`. |
 | `direction` | Layout direction: `ltr` or `rtl`. |
-| `logo` | `{ src, alt }` for the header logo. `alt` must describe the logo. |
+| `logo` | `{ src, alt }` for the brand logo. `alt` must describe the logo for contexts where the asset is used independently; the shell marks it decorative because the visible brand name is adjacent. |
 | `theme.primary` | Main action, focus, active-navigation, and accent color. |
 | `theme.primaryStrong` | Stronger accent used for prominent text and controls. |
 | `theme.text` | Primary text and system-chrome color. |
@@ -55,6 +55,15 @@ A subject with exactly one group opens that group's viewer immediately. A subjec
 | `labels.share` | Share action label. |
 | `labels.save` | Image-download action label. |
 | `labels.whatsapp` | WhatsApp action label. |
+| `labels.feedback.sharedFile` | Success message after sharing the page image as a file. |
+| `labels.feedback.sharedUrl` | Success message after sharing the current page URL. |
+| `labels.feedback.copied` | Success message after copying the page URL as the final share fallback. |
+| `labels.feedback.shareFailed` | Message shown when every share fallback fails. |
+| `labels.feedback.saved` | Success message after initiating the page-image download. |
+| `labels.feedback.saveFailed` | Message shown when the page image cannot be downloaded. |
+| `labels.feedback.whatsappOpened` | Message shown after WhatsApp navigation is initiated. |
+| `labels.feedback.whatsappBlocked` | Message shown when the browser blocks creation of the WhatsApp context. |
+| `labels.feedback.whatsappFailed` | Message shown when a created context cannot navigate to WhatsApp. |
 | `subjects` | Non-empty ordered list of home cards. |
 | `subjects[].id` | Stable URL-safe subject key, unique within the brand; used with the group ID to key saved progress. |
 | `subjects[].label` | Visible subject and header text. |
@@ -106,6 +115,17 @@ export const acmeFieldBrand: BrandManifest = {
     share: 'Share',
     save: 'Save',
     whatsapp: 'Send with WhatsApp',
+    feedback: {
+      sharedFile: 'Shared the page image',
+      sharedUrl: 'Shared a link to the page',
+      copied: 'Copied the page link',
+      shareFailed: 'Could not share the page',
+      saved: 'Saved the page image',
+      saveFailed: 'Could not save the page image',
+      whatsappOpened: 'Opened WhatsApp',
+      whatsappBlocked: 'WhatsApp popup was blocked',
+      whatsappFailed: 'Could not open WhatsApp',
+    },
   },
   subjects: [
     {
@@ -145,12 +165,14 @@ Register it in `src/core/brand-registry.ts`:
 ```ts
 import { acmeFieldBrand } from '../brands/acme-field'
 import { mineneBrand } from '../brands/minene'
-import type { BrandManifest } from './brand-types'
 
-export const brandRegistry: ReadonlyMap<string, BrandManifest> = new Map([
-  [mineneBrand.id, mineneBrand],
-  [acmeFieldBrand.id, acmeFieldBrand],
-])
+// Keep the existing BrandRegistration type and buildBrandRegistry function above this list.
+export const brandManifestEntries = [
+  ['minene', mineneBrand],
+  ['acme-field', acmeFieldBrand],
+] as const satisfies readonly BrandRegistration[]
+
+export const brandRegistry = buildBrandRegistry(brandManifestEntries)
 ```
 
 Then run `pnpm validate:brands`, `pnpm test:run`, and review `/acme-field`. Registration is production-only: keep test fixtures such as `tests/fixtures/demo-brand.ts` out of production imports.

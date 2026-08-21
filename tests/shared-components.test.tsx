@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { BrandNotFound } from '../src/components/BrandNotFound'
 import { BrandShell } from '../src/components/BrandShell'
 import { HomeScreen } from '../src/components/HomeScreen'
@@ -87,13 +87,13 @@ function ShareSheetHarness({ openWindow }: { openWindow?: typeof window.open } =
     currentUrl: 'https://viewer.example/brands/demo/groups/group-two?page=1',
   }
   const browserApis: BrowserActionApis = {
-    fetch: async () => new Response(new Blob(['image bytes'], { type: 'image/png' })),
+    fetch: async () => new Response('image bytes', { headers: { 'content-type': 'image/png' } }),
     canShare: () => false,
     share: async () => undefined,
     clipboard: undefined,
     createObjectURL: () => 'blob:test-page',
     revokeObjectURL: () => undefined,
-    createAnchor: () => document.createElement('a'),
+    createAnchor: () => Object.assign(document.createElement('a'), { click: () => undefined }),
   }
 
   return (
@@ -145,12 +145,13 @@ describe('shared branded components', () => {
     expect(screen.getByRole('button', { name: 'Notes' })).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'Multiple subject' }))
-    expect(screen.getByRole('button', { name: 'Share' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Return to previous screen' }))
     expect(screen.getByRole('button', { name: 'Single subject' })).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'Notes' }))
     expect(screen.getByRole('button', { name: 'Notes' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
     expect(screen.getByText('Ideas to discuss')).toBeVisible()
     expect(screen.getByRole('list')).toHaveTextContent('First idea')
 
@@ -168,20 +169,31 @@ describe('shared branded components', () => {
 
   it('applies and restores the brand document metadata', () => {
     const root = document.documentElement
+    const originalLang = root.getAttribute('lang')
+    const originalDirection = root.getAttribute('dir')
+    const originalTitle = document.title
     root.lang = 'fr'
     root.dir = 'rtl'
     document.title = 'Previous title'
 
-    const view = render(<SharedComponentHarness />)
+    try {
+      const view = render(<SharedComponentHarness />)
 
-    expect(root).toHaveAttribute('lang', 'en-US')
-    expect(root).toHaveAttribute('dir', 'ltr')
-    expect(document.title).toBe('Demo content viewer')
+      expect(root).toHaveAttribute('lang', 'en-US')
+      expect(root).toHaveAttribute('dir', 'ltr')
+      expect(document.title).toBe('Demo content viewer')
 
-    view.unmount()
-    expect(root).toHaveAttribute('lang', 'fr')
-    expect(root).toHaveAttribute('dir', 'rtl')
-    expect(document.title).toBe('Previous title')
+      view.unmount()
+      expect(root).toHaveAttribute('lang', 'fr')
+      expect(root).toHaveAttribute('dir', 'rtl')
+      expect(document.title).toBe('Previous title')
+    } finally {
+      if (originalLang === null) root.removeAttribute('lang')
+      else root.lang = originalLang
+      if (originalDirection === null) root.removeAttribute('dir')
+      else root.dir = originalDirection
+      document.title = originalTitle
+    }
   })
 
   it('renders a useful unknown-brand route', () => {
@@ -204,7 +216,7 @@ describe('shared branded components', () => {
     expect(screen.getByRole('button', { name: 'Share' })).toHaveFocus()
 
     await user.click(screen.getByRole('button', { name: 'Share' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Share ✓')
+    expect(screen.getByRole('status')).toHaveTextContent('Shared a link to the page')
 
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -228,6 +240,49 @@ describe('shared branded components', () => {
     await user.click(screen.getByRole('button', { name: 'Open page actions' }))
     await user.click(screen.getByRole('button', { name: 'Send with WhatsApp' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent('Send with WhatsApp ⚠')
+    expect(screen.getByRole('status')).toHaveTextContent('WhatsApp popup was blocked')
+  })
+
+  it('does not report a false WhatsApp warning after a context opens successfully', async () => {
+    const user = userEvent.setup()
+    const popup = {
+      opener: window,
+      location: { replace: () => undefined },
+      close: () => undefined,
+    }
+    render(<ShareSheetHarness openWindow={() => popup as unknown as Window} />)
+
+    await user.click(screen.getByRole('button', { name: 'Open page actions' }))
+    await user.click(screen.getByRole('button', { name: 'Send with WhatsApp' }))
+
+    expect(screen.getByRole('status')).toHaveTextContent('Opened WhatsApp')
+    expect(screen.getByRole('status')).not.toHaveTextContent('⚠')
+  })
+
+  it('reports a localized WhatsApp navigation failure', async () => {
+    const user = userEvent.setup()
+    const close = vi.fn()
+    const popup = {
+      opener: window,
+      location: { replace: () => { throw new Error('denied') } },
+      close,
+    }
+    render(<ShareSheetHarness openWindow={() => popup as unknown as Window} />)
+
+    await user.click(screen.getByRole('button', { name: 'Open page actions' }))
+    await user.click(screen.getByRole('button', { name: 'Send with WhatsApp' }))
+
+    expect(screen.getByRole('status')).toHaveTextContent('Could not open WhatsApp')
+    expect(close).toHaveBeenCalledOnce()
+  })
+
+  it('announces a localized save outcome', async () => {
+    const user = userEvent.setup()
+    render(<ShareSheetHarness />)
+
+    await user.click(screen.getByRole('button', { name: 'Open page actions' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(screen.getByRole('status')).toHaveTextContent('Saved the page image')
   })
 })

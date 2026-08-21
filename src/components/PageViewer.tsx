@@ -22,12 +22,8 @@ const HORIZONTAL_DOMINANCE = 1.4
 
 function PageImage({ page }: { page: PageAsset }) {
   const [status, setStatus] = useState<ImageStatus>('loading')
-  const [retryAttempt, setRetryAttempt] = useState(0)
 
-  const retryImage = () => {
-    setStatus('loading')
-    setRetryAttempt((attempt) => attempt + 1)
-  }
+  const retryImage = () => setStatus('loading')
 
   return (
     <div className="page-viewer__scroll">
@@ -44,7 +40,6 @@ function PageImage({ page }: { page: PageAsset }) {
         </div>
       ) : (
         <img
-          key={retryAttempt}
           className="page-viewer__image"
           src={page.src}
           alt={page.alt}

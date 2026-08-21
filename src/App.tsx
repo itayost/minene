@@ -39,6 +39,23 @@ type CurrentViewer = {
   context: PageActionContext
 }
 
+const unavailableStorage: Storage = {
+  get length() { return 0 },
+  clear: () => undefined,
+  getItem: () => null,
+  key: () => null,
+  removeItem: () => undefined,
+  setItem: () => undefined,
+}
+
+function browserProgressStorage(): Storage {
+  try {
+    return window.localStorage
+  } catch {
+    return unavailableStorage
+  }
+}
+
 function viewerFor(brand: BrandManifest, screen: Screen): CurrentViewer | undefined {
   if (screen.kind !== 'viewer') return undefined
 
@@ -189,11 +206,11 @@ function BrandApplication({ brand, storage }: { brand: BrandManifest; storage: S
 export function App({
   pathname = window.location.pathname,
   registry = brandRegistry,
-  storage = window.localStorage,
+  storage,
 }: AppProps) {
   const brandId = resolveBrandId(pathname)
   const brand = registry.get(brandId)
 
   if (!brand) return <BrandNotFound brandId={brandId} />
-  return <BrandApplication key={brand.id} brand={brand} storage={storage} />
+  return <BrandApplication key={brand.id} brand={brand} storage={storage ?? browserProgressStorage()} />
 }

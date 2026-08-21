@@ -5,7 +5,7 @@ A static React and TypeScript viewer for Minene Cockpit content and additional m
 ## Requirements
 
 - Node.js 20.19 or newer
-- pnpm (the repository currently declares pnpm 11.0.9)
+- pnpm (the repository pins pnpm 10.34.5 so the complete toolchain supports Node.js 20.19)
 
 ## Local development
 

@@ -14,9 +14,54 @@ const themeTokens = [
 ] as const
 
 const requiredLabelKeys = ['home', 'back', 'navigation', 'share', 'save', 'whatsapp'] as const
+const requiredFeedbackLabelKeys = [
+  'sharedFile',
+  'sharedUrl',
+  'copied',
+  'shareFailed',
+  'saved',
+  'saveFailed',
+  'whatsappOpened',
+  'whatsappBlocked',
+  'whatsappFailed',
+] as const
+
+const assetPathMessage = (brandId: string) => (
+  `must be a normalized path beneath /brands/${brandId}/ without dot segments, backslashes, query strings, or fragments`
+)
+
+export function normalizeBrandAssetPath(brandId: string, assetPath: string): string | undefined {
+  const requiredPrefix = `/brands/${brandId}/`
+  if (!assetPath.startsWith(requiredPrefix) || assetPath.includes('\\') || assetPath.includes('?') || assetPath.includes('#')) {
+    return undefined
+  }
+
+  let parsed: URL
+  try {
+    parsed = new URL(assetPath, 'https://brand-assets.invalid')
+  } catch {
+    return undefined
+  }
+
+  if (parsed.origin !== 'https://brand-assets.invalid' || parsed.pathname !== assetPath) return undefined
+
+  const segments = assetPath.slice(1).split('/')
+  if (segments.some((segment) => segment.length === 0)) return undefined
+
+  try {
+    if (segments.some((segment) => {
+      const decoded = decodeURIComponent(segment)
+      return decoded === '.' || decoded === '..' || decoded.includes('/') || decoded.includes('\\') || decoded.includes('\0')
+    })) return undefined
+  } catch {
+    return undefined
+  }
+
+  return parsed.pathname
+}
 
 export function assertBrandAssetPath(brandId: string, path: string): boolean {
-  return path.startsWith(`/brands/${brandId}/`)
+  return normalizeBrandAssetPath(brandId, path) !== undefined
 }
 
 export function validateBrand(brand: BrandManifest): ValidationIssue[] {
@@ -30,8 +75,10 @@ export function validateBrand(brand: BrandManifest): ValidationIssue[] {
   }
   const validateAssetPath = (src: string, path: string) => {
     requireValue(src, path)
-    if (!assertBrandAssetPath(brand.id, src)) {
+    if (!src.startsWith(`/brands/${brand.id}/`)) {
       addIssue(path, `must begin with /brands/${brand.id}/`)
+    } else if (!assertBrandAssetPath(brand.id, src)) {
+      addIssue(path, assetPathMessage(brand.id))
     }
   }
   const validateAsset = (asset: PageAsset, path: string) => {
@@ -47,6 +94,7 @@ export function validateBrand(brand: BrandManifest): ValidationIssue[] {
 
   for (const token of themeTokens) requireValue(brand.theme[token], `theme.${token}`)
   for (const key of requiredLabelKeys) requireValue(brand.labels[key], `labels.${key}`)
+  for (const key of requiredFeedbackLabelKeys) requireValue(brand.labels.feedback?.[key] ?? '', `labels.feedback.${key}`)
 
   if (brand.subjects.length === 0) addIssue('subjects', 'must contain at least one subject')
   const subjectIds = new Set<string>()

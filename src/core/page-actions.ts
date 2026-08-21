@@ -20,6 +20,20 @@ export type BrowserActionApis = {
   createAnchor: () => HTMLAnchorElement
 }
 
+export type ExternalWindowHandle = {
+  opener: unknown
+  location: Pick<Location, 'replace'>
+  close: () => void
+}
+
+export type OpenExternalWindow = (
+  url?: string | URL,
+  target?: string,
+  features?: string,
+) => ExternalWindowHandle | null
+
+export type ExternalWindowResult = 'opened' | 'blocked' | 'failed'
+
 function browserActionApis(): BrowserActionApis {
   return {
     fetch: globalThis.fetch.bind(globalThis),
@@ -106,4 +120,26 @@ export async function downloadPage(context: PageActionContext, injectedApis = br
 
 export function whatsappUrl(context: PageActionContext) {
   return `https://wa.me/?text=${encodeURIComponent(`${actionDescription(context)}\n${context.currentUrl}`)}`
+}
+
+/** Opens synchronously so blocking is observable, then severs the opener before external navigation. */
+export function openExternalWindow(
+  url: string,
+  openWindow: OpenExternalWindow = (initialUrl, target, features) => window.open(initialUrl, target, features),
+): ExternalWindowResult {
+  const popup = openWindow('about:blank', '_blank')
+  if (popup === null) return 'blocked'
+
+  try {
+    popup.opener = null
+    popup.location.replace(url)
+    return 'opened'
+  } catch {
+    try {
+      popup.close()
+    } catch {
+      // The context may already be gone; the failed result remains unambiguous.
+    }
+    return 'failed'
+  }
 }

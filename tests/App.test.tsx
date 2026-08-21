@@ -57,7 +57,8 @@ describe('App', () => {
 
     render(<App registry={productionAndDemoRegistry} storage={new ObservedStorage()} />)
 
-    expect(screen.getByRole('img', { name: 'לוגו Minene Cockpit' })).toBeVisible()
+    expect(screen.getByText('Minene Cockpit')).toBeVisible()
+    expect(document.querySelector('.brand-lockup__logo')).toHaveAttribute('alt', '')
     expect(screen.getByRole('button', { name: 'משימות יומיות' })).toBeVisible()
   })
 
@@ -66,7 +67,9 @@ describe('App', () => {
 
     expect(document.documentElement).toHaveAttribute('dir', 'ltr')
     expect(document.documentElement).toHaveAttribute('lang', 'en-US')
-    expect(screen.getByRole('img', { name: 'Demo brand logo' })).toBeVisible()
+    expect(screen.queryByRole('img', { name: 'Demo brand logo' })).not.toBeInTheDocument()
+    expect(document.querySelector('.brand-lockup__logo')).toHaveAttribute('src', '/brands/demo/logo.svg')
+    expect(document.querySelector('.brand-lockup__logo')).toHaveAttribute('alt', '')
     expect(screen.getByText('Demo brand')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Single subject' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Multiple subject' })).toBeVisible()
@@ -81,6 +84,22 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Brand not found' })).toBeVisible()
     expect(screen.getByText(/not-configured/)).toBeVisible()
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+  })
+
+  it('renders with fallback progress storage when the localStorage getter throws', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(window, 'localStorage')
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get: () => { throw new Error('storage denied') },
+    })
+
+    try {
+      render(<App pathname="/demo" registry={productionAndDemoRegistry} />)
+      expect(screen.getByRole('button', { name: 'Single subject' })).toBeVisible()
+    } finally {
+      if (descriptor) Object.defineProperty(window, 'localStorage', descriptor)
+      else Reflect.deleteProperty(window, 'localStorage')
+    }
   })
 
   it('opens a single-group subject directly in its viewer', async () => {
@@ -137,15 +156,16 @@ describe('App', () => {
   it('offers page actions only while a viewer is current', async () => {
     const user = userEvent.setup()
     let openedUrl = ''
-    vi.spyOn(window, 'open').mockImplementation((url) => {
-      openedUrl = String(url)
-      return window
-    })
+    const popup = {
+      opener: window,
+      location: { replace: (url: string | URL) => { openedUrl = String(url) } },
+      close: () => undefined,
+    }
+    vi.spyOn(window, 'open').mockImplementation(() => popup as unknown as Window)
     renderDemo(new ObservedStorage(), multipageDemoBrand)
 
     await user.click(screen.getByRole('button', { name: 'Multiple subject' }))
-    await user.click(screen.getByRole('button', { name: 'Share' }))
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Group two' }))
     await user.click(screen.getByRole('button', { name: 'Go to page 3 of 3' }))

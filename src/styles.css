@@ -249,6 +249,7 @@ button {
 }
 
 .subject-menu {
+  --screen-enter-x: -8%;
   background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--primary) 5%, var(--surface)));
   animation: screen-enter .26s ease both;
 }
@@ -342,6 +343,7 @@ button {
 }
 
 .tool-screen {
+  --screen-enter-x: -8%;
   padding: 18px 16px 24px;
   animation: screen-enter .26s ease both;
 }
@@ -386,6 +388,7 @@ button {
 }
 
 .page-viewer {
+  --screen-enter-x: -8%;
   position: absolute;
   inset: 0;
   min-width: 0;
@@ -487,7 +490,9 @@ button {
 }
 
 .page-viewer__indicators {
+  max-width: 100%;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
 }
@@ -716,10 +721,16 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
+[dir='rtl'] .subject-menu,
+[dir='rtl'] .tool-screen,
+[dir='rtl'] .page-viewer {
+  --screen-enter-x: 8%;
+}
+
 @keyframes screen-enter {
   from {
     opacity: 0;
-    transform: translateX(-8%);
+    transform: translateX(var(--screen-enter-x, -8%));
   }
   to {
     opacity: 1;
