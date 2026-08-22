@@ -17,10 +17,14 @@ export function SubjectMenu({ subject, onGroup }: SubjectMenuProps) {
       <div className="subject-menu__groups">
         {subject.groups.map((group) => (
           <button className="group-card" key={group.id} onClick={() => onGroup(group.id)} type="button">
-            <span className="group-card__arrow" aria-hidden="true">›</span>
-            <span className="group-card__label">{group.label}</span>
             <span className="group-card__icon-wrap" aria-hidden="true">
               <img className="group-card__icon" src={group.icon ?? subject.icon} alt="" />
+            </span>
+            <span className="group-card__label">{group.label}</span>
+            <span className="group-card__arrow" aria-hidden="true">
+              <svg viewBox="0 0 12 20">
+                <path d="m2.5 2 7 8-7 8" />
+              </svg>
             </span>
           </button>
         ))}
