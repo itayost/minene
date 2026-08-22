@@ -103,23 +103,6 @@ export function BrandShell({ brand, screen, children, modal, onBack, onHome, onS
           inert={isModalOpen ? true : undefined}
           onClickCapture={isModalOpen ? blockBackgroundClick : undefined}
         >
-          <div className="status-bar" aria-hidden="true">
-            <span>9:41</span>
-            <span className="status-bar__icons">
-              <svg viewBox="0 0 17 11">
-                <rect x="0" y="7" width="3" height="4" rx="1" />
-                <rect x="4.5" y="5" width="3" height="6" rx="1" />
-                <rect x="9" y="2.5" width="3" height="8.5" rx="1" />
-                <rect x="13.5" width="3" height="11" rx="1" />
-              </svg>
-              <svg viewBox="0 0 25 12">
-                <rect className="status-bar__battery" x="0.5" y="0.5" width="19" height="11" rx="3" />
-                <rect x="2" y="2" width="14" height="8" rx="1.8" />
-                <path d="M21.5 4v4a2.2 2.2 0 0 0 0-4Z" />
-              </svg>
-            </span>
-          </div>
-
           <header className={`app-header ${isHome ? 'app-header--home' : 'app-header--inner'}`}>
             {isHome ? (
               <>
@@ -179,7 +162,6 @@ export function BrandShell({ brand, screen, children, modal, onBack, onHome, onS
             ))}
           </nav>
 
-          <div className="home-indicator" aria-hidden="true"><span /></div>
         </div>
         {modal}
       </div>

@@ -51,51 +51,14 @@ button {
   flex-direction: column;
 }
 
-.status-bar {
-  direction: ltr;
-  flex: 0 0 auto;
-  min-height: calc(42px + env(safe-area-inset-top));
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: env(safe-area-inset-top) 24px 3px;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.status-bar__icons {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.status-bar svg:first-child {
-  width: 17px;
-  height: 11px;
-  fill: currentColor;
-}
-
-.status-bar svg:last-child {
-  width: 25px;
-  height: 12px;
-  fill: currentColor;
-}
-
-.status-bar__battery {
-  fill: none;
-  stroke: currentColor;
-  opacity: .45;
-}
-
 .app-header {
   flex: 0 0 auto;
-  min-height: 59px;
+  min-height: calc(59px + env(safe-area-inset-top));
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 4px 12px 10px;
+  padding: calc(4px + env(safe-area-inset-top)) 12px 10px;
   background: var(--surface);
   border-block-end: 1px solid color-mix(in srgb, var(--text) 7%, transparent);
 }
@@ -546,7 +509,7 @@ button {
 .bottom-nav {
   flex: 0 0 auto;
   display: flex;
-  padding: 7px 4px 8px;
+  padding: 7px 4px calc(8px + env(safe-area-inset-bottom));
   border-block-start: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
   background: var(--surface);
 }
@@ -596,22 +559,6 @@ button {
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.home-indicator {
-  flex: 0 0 auto;
-  display: flex;
-  justify-content: center;
-  padding: 5px 0 calc(7px + env(safe-area-inset-bottom));
-  background: var(--surface);
-}
-
-.home-indicator span {
-  width: 118px;
-  height: 4.5px;
-  border-radius: 3px;
-  background: var(--text);
-  opacity: .25;
 }
 
 .brand-not-found {

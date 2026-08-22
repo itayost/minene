@@ -78,6 +78,14 @@ describe('App', () => {
     expect(document.querySelector('.app-stage')).toHaveStyle('--primary: #246BCE')
   })
 
+  it('renders the branded shell without simulated device chrome', () => {
+    renderDemo()
+
+    expect(screen.queryByText('9:41')).not.toBeInTheDocument()
+    expect(document.querySelector('.status-bar')).toBeNull()
+    expect(document.querySelector('.home-indicator')).toBeNull()
+  })
+
   it('renders an unknown brand without a branded shell', () => {
     render(<App pathname="/not-configured" registry={productionAndDemoRegistry} storage={new ObservedStorage()} />)
 
