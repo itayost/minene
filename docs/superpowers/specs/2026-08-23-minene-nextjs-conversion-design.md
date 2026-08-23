@@ -248,9 +248,22 @@ progress is read was rejected because it trades a brief flash for a blank frame.
   `pnpm validate:brands && tsc --noEmit && next build`. The explicit
   `tsc --noEmit` is retained because `scripts/` and `tests/` sit outside Next's
   build graph and would otherwise stop being type-checked. `check` is unchanged.
-- `tsconfig.json`: `jsx` moves from `react-jsx` to `preserve`, the `next` plugin
-  is added, `include` gains `app` and `.next/types`, and `incremental` is
-  enabled. `strict` and `noUncheckedIndexedAccess` remain enabled.
+- `tsconfig.json`: the `next` plugin is added, `include` gains `app` and
+  `.next/types`, and `incremental` is enabled. `strict` and
+  `noUncheckedIndexedAccess` remain enabled.
+
+  `jsx` stays `react-jsx` and must not be changed. An earlier draft of this
+  spec said it moves to `preserve`; that was wrong, and was an assumption
+  carried over from older Next versions. Next 16.3.1 hardcodes `react-jsx` in
+  `lib/typescript/writeConfigurationDefaults.js` with the reason "next.js uses
+  the React automatic runtime", its `jsxMap` offers no other value, and it
+  rewrites the tsconfig on every `next build` and `next dev`. Setting
+  `preserve` is silently reverted. This is also convenient: Vite and Vitest
+  transform JSX through `@vitejs/plugin-react` and are unaffected either way.
+
+  Treat every other framework assumption in this document with the same
+  suspicion. `eran-presueder/AGENTS.md` warns that this Next version differs
+  from training data, and that warning was borne out here.
 
 `minene` pins pnpm 10.34.5 and `eran-presueder` pins 11.0.9. These must converge
 before sub-project 4. Bumping `minene` during this conversion is cheaper than
