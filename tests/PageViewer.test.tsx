@@ -288,6 +288,19 @@ describe('PageViewer', () => {
     expect(screen.getByRole('img', { name: 'First welcome page' })).toHaveAttribute('src', '/pages/first.png')
   })
 
+  // Server-rendered pages can finish loading before React attaches onLoad, and
+  // that event never arrives late. Without this the opaque loading overlay would
+  // cover a perfectly good image for as long as the reader stayed on the page.
+  it('clears loading feedback for an image the browser decoded before hydration', () => {
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
+    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(450)
+
+    renderViewer()
+
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'First welcome page' })).toBeVisible()
+  })
+
   it('updates only after its controlled page index changes and resets loading for the new source', async () => {
     const user = userEvent.setup()
     const onPageChange = vi.fn()

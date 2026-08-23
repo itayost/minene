@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import type { ContentGroup, Direction, PageAsset } from '../core/brand-types'
 
 type PageViewerProps = {
@@ -21,7 +21,18 @@ const SWIPE_THRESHOLD = 55
 const HORIZONTAL_DOMINANCE = 1.4
 
 function PageImage({ page }: { page: PageAsset }) {
+  const imageRef = useRef<HTMLImageElement>(null)
   const [status, setStatus] = useState<ImageStatus>('loading')
+
+  // The page now arrives in server-rendered HTML, so the browser can finish
+  // loading the image before React attaches onLoad. That event never fires, and
+  // the loading overlay is opaque, so the spinner would sit over a decoded image
+  // forever. A decoded image is recognised here instead of waited for.
+  useEffect(() => {
+    const image = imageRef.current
+    if (status !== 'loading' || !image?.complete || image.naturalWidth === 0) return
+    setStatus('loaded')
+  }, [status])
 
   const retryImage = () => setStatus('loading')
 
@@ -40,6 +51,7 @@ function PageImage({ page }: { page: PageAsset }) {
         </div>
       ) : (
         <img
+          ref={imageRef}
           className="page-viewer__image"
           src={page.src}
           alt={page.alt}
