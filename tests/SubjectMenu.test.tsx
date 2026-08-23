@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { SubjectMenu } from '../src/components/SubjectMenu'
 import '../src/styles.css'
 import { demoBrand } from './fixtures/demo-brand'
@@ -9,16 +9,26 @@ const subject = demoBrand.subjects.find((candidate) => candidate.id === 'multipl
 function renderSubjectMenu(direction: 'ltr' | 'rtl') {
   return render(
     <div dir={direction}>
-      <SubjectMenu subject={subject} onGroup={vi.fn()} />
+      <SubjectMenu subject={subject} groupHref={(id) => `/demo/multiple/${id}`} />
     </div>,
   )
 }
 
 describe('SubjectMenu', () => {
+  it('renders one link per group pointing at its route', () => {
+    const subject = demoBrand.subjects.find((candidate) => candidate.id === 'multiple')!
+
+    render(<SubjectMenu subject={subject} groupHref={(id) => `/demo/multiple/${id}`} />)
+
+    const links = screen.getAllByRole('link')
+    expect(links).toHaveLength(subject.groups.length)
+    expect(links[0]).toHaveAttribute('href', `/demo/multiple/${subject.groups[0]!.id}`)
+  })
+
   it('uses logical icon-label-chevron order and mirrors the chevron in RTL', () => {
     renderSubjectMenu('rtl')
 
-    const card = screen.getByRole('button', { name: 'Group one' })
+    const card = screen.getByRole('link', { name: 'Group one' })
     const children = Array.from(card.children)
 
     expect(children[0]).toHaveClass('group-card__icon-wrap')

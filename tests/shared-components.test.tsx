@@ -9,7 +9,7 @@ import { PageViewer } from '../src/components/PageViewer'
 import { ShareSheet } from '../src/components/ShareSheet'
 import { SubjectMenu } from '../src/components/SubjectMenu'
 import { ToolScreen } from '../src/components/ToolScreen'
-import { brandHref, subjectHref } from '../src/core/hrefs'
+import { brandHref, groupHref, subjectHref } from '../src/core/hrefs'
 import type { BrowserActionApis, PageActionContext } from '../src/core/page-actions'
 import { parentHref, type Screen } from '../src/core/navigation'
 import { demoBrand } from './fixtures/demo-brand'
@@ -22,14 +22,9 @@ type HarnessProps = {
 function SharedComponentHarness({ initialScreen = { kind: 'home' }, modal }: HarnessProps = {}) {
   const [currentScreen, setCurrentScreen] = useState<Screen>(initialScreen)
 
-  // The group chooser still reports a selection through a callback; its links
-  // arrive with the subject route. Screens otherwise come from the URL, so the
-  // harness is handed one rather than clicking its way there.
-  const openGroup = (groupId: string) => {
-    if (currentScreen.kind !== 'menu') return
-    setCurrentScreen({ kind: 'viewer', subjectId: currentScreen.subjectId, groupId, pageIndex: 0 })
-  }
-
+  // The group chooser now links straight to the group route. Screens
+  // otherwise come from the URL, so the harness is handed one rather than
+  // clicking its way there.
   const changePage = (pageIndex: number) => {
     setCurrentScreen((current) => current.kind === 'viewer' ? { ...current, pageIndex } : current)
   }
@@ -60,7 +55,10 @@ function SharedComponentHarness({ initialScreen = { kind: 'home' }, modal }: Har
           subjectHref={(subjectId) => subjectHref(demoBrand.id, subjectId)}
         />
       ) : currentScreen.kind === 'menu' && subject ? (
-        <SubjectMenu subject={subject} onGroup={openGroup} />
+        <SubjectMenu
+          subject={subject}
+          groupHref={(groupId) => groupHref(demoBrand.id, subject.id, groupId)}
+        />
       ) : currentScreen.kind === 'viewer' && viewerGroup ? (
         <PageViewer
           direction={demoBrand.direction}
@@ -132,17 +130,12 @@ describe('HomeScreen', () => {
 })
 
 describe('shared branded components', () => {
-  it('opens one of a multi-group subject’s groups', async () => {
-    const user = userEvent.setup()
+  it('renders the subject menu screen with links to each group route', () => {
     render(<SharedComponentHarness initialScreen={{ kind: 'menu', subjectId: 'multiple' }} />)
 
     expect(screen.getByRole('heading', { name: 'Multiple subject' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Group two' })).toBeVisible()
-
-    await user.click(screen.getByRole('button', { name: 'Group two' }))
-    expect(screen.getByRole('img', { name: 'Group two page' })).toBeVisible()
-    expect(screen.getByText('Group two · 1 / 1')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Share' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Group two' }))
+      .toHaveAttribute('href', '/demo/multiple/group-two')
   })
 
   it('uses the brand accessibility labels for shell navigation', () => {

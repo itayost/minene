@@ -280,6 +280,8 @@ button {
   background: color-mix(in srgb, var(--primary) 10%, var(--surface));
   cursor: pointer;
   transition: transform .12s ease;
+  text-decoration: none;
+  color: inherit;
 }
 
 .group-card__arrow {
