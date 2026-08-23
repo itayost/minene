@@ -2,9 +2,8 @@ import { notFound, redirect } from 'next/navigation'
 import { getBrand } from '../core/brand-registry'
 import type { BrandManifest } from '../core/brand-types'
 import { createServerSupabase } from './supabase-server'
+import { LOGIN_PATH } from './paths'
 import { asSessionClient, loadSessionBrand, type SessionBrand } from './session'
-
-export const LOGIN_PATH = '/login'
 
 export type ResolvedBrand = { brand: BrandManifest; session: SessionBrand }
 
@@ -48,3 +47,5 @@ export async function requireBrand(brandId: string): Promise<ResolvedBrand> {
 export async function resolveUserBrand(): Promise<ResolvedBrand> {
   return resolveSession()
 }
+
+export { LOGIN_PATH } from './paths'
