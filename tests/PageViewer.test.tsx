@@ -301,6 +301,21 @@ describe('PageViewer', () => {
     expect(screen.getByRole('img', { name: 'First welcome page' })).toBeVisible()
   })
 
+  // The mirror of the case above. A complete image with no intrinsic width is a
+  // load that finished and failed, and its onError fired before React attached,
+  // so it will never fire again. Reading that as still loading would park the
+  // opaque overlay over a broken image forever, with retry out of reach.
+  it('offers retry for an image that failed before hydration', () => {
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
+    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(0)
+
+    renderViewer()
+
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retry loading First welcome page' })).toBeVisible()
+  })
+
   it('updates only after its controlled page index changes and resets loading for the new source', async () => {
     const user = userEvent.setup()
     const onPageChange = vi.fn()
