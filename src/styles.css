@@ -9,10 +9,12 @@
 }
 
 html,
-body,
-#root {
+body {
   min-height: 100%;
   margin: 0;
+  /* Moved in from index.html so the Next document keeps the same ground colour
+     behind the shell and there is no flash before the stylesheet applies. */
+  background: #e9e9ee;
 }
 
 button,

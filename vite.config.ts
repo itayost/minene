@@ -1,17 +1,7 @@
-import { configDefaults, defineConfig } from 'vitest/config'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// Temporary. Deleted in Task 9 once Next owns the build.
 export default defineConfig({
   plugins: [react()],
-  test: {
-    environment: 'jsdom',
-    environmentOptions: {
-      jsdom: {
-        url: 'http://localhost/',
-      },
-    },
-    setupFiles: './tests/setup.ts',
-    css: true,
-    exclude: [...configDefaults.exclude, '**/.worktrees/**'],
-  },
 })
