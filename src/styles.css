@@ -97,6 +97,8 @@ button {
 
 .icon-button {
   appearance: none;
+  /* Colour is set below, so only the anchor underline needs clearing. */
+  text-decoration: none;
   min-height: 44px;
   display: grid;
   place-items: center;
@@ -180,6 +182,9 @@ button {
 
 .subject-card {
   appearance: none;
+  /* An anchor carries neither of the resets the global button rule supplied. */
+  text-decoration: none;
+  color: inherit;
   min-width: 0;
   min-height: 126px;
   display: grid;
@@ -518,6 +523,8 @@ button {
 
 .bottom-nav__action {
   appearance: none;
+  /* Colour is set below, so only the anchor underline needs clearing. */
+  text-decoration: none;
   min-width: 0;
   min-height: 44px;
   flex: 1;

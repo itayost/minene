@@ -1,5 +1,9 @@
+'use client'
+
+import Link from 'next/link'
 import { useEffect, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
 import type { BrandManifest } from '../core/brand-types'
+import { toolHref } from '../core/hrefs'
 import type { Screen } from '../core/navigation'
 
 type BrandShellProps = {
@@ -7,10 +11,9 @@ type BrandShellProps = {
   screen: Screen
   children: ReactNode
   modal?: ReactNode
-  onBack: () => void
-  onHome: () => void
+  backHref: string
+  homeHref: string
   onShare: () => void
-  onTool: (toolId: string) => void
 }
 
 function blockBackgroundClick(event: MouseEvent<HTMLDivElement>) {
@@ -58,16 +61,16 @@ function findHeaderContent(brand: BrandManifest, screen: Screen) {
   }
 }
 
-export function BrandShell({ brand, screen, children, modal, onBack, onHome, onShare, onTool }: BrandShellProps) {
+export function BrandShell({ brand, screen, children, modal, backHref, homeHref, onShare }: BrandShellProps) {
+  // The title comes from generateMetadata, so it is in the served HTML rather
+  // than applied after hydration. Only lang and dir are still corrected here.
   useEffect(() => {
     const root = document.documentElement
     const previousLang = root.getAttribute('lang')
     const previousDirection = root.getAttribute('dir')
-    const previousTitle = document.title
 
     root.lang = brand.locale
     root.dir = brand.direction
-    document.title = brand.title
 
     return () => {
       if (previousLang === null) root.removeAttribute('lang')
@@ -75,10 +78,8 @@ export function BrandShell({ brand, screen, children, modal, onBack, onHome, onS
 
       if (previousDirection === null) root.removeAttribute('dir')
       else root.dir = previousDirection
-
-      document.title = previousTitle
     }
-  }, [brand.direction, brand.locale, brand.title])
+  }, [brand.direction, brand.locale])
 
   const themeStyle: ThemeStyle = {
     '--primary': brand.theme.primary,
@@ -115,9 +116,9 @@ export function BrandShell({ brand, screen, children, modal, onBack, onHome, onS
               </>
             ) : (
               <>
-                <button className="icon-button back-button" type="button" aria-label={brand.labels.back} onClick={onBack}>
+                <Link className="icon-button back-button" href={backHref} aria-label={brand.labels.back}>
                   <svg aria-hidden="true" viewBox="0 0 11 18"><path d="m1.5 1.5 7.5 7.5-7.5 7.5" /></svg>
-                </button>
+                </Link>
                 <div className="app-header__titles">
                   <div className="app-header__title">{header.title}</div>
                   {header.subtitle ? <div className="app-header__subtitle">{header.subtitle}</div> : null}
@@ -139,26 +140,20 @@ export function BrandShell({ brand, screen, children, modal, onBack, onHome, onS
           <main className="shell-content">{children}</main>
 
           <nav className="bottom-nav" aria-label={brand.labels.navigation}>
-            <button
-              className="bottom-nav__action"
-              type="button"
-              aria-current={isHome ? 'page' : undefined}
-              onClick={onHome}
-            >
+            <Link className="bottom-nav__action" href={homeHref} aria-current={isHome ? 'page' : undefined}>
               {homeIcon}
               <span>{brand.labels.home}</span>
-            </button>
+            </Link>
             {brand.tools.map((tool) => (
-              <button
+              <Link
                 className="bottom-nav__action"
+                href={toolHref(brand.id, tool.id)}
                 key={tool.id}
-                type="button"
                 aria-current={screen.kind === 'tool' && screen.toolId === tool.id ? 'page' : undefined}
-                onClick={() => onTool(tool.id)}
               >
                 <img src={tool.icon} alt="" />
                 <span>{tool.label}</span>
-              </button>
+              </Link>
             ))}
           </nav>
 

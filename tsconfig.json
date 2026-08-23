@@ -2,7 +2,11 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -17,8 +21,28 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "plugins": [{ "name": "next" }],
-    "types": ["node", "vitest/globals"]
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "types": [
+      "node",
+      "vitest/globals"
+    ]
   },
-  "include": ["src", "app", "scripts", "tests", "vite.config.ts", "vitest.config.ts", "playwright.config.ts", "next-env.d.ts", ".next/types/**/*.ts"]
+  "include": [
+    "src",
+    "app",
+    "scripts",
+    "tests",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

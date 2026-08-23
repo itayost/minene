@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { render, screen } from '@testing-library/react'
+import { useState, type ReactNode } from 'react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { BrandNotFound } from '../src/components/BrandNotFound'
@@ -9,31 +9,29 @@ import { PageViewer } from '../src/components/PageViewer'
 import { ShareSheet } from '../src/components/ShareSheet'
 import { SubjectMenu } from '../src/components/SubjectMenu'
 import { ToolScreen } from '../src/components/ToolScreen'
+import { brandHref, subjectHref } from '../src/core/hrefs'
 import type { BrowserActionApis, PageActionContext } from '../src/core/page-actions'
-import type { Screen } from '../src/core/navigation'
+import { parentHref, type Screen } from '../src/core/navigation'
 import { demoBrand } from './fixtures/demo-brand'
 
-function SharedComponentHarness() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>({ kind: 'home' })
+type HarnessProps = {
+  initialScreen?: Screen
+  modal?: ReactNode
+}
 
-  const openSubject = (subjectId: string) => {
-    const subject = demoBrand.subjects.find((candidate) => candidate.id === subjectId)
-    if (!subject) return
-    setCurrentScreen(
-      subject.groups.length === 1
-        ? { kind: 'viewer', subjectId, groupId: subject.groups[0]!.id, pageIndex: 0 }
-        : { kind: 'menu', subjectId },
-    )
-  }
+function SharedComponentHarness({ initialScreen = { kind: 'home' }, modal }: HarnessProps = {}) {
+  const [currentScreen, setCurrentScreen] = useState<Screen>(initialScreen)
 
+  // The group chooser still reports a selection through a callback; its links
+  // arrive with the subject route. Screens otherwise come from the URL, so the
+  // harness is handed one rather than clicking its way there.
   const openGroup = (groupId: string) => {
     if (currentScreen.kind !== 'menu') return
     setCurrentScreen({ kind: 'viewer', subjectId: currentScreen.subjectId, groupId, pageIndex: 0 })
   }
 
-  const goBack = () => setCurrentScreen({ kind: 'home' })
   const changePage = (pageIndex: number) => {
-    setCurrentScreen((screen) => screen.kind === 'viewer' ? { ...screen, pageIndex } : screen)
+    setCurrentScreen((current) => current.kind === 'viewer' ? { ...current, pageIndex } : current)
   }
   const subject = currentScreen.kind === 'menu'
     ? demoBrand.subjects.find((candidate) => candidate.id === currentScreen.subjectId)
@@ -51,13 +49,16 @@ function SharedComponentHarness() {
     <BrandShell
       brand={demoBrand}
       screen={currentScreen}
-      onBack={goBack}
-      onHome={() => setCurrentScreen({ kind: 'home' })}
+      backHref={parentHref(demoBrand, currentScreen)}
+      homeHref={brandHref(demoBrand.id)}
+      modal={modal}
       onShare={() => undefined}
-      onTool={(toolId) => setCurrentScreen({ kind: 'tool', toolId })}
     >
       {currentScreen.kind === 'home' ? (
-        <HomeScreen subjects={demoBrand.subjects} onSubject={openSubject} />
+        <HomeScreen
+          subjects={demoBrand.subjects}
+          subjectHref={(subjectId) => subjectHref(demoBrand.id, subjectId)}
+        />
       ) : currentScreen.kind === 'menu' && subject ? (
         <SubjectMenu subject={subject} onGroup={openGroup} />
       ) : currentScreen.kind === 'viewer' && viewerGroup ? (
@@ -112,13 +113,28 @@ function ShareSheetHarness({ openWindow }: { openWindow?: typeof window.open } =
   )
 }
 
-describe('shared branded components', () => {
-  it('opens a multi-group subject and one of its groups', async () => {
-    const user = userEvent.setup()
-    render(<SharedComponentHarness />)
+describe('HomeScreen', () => {
+  it('renders one link per subject pointing at its route', () => {
+    render(<HomeScreen subjects={demoBrand.subjects} subjectHref={(id) => `/demo/${id}`} />)
 
-    expect(screen.getByRole('button', { name: 'Single subject' })).toBeVisible()
-    await user.click(screen.getByRole('button', { name: 'Multiple subject' }))
+    const links = screen.getAllByRole('link')
+    expect(links).toHaveLength(demoBrand.subjects.length)
+    expect(links[0]).toHaveAttribute('href', `/demo/${demoBrand.subjects[0]!.id}`)
+    expect(links[0]).toHaveTextContent(demoBrand.subjects[0]!.label)
+  })
+
+  it('applies each subject card colour', () => {
+    render(<HomeScreen subjects={demoBrand.subjects} subjectHref={(id) => `/demo/${id}`} />)
+
+    const first = screen.getAllByRole('link')[0]!
+    expect(first.getAttribute('style')).toContain(demoBrand.subjects[0]!.cardColor)
+  })
+})
+
+describe('shared branded components', () => {
+  it('opens one of a multi-group subject’s groups', async () => {
+    const user = userEvent.setup()
+    render(<SharedComponentHarness initialScreen={{ kind: 'menu', subjectId: 'multiple' }} />)
 
     expect(screen.getByRole('heading', { name: 'Multiple subject' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Group two' })).toBeVisible()
@@ -126,44 +142,67 @@ describe('shared branded components', () => {
     await user.click(screen.getByRole('button', { name: 'Group two' }))
     expect(screen.getByRole('img', { name: 'Group two page' })).toBeVisible()
     expect(screen.getByText('Group two · 1 / 1')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Share' })).toBeVisible()
   })
 
-  it('uses the brand accessibility labels for shell navigation', async () => {
-    const user = userEvent.setup()
-    render(<SharedComponentHarness />)
+  it('uses the brand accessibility labels for shell navigation', () => {
+    render(<SharedComponentHarness initialScreen={{ kind: 'menu', subjectId: 'multiple' }} />)
 
     expect(screen.getByRole('navigation', { name: 'Demo destinations' })).toBeVisible()
-    await user.click(screen.getByRole('button', { name: 'Multiple subject' }))
-    expect(screen.getByRole('button', { name: 'Return to previous screen' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Return to previous screen' })).toBeVisible()
   })
 
-  it('exposes home, share, and configured bottom-tool controls', async () => {
-    const user = userEvent.setup()
+  it('points the back link at the parent route of the current screen', () => {
+    render(<SharedComponentHarness
+      initialScreen={{ kind: 'viewer', subjectId: 'multiple', groupId: 'group-two', pageIndex: 0 }}
+    />)
+
+    expect(screen.getByRole('link', { name: 'Return to previous screen' }))
+      .toHaveAttribute('href', '/demo/multiple')
+  })
+
+  it('presents the brand lockup with a decorative logo on the home screen', () => {
+    const { container } = render(<SharedComponentHarness />)
+
+    const logo = container.querySelector('.brand-lockup__logo')
+    expect(logo).toHaveAttribute('src', demoBrand.logo.src)
+    expect(logo).toHaveAttribute('alt', '')
+    expect(screen.queryByRole('img', { name: demoBrand.logo.alt })).not.toBeInTheDocument()
+    expect(screen.getByText(demoBrand.name)).toBeVisible()
+  })
+
+  it('publishes the brand theme as custom properties on the stage', () => {
+    const { container } = render(<SharedComponentHarness />)
+
+    expect(container.querySelector('.app-stage')).toHaveStyle('--primary: #246BCE')
+  })
+
+  it('exposes home, share, and configured bottom-tool controls', () => {
     render(<SharedComponentHarness />)
 
-    expect(screen.getByRole('button', { name: 'Home' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('button', { name: 'Notes' })).toBeVisible()
-
-    await user.click(screen.getByRole('button', { name: 'Multiple subject' }))
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/demo')
     expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Return to previous screen' }))
-    expect(screen.getByRole('button', { name: 'Single subject' })).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: 'Notes' }))
-    expect(screen.getByRole('button', { name: 'Notes' })).toHaveAttribute('aria-current', 'page')
+    for (const tool of demoBrand.tools) {
+      expect(screen.getByRole('link', { name: tool.label }))
+        .toHaveAttribute('href', `/demo/tools/${tool.id}`)
+    }
+  })
+
+  it('marks the current bottom-tool destination and renders its screen', () => {
+    render(<SharedComponentHarness initialScreen={{ kind: 'tool', toolId: 'notes' }} />)
+
+    expect(screen.getByRole('link', { name: 'Notes' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current')
     expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
     expect(screen.getByText('Ideas to discuss')).toBeVisible()
     expect(screen.getByRole('list')).toHaveTextContent('First idea')
-
-    await user.click(screen.getByRole('button', { name: 'Home' }))
-    expect(screen.getByRole('button', { name: 'Home' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('keeps tool items exposed as a list to assistive technologies', async () => {
-    const user = userEvent.setup()
-    render(<SharedComponentHarness />)
+  it('keeps tool items exposed as a list to assistive technologies', () => {
+    render(<SharedComponentHarness initialScreen={{ kind: 'tool', toolId: 'notes' }} />)
 
-    await user.click(screen.getByRole('button', { name: 'Notes' }))
     expect(screen.getByRole('list')).toHaveAttribute('role', 'list')
   })
 
@@ -171,29 +210,45 @@ describe('shared branded components', () => {
     const root = document.documentElement
     const originalLang = root.getAttribute('lang')
     const originalDirection = root.getAttribute('dir')
-    const originalTitle = document.title
     root.lang = 'fr'
     root.dir = 'rtl'
-    document.title = 'Previous title'
 
     try {
       const view = render(<SharedComponentHarness />)
 
       expect(root).toHaveAttribute('lang', 'en-US')
       expect(root).toHaveAttribute('dir', 'ltr')
-      expect(document.title).toBe('Demo content viewer')
 
       view.unmount()
       expect(root).toHaveAttribute('lang', 'fr')
       expect(root).toHaveAttribute('dir', 'rtl')
-      expect(document.title).toBe('Previous title')
     } finally {
       if (originalLang === null) root.removeAttribute('lang')
       else root.lang = originalLang
       if (originalDirection === null) root.removeAttribute('dir')
       else root.dir = originalDirection
-      document.title = originalTitle
     }
+  })
+
+  it('renders the modal beside the shell base and makes the base inert', () => {
+    const { container } = render(<SharedComponentHarness
+      modal={<div data-testid="test-modal">Page actions</div>}
+    />)
+
+    const shell = container.querySelector('.brand-shell')
+    const shellBase = container.querySelector('.brand-shell__base')
+    const modal = screen.getByTestId('test-modal')
+    if (!(shellBase instanceof HTMLElement)) throw new Error('Branded shell base was not rendered')
+
+    expect(modal.parentElement).toBe(shell)
+    expect(shellBase).toHaveAttribute('inert')
+    expect(shellBase).toHaveAttribute('aria-hidden', 'true')
+
+    // An unblocked anchor behind the modal would navigate away from it.
+    const homeLink = within(shellBase).getByRole('link', { name: 'Home', hidden: true })
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true })
+    homeLink.dispatchEvent(click)
+    expect(click.defaultPrevented).toBe(true)
   })
 
   it('renders a useful unknown-brand route', () => {
@@ -202,6 +257,7 @@ describe('shared branded components', () => {
     expect(screen.getByRole('heading', { name: 'Brand not found' })).toBeVisible()
     expect(screen.getByText(/missing-brand/)).toBeVisible()
     expect(screen.getByRole('link', { name: 'Go to the default brand' })).toHaveAttribute('href', '/')
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
   })
 
   it('focuses page sharing, announces completion, and returns focus after Escape', async () => {

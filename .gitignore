@@ -2,7 +2,6 @@
 .worktrees/
 .superpowers/
 node_modules/
-dist/
 tmp/
 
 .vercel

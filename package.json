@@ -5,15 +5,12 @@
     "node": ">=20.19.0"
   },
   "scripts": {
-    "dev": "vite",
-    "dev:next": "next dev",
+    "dev": "next dev",
+    "start": "next start",
     "validate:brands": "tsx scripts/validate-brands.ts",
     "test": "vitest",
     "test:run": "vitest run",
-    "build": "pnpm validate:brands && tsc --noEmit && vite build",
-    "build:next": "next build",
-    "start:next": "next start",
-    "preview": "vite preview",
+    "build": "pnpm validate:brands && tsc --noEmit && next build",
     "check": "pnpm test:run && pnpm build",
     "visual:reference": "VIEWER_MODE=click playwright test --update-snapshots",
     "visual:verify": "VIEWER_MODE=url playwright test"

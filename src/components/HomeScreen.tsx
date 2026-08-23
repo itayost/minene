@@ -1,28 +1,28 @@
+import Link from 'next/link'
 import type { CSSProperties } from 'react'
 import type { BrandSubject } from '../core/brand-types'
 
 type HomeScreenProps = {
   subjects: BrandSubject[]
-  onSubject: (subjectId: string) => void
+  subjectHref: (subjectId: string) => string
 }
 
 type SubjectCardStyle = CSSProperties & { '--card-color': string }
 
-export function HomeScreen({ subjects, onSubject }: HomeScreenProps) {
+export function HomeScreen({ subjects, subjectHref }: HomeScreenProps) {
   return (
     <div className="home-screen">
       <div className="subject-grid">
         {subjects.map((subject) => (
-          <button
+          <Link
             className="subject-card"
+            href={subjectHref(subject.id)}
             key={subject.id}
-            onClick={() => onSubject(subject.id)}
             style={{ '--card-color': subject.cardColor } as SubjectCardStyle}
-            type="button"
           >
             <span className="subject-card__label">{subject.label}</span>
             <img className="subject-card__icon" src={subject.icon} alt="" />
-          </button>
+          </Link>
         ))}
       </div>
     </div>
