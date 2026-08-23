@@ -1,4 +1,5 @@
 import type { BrandManifest, BrandSubject, ContentGroup } from './brand-types'
+import { brandHref, subjectHref, TOOLS_SEGMENT } from './hrefs'
 import { progressEntryKey, type ProgressMap } from './progress'
 
 export type Screen =
@@ -133,4 +134,68 @@ function selectPage(brand: BrandManifest, screen: Extract<Screen, { kind: 'viewe
   if (!group || group.pages.length === 0) return createInitialScreen()
   if (!Number.isInteger(pageIndex) || pageIndex < 0 || pageIndex >= group.pages.length) return screen
   return { ...screen, pageIndex }
+}
+
+/**
+ * A `?page=` value is a position inside a group that does exist, not a resource
+ * of its own, so a bad one is corrected rather than refused.
+ */
+export function clampPageIndex(pageParam: string | null, pageCount: number): number {
+  if (pageParam === null || pageParam.trim() === '') return 0
+
+  const parsed = Number(pageParam)
+  if (!Number.isInteger(parsed)) return 0
+
+  return Math.max(0, Math.min(pageCount - 1, parsed - 1))
+}
+
+/**
+ * Turn the path segments beneath a brand into a screen, or null when the URL
+ * names something that does not exist. Null is a 404, never a silent redirect
+ * to the home screen: answering a missing resource with 200 would be a lie.
+ */
+export function resolveScreen(
+  brand: BrandManifest,
+  segments: readonly string[],
+  pageParam: string | null,
+): Screen | null {
+  if (segments.length === 0) return createInitialScreen()
+  if (segments.length > 2) return null
+
+  const first = segments[0]
+  const second = segments[1]
+  if (first === undefined) return null
+
+  if (first === TOOLS_SEGMENT) {
+    if (second === undefined) return null
+    return brand.tools.some((tool) => tool.id === second)
+      ? { kind: 'tool', toolId: second }
+      : null
+  }
+
+  const subject = findSubject(brand, first)
+  if (!subject) return null
+  if (second === undefined) return { kind: 'menu', subjectId: subject.id }
+
+  const group = findGroup(subject, second)
+  if (!group || group.pages.length === 0) return null
+
+  return {
+    kind: 'viewer',
+    subjectId: subject.id,
+    groupId: group.id,
+    pageIndex: clampPageIndex(pageParam, group.pages.length),
+  }
+}
+
+/**
+ * Where the in-application back control goes. Deterministically the parent
+ * route, never history.back(), which preserves the previous back behaviour.
+ */
+export function parentHref(brand: BrandManifest, screen: Screen): string {
+  if (screen.kind === 'viewer') {
+    const subject = findSubject(brand, screen.subjectId)
+    if (subject && subject.groups.length > 1) return subjectHref(brand.id, subject.id)
+  }
+  return brandHref(brand.id)
 }
