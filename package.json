@@ -12,7 +12,7 @@
     "test:run": "vitest run",
     "build": "pnpm validate:brands && tsc --noEmit && next build",
     "check": "pnpm test:run && pnpm build",
-    "visual:reference": "VIEWER_MODE=click playwright test --update-snapshots",
+    "visual:reference": "echo 'Frozen. These references were captured from the Vite build, which no longer exists: Task 5 deleted it, and the shell controls are now anchors rather than buttons, so click mode can no longer reproduce them. They were produced with: VIEWER_MODE=click playwright test --update-snapshots. Regenerating now would overwrite pre-conversion evidence with post-conversion output. Use pnpm visual:verify to compare against them.' && exit 1",
     "visual:verify": "VIEWER_MODE=url playwright test"
   },
   "packageManager": "pnpm@10.34.5",
