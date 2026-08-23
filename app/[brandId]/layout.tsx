@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next'
+import { notFound } from 'next/navigation'
 import { Suspense, type ReactNode } from 'react'
-import { BrandNotFound } from '../../src/components/BrandNotFound'
 import { brandManifestEntries, getBrand } from '../../src/core/brand-registry'
 import { BrandShellClient } from './brand-shell-client'
 
@@ -31,9 +31,10 @@ export default async function BrandLayout({ children, params }: BrandParams & { 
   const { brandId } = await params
   const brand = getBrand(brandId)
 
-  // Rendered here rather than in app/not-found.tsx because naming the brand that
-  // was requested needs the param, and a global not-found receives none.
-  if (!brand) return <BrandNotFound brandId={brandId} />
+  // A missing brand is a missing resource, so it answers 404 rather than 200.
+  // The not-found boundary recovers the requested id from the URL, which keeps
+  // the message specific without costing the status code.
+  if (!brand) notFound()
 
   // The shell reads ?page= to keep the header in step with the viewer, and a
   // client component that reads search params has to sit under a boundary or the
