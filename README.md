@@ -68,7 +68,52 @@ Vercel autodetects Next.js on a new project, so a project imported fresh needs n
 2. Keep the repository root as the project root, and confirm the two settings above.
 3. Deploy, then verify `/`, `/minene`, a deep group URL, and a tool URL with a direct full-page load.
 
+## Authentication
+
+Every screen is behind a Supabase session. A signed-in user's profile resolves a
+tenant, and the tenant resolves the one brand they may see, so the brand in the
+URL is a claim the server verifies rather than a free choice.
+
+Copy `.env.example` to `.env.local` and fill in both values:
+
+```bash
+cp .env.example .env.local
+```
+
+Both are public browser configuration. A service-role key must never appear in
+this repository.
+
+Accounts are created by an owner in the Supabase dashboard under
+Authentication > Users. Public signup is disabled deliberately: there is no
+self-service path into a tenant.
+
+Signing out is `GET /logout`. There is deliberately no control for it in the
+interface. Any sign-out button in the shell header would change all four visual
+references at all five widths, and those cannot be regenerated. The control
+arrives when the tool screens are rebuilt and the shell changes for real reasons.
+
+Requesting a brand that belongs to another tenant answers 404, never 403, so
+probing cannot be used to enumerate which tenants exist.
+
+Note that the page images under `public/brands/` are still served publicly. The
+interface is private; the content is unlisted rather than secret. Moving those
+behind per-tenant storage is a separate piece of work.
+
 ## Visual references
+
+The suite signs in before it compares, because every route now requires a
+session. Set `VIEWER_TEST_EMAIL` and `VIEWER_TEST_PASSWORD` to a real account in
+the tenant that owns the `minene` brand:
+
+```bash
+VIEWER_TEST_EMAIL=... VIEWER_TEST_PASSWORD=... pnpm visual:verify
+```
+
+Without those two variables the suite skips every test with a reason rather than
+failing against screenshots of the login screen. `pnpm check` never needs them:
+a fresh clone still runs the unit tests and a production build with nothing
+configured.
+
 
 `tests/visual/__snapshots__` holds 20 screenshots: four screens at five widths. They were captured from the Vite build that preceded the Next.js conversion, and that application no longer exists, so they cannot be regenerated. They are the only surviving evidence that the conversion left the design unchanged, which is why both `pnpm visual:reference` and the Playwright config refuse to overwrite them. An accidental overwrite is recovered with `git restore tests/visual/__snapshots__`, not by recapturing.
 

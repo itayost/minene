@@ -2,6 +2,14 @@ import { expect, test } from '@playwright/test'
 
 const mode = process.env.VIEWER_MODE === 'url' ? 'url' : 'click'
 
+// Every route needs a session now, so without credentials this suite would fail
+// twenty times with an unhelpful screenshot of the login screen. Skipping with a
+// reason is the honest outcome: a missing prerequisite is not a regression.
+test.skip(
+  !process.env.VIEWER_TEST_EMAIL || !process.env.VIEWER_TEST_PASSWORD,
+  'Set VIEWER_TEST_EMAIL and VIEWER_TEST_PASSWORD to run the visual comparison.',
+)
+
 // The multi-group subject and its first group. Chosen because this is the only
 // path that exercises the chooser screen.
 const SUBJECT_LABEL = 'תוצאות'

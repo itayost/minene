@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { STORAGE_STATE } from './tests/visual/global-setup'
 
 /**
  * The references in tests/visual/__snapshots__ were captured from the Vite build,
@@ -19,6 +20,15 @@ if (process.argv.some(updatesSnapshots)) {
   )
 }
 
+/**
+ * Every route needs a session now, so the suite has to sign in before it can
+ * compare anything. Without credentials it skips rather than failing twenty
+ * times against screenshots of the login screen: a missing prerequisite is not
+ * a regression, and failing confusingly on one is the trap the webServer block
+ * already closed once.
+ */
+const hasCredentials = Boolean(process.env.VIEWER_TEST_EMAIL && process.env.VIEWER_TEST_PASSWORD)
+
 const WIDTHS = [320, 375, 768, 1024, 1440] as const
 
 const PORT = 4173
@@ -31,9 +41,13 @@ const LOCAL_BASE_URL = `http://127.0.0.1:${PORT}`
  * the frozen references and pass. VIEWER_BASE_URL still points the run at an
  * already-deployed URL, and then there is nothing here to start.
  */
-const webServer = process.env.VIEWER_BASE_URL ? undefined : {
+const webServer = (process.env.VIEWER_BASE_URL || !hasCredentials) ? undefined : {
   command: `pnpm build && pnpm start --port ${PORT}`,
-  url: LOCAL_BASE_URL,
+  // Probes /login, not the root. Every content route now requires a session, so
+  // an unauthenticated request to / answers 500 or redirects, and Playwright
+  // would wait for a readiness signal that can never arrive. /login is reachable
+  // by definition -- it is where an unauthenticated caller is sent.
+  url: `${LOCAL_BASE_URL}/login`,
   reuseExistingServer: false,
   timeout: 240_000,
 }
@@ -46,12 +60,17 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   webServer,
+  globalSetup: hasCredentials ? './tests/visual/global-setup' : undefined,
   use: {
     baseURL: process.env.VIEWER_BASE_URL ?? LOCAL_BASE_URL,
   },
   snapshotPathTemplate: '{testDir}/__snapshots__/{arg}-{projectName}{ext}',
   projects: WIDTHS.map((width) => ({
     name: `w${width}`,
-    use: { ...devices['Desktop Chrome'], viewport: { width, height: 900 } },
+    use: {
+      ...devices['Desktop Chrome'],
+      viewport: { width, height: 900 },
+      ...(hasCredentials ? { storageState: STORAGE_STATE } : {}),
+    },
   })),
 })
