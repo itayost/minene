@@ -1,7 +1,7 @@
 import { describe, expect, it, test } from 'vitest'
 import { demoBrand } from './fixtures/demo-brand'
 import { mineneBrand } from '../src/brands/minene'
-import { buildBrandRegistry, getBrand, resolveBrandId } from '../src/core/brand-registry'
+import { buildBrandRegistry, getBrand } from '../src/core/brand-registry'
 import type { BrandManifest } from '../src/core/brand-types'
 import { validateBrand } from '../src/core/validate-brand'
 
@@ -61,11 +61,8 @@ const validBrand: BrandManifest = {
 }
 
 describe('validateBrand', () => {
-  test('accepts the Minene manifest and resolves its brand route', () => {
+  test('accepts the Minene manifest and registers it under its brand ID', () => {
     expect(validateBrand(mineneBrand)).toEqual([])
-    expect(resolveBrandId('/')).toBe('minene')
-    expect(resolveBrandId('/minene')).toBe('minene')
-    expect(resolveBrandId('/unknown/')).toBe('unknown')
     expect(getBrand('minene')).toBe(mineneBrand)
   })
 

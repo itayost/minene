@@ -29,6 +29,8 @@ The asset rule is strict: every logo, subject icon, optional group icon, page im
 
 Treat `brand.id`, `subjects[].id`, `subjects[].groups[].id`, and `tools[].id` as permanent data keys, not display copy. Every ID must use lowercase letters, numbers, and single hyphens. The brand ID selects the `/<brand-id>` route and brand-scoped storage namespace. Subject and group IDs form saved-progress keys within that namespace. Tool IDs identify destinations in the brand's local bottom navigation. Changing a brand ID after release changes its route and storage namespace; changing a subject or group ID makes its previously saved page progress unreachable. Change a `label` when copy changes and keep its ID stable.
 
+`tools` is a reserved subject identifier: the bottom-navigation route is `/<brand-id>/tools/<tool-id>`, so a subject ID of `tools` would collide with it. Brand validation rejects a subject using that identifier; the identifier remains free to use for a tool ID.
+
 A subject with exactly one group opens that group's viewer immediately. A subject with two or more groups opens the group chooser first. Each group must contain at least one page, and page order in the array is the viewing order. Group IDs need only be unique within their subject; subject and tool IDs must be unique within their respective brand collections.
 
 ## Manifest field reference

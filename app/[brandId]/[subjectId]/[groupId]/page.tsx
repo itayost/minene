@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { brandManifestEntries, getBrand } from '../../../../src/core/brand-registry'
+import { assertDefined } from '../../../../src/core/invariant'
 import { resolveScreen } from '../../../../src/core/navigation'
 import { ViewerClient } from './viewer-client'
 
@@ -32,9 +33,18 @@ export default async function ViewerPage({ params, searchParams }: ViewerParams)
   const screen = resolveScreen(brand, [subjectId, groupId], pageParam)
   if (!screen || screen.kind !== 'viewer') notFound()
 
-  const subject = brand.subjects.find((candidate) => candidate.id === screen.subjectId)
-  const group = subject?.groups.find((candidate) => candidate.id === screen.groupId)
-  if (!group) notFound()
+  // resolveScreen only returns a `viewer` screen for a subject and group it
+  // already found on this brand, so both ids are guaranteed to resolve here
+  // too. A miss would mean resolveScreen and this lookup have drifted apart,
+  // which is a bug to surface loudly, not a 404 a visitor could ever hit.
+  const subject = assertDefined(
+    brand.subjects.find((candidate) => candidate.id === screen.subjectId),
+    `resolveScreen returned unknown subject "${screen.subjectId}" for brand "${brand.id}"`,
+  )
+  const group = assertDefined(
+    subject.groups.find((candidate) => candidate.id === screen.groupId),
+    `resolveScreen returned unknown group "${screen.groupId}" for subject "${subject.id}"`,
+  )
 
   return (
     <ViewerClient

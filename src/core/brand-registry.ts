@@ -38,8 +38,3 @@ export const brandRegistry = buildBrandRegistry(brandManifestEntries)
 export const getBrand = (id: string) => brandRegistry.get(id)
 
 export const DEFAULT_BRAND_ID = 'minene'
-
-export const resolveBrandId = (pathname: string) => {
-  const first = pathname.split('/').filter(Boolean)[0]
-  return first || DEFAULT_BRAND_ID
-}
