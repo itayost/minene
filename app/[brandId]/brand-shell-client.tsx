@@ -1,6 +1,6 @@
 'use client'
 
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { BrandShell } from '../../src/components/BrandShell'
 import { ShareSheet } from '../../src/components/ShareSheet'
@@ -24,7 +24,6 @@ export function useShareTarget(): ShareTarget {
 
 export function BrandShellClient({ brand, children }: { brand: BrandManifest; children: ReactNode }) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const [build, setBuild] = useState<(() => PageActionContext) | null>(null)
   const [shareContext, setShareContext] = useState<PageActionContext | null>(null)
 
@@ -37,8 +36,15 @@ export function BrandShellClient({ brand, children }: { brand: BrandManifest; ch
 
   // The layout cannot read a child segment's params, so the screen comes from the
   // URL through the same pure resolver the route components use.
+  //
+  // The page position deliberately does not come from the URL here: reading it
+  // would require useSearchParams(), which forces this whole subtree behind a
+  // Suspense boundary and bails it out of server rendering entirely, silently
+  // turning every notFound() and redirect() below this layout into a 200. Task 7
+  // supplies the page position through the shell context instead, once the
+  // viewer route exists. Do not reintroduce useSearchParams() here.
   const segments = pathname.split('/').filter(Boolean).slice(1)
-  const screen = resolveScreen(brand, segments, searchParams.get('page')) ?? createInitialScreen()
+  const screen = resolveScreen(brand, segments, null) ?? createInitialScreen()
 
   return (
     <ShareTargetContext.Provider value={shareTarget}>

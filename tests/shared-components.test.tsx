@@ -154,6 +154,16 @@ describe('shared branded components', () => {
       .toHaveAttribute('href', '/demo/multiple')
   })
 
+  it('presents the viewer screen with its header title and a share control', () => {
+    render(<SharedComponentHarness
+      initialScreen={{ kind: 'viewer', subjectId: 'multiple', groupId: 'group-two', pageIndex: 0 }}
+    />)
+
+    expect(screen.getByRole('img', { name: 'Group two page' })).toBeVisible()
+    expect(screen.getByText('Group two · 1 / 1')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Share' })).toBeVisible()
+  })
+
   it('presents the brand lockup with a decorative logo on the home screen', () => {
     const { container } = render(<SharedComponentHarness />)
 
