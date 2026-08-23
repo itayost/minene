@@ -49,6 +49,12 @@ Every screen has its own address, in one of four shapes:
 
 ## Deploying with Vercel
 
+`vercel.json` pins `"framework": "nextjs"`. Settings in `vercel.json` override the
+Vercel project settings, so this is what stops a stale Framework Preset of `vite`
+(left from the pre-conversion build) from making a deploy serve a `dist`
+directory that no longer exists. Do not remove it without checking the project's
+preset first.
+
 No environment variables or backend services are required for this release.
 
 **Check this before the first deploy.** This repository previously shipped a Vite build, and the Vercel project it was linked to (`.vercel/project.json`) may still carry that build's settings. In the project's **Settings, Build and Deployment**, confirm both of the following:
