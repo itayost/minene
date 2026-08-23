@@ -44,8 +44,8 @@ const eightPageBrand: BrandManifest = {
     : subject),
 }
 
-function renderViewer({ pageIndex = 0, hasExplicitPage = false } = {}) {
-  return render(
+function viewerTree({ pageIndex = 0, hasExplicitPage = false } = {}) {
+  return (
     <BrandShellClient brand={eightPageBrand}>
       <ViewerClient
         brand={eightPageBrand}
@@ -54,8 +54,12 @@ function renderViewer({ pageIndex = 0, hasExplicitPage = false } = {}) {
         pageIndex={pageIndex}
         hasExplicitPage={hasExplicitPage}
       />
-    </BrandShellClient>,
+    </BrandShellClient>
   )
+}
+
+function renderViewer(props: { pageIndex?: number; hasExplicitPage?: boolean } = {}) {
+  return render(viewerTree(props))
 }
 
 function headerSubtitle() {
@@ -84,17 +88,7 @@ describe('viewer route', () => {
     await user.click(screen.getByRole('button', { name: 'Go to page 6 of 8' }))
     // The URL is the source of the page, so the route hands the new one back.
     expect(navigation.replace).toHaveBeenCalledWith('/demo/multiple/group-two?page=6')
-    rerender(
-      <BrandShellClient brand={eightPageBrand}>
-        <ViewerClient
-          brand={eightPageBrand}
-          subjectId="multiple"
-          group={EIGHT_PAGE_GROUP}
-          pageIndex={5}
-          hasExplicitPage
-        />
-      </BrandShellClient>,
-    )
+    rerender(viewerTree({ pageIndex: 5, hasExplicitPage: true }))
 
     expect(headerSubtitle()).toBe('Group two · 6 / 8')
   })
@@ -124,6 +118,24 @@ describe('viewer route', () => {
     renderViewer({ pageIndex: 0 })
 
     expect(navigation.replace).toHaveBeenCalledWith('/demo/multiple/group-two?page=5')
+  })
+
+  // Restore is a single decision per group, and the only piece of this route
+  // whose correctness lives in effect ordering rather than in a pure function.
+  // The effect re-runs whenever the viewer re-renders, both before the replace
+  // it asked for lands and after, and neither run may navigate a second time.
+  it('restores once for a group, however often the effect runs', () => {
+    window.localStorage.setItem(progressStorageKey('demo'), '{"multiple/group-two":4}')
+
+    const { rerender } = renderViewer({ pageIndex: 0 })
+    expect(navigation.replace).toHaveBeenCalledWith('/demo/multiple/group-two?page=5')
+
+    // A re-render while the requested page is still in flight, then the props
+    // that replace actually produces.
+    rerender(viewerTree({ pageIndex: 0 }))
+    rerender(viewerTree({ pageIndex: 4, hasExplicitPage: true }))
+
+    expect(navigation.replace).toHaveBeenCalledTimes(1)
   })
 
   it('leaves an explicit page alone even when another one is remembered', () => {

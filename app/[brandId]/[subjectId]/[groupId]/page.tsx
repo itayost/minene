@@ -9,10 +9,10 @@ type ViewerParams = {
 }
 
 /**
- * Every real group. Honouring ?page= means reading searchParams, a request-time
- * API, so Next serves this route dynamically and does not prerender these today.
- * They are kept because they stay the correct set, and prerendering resumes the
- * moment the page position stops coming from the query.
+ * Next currently ignores this: awaiting searchParams to honour ?page= makes the
+ * route dynamic, so nothing is prerendered from it. It is kept because it
+ * encodes the correct set of params should the route ever become statically
+ * renderable.
  */
 export function generateStaticParams() {
   return brandManifestEntries.flatMap(([brandId, brand]) =>
