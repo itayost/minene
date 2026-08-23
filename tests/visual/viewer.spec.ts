@@ -8,6 +8,14 @@ const SUBJECT_LABEL = 'תוצאות'
 const GROUP_LABEL = 'סקירה כללית'
 const TOOL_LABEL = 'משכנע'
 
+// next/link prefetches the route behind every link in view. A prefetch only
+// warms the client-side route cache and never reaches the painted frame, so
+// dropping it leaves the screenshot identical, and it keeps networkidle
+// reachable while some of those routes are still being built.
+test.beforeEach(async ({ page }) => {
+  await page.route(/_rsc=/, (route) => route.abort())
+})
+
 async function settle(page: import('@playwright/test').Page) {
   await page.waitForLoadState('networkidle')
   // Page images fade in on load; without this the screenshots race the decode.
