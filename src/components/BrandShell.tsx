@@ -6,6 +6,12 @@ import type { BrandManifest } from '../core/brand-types'
 import { toolHref } from '../core/hrefs'
 import type { Screen } from '../core/navigation'
 
+/** Where the viewer currently is, reported by the viewer route to the shell. */
+export type PagePosition = {
+  pageIndex: number
+  pageCount: number
+}
+
 type BrandShellProps = {
   brand: BrandManifest
   screen: Screen
@@ -14,6 +20,7 @@ type BrandShellProps = {
   backHref: string
   homeHref: string
   onShare: () => void
+  pagePosition?: PagePosition | null
 }
 
 function blockBackgroundClick(event: MouseEvent<HTMLDivElement>) {
@@ -39,7 +46,7 @@ const homeIcon = (
   </svg>
 )
 
-function findHeaderContent(brand: BrandManifest, screen: Screen) {
+function findHeaderContent(brand: BrandManifest, screen: Screen, pagePosition: PagePosition | null) {
   if (screen.kind === 'home') return { title: '', subtitle: '' }
   if (screen.kind === 'tool') {
     return { title: brand.tools.find((tool) => tool.id === screen.toolId)?.label ?? '', subtitle: '' }
@@ -51,17 +58,31 @@ function findHeaderContent(brand: BrandManifest, screen: Screen) {
   }
 
   const group = subject?.groups.find((candidate) => candidate.id === screen.groupId)
-  const pageCount = group?.pages.length ?? 0
-  const pagePosition = pageCount > 0 ? `${screen.pageIndex + 1} / ${pageCount}` : ''
+  // The shell is rendered by the layout, which cannot read the page out of the
+  // URL without bailing the whole subtree out of server rendering, so the viewer
+  // route reports its position instead. Until it does, the screen still carries
+  // an accurate group, and so an accurate total.
+  const pageCount = pagePosition?.pageCount ?? group?.pages.length ?? 0
+  const pageIndex = pagePosition?.pageIndex ?? screen.pageIndex
+  const positionLabel = pageCount > 0 ? `${pageIndex + 1} / ${pageCount}` : ''
   return {
     title: subject?.label ?? '',
     subtitle: subject && subject.groups.length > 1 && group
-      ? `${group.label} · ${pagePosition}`
-      : pagePosition,
+      ? `${group.label} · ${positionLabel}`
+      : positionLabel,
   }
 }
 
-export function BrandShell({ brand, screen, children, modal, backHref, homeHref, onShare }: BrandShellProps) {
+export function BrandShell({
+  brand,
+  screen,
+  children,
+  modal,
+  backHref,
+  homeHref,
+  onShare,
+  pagePosition = null,
+}: BrandShellProps) {
   // The title comes from generateMetadata, so it is in the served HTML rather
   // than applied after hydration. Only lang and dir are still corrected here.
   useEffect(() => {
@@ -93,7 +114,7 @@ export function BrandShell({ brand, screen, children, modal, backHref, homeHref,
   }
   const isHome = screen.kind === 'home'
   const isModalOpen = modal !== undefined && modal !== null
-  const header = findHeaderContent(brand, screen)
+  const header = findHeaderContent(brand, screen, pagePosition)
 
   return (
     <div className="app-stage" style={themeStyle}>
