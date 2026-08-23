@@ -59,7 +59,8 @@ This sub-project includes:
 - Resolution of a URL into a validated screen, replacing the navigation reducer.
 - Subject cards, group rows, and tool entries rendered as real link anchors.
 - Server-rendered per-brand document title and theme colour.
-- Static prerendering of every brand, subject, group, and tool route.
+- Static prerendering of every brand, subject, and tool route. The group route is
+  server-rendered on demand; see Deployment.
 - A reserved-identifier rule in brand validation.
 - Removal of the Vite build, `index.html`, `main.tsx`, and `vercel.json`.
 
@@ -274,10 +275,27 @@ discovering the divergence mid-merge.
 - `vercel.json` is deleted. Its only content is the catch-all rewrite to
   `index.html`, which Next makes unnecessary.
 - `dist/` is removed and `.next` is added to `.gitignore`.
-- `generateStaticParams` on every dynamic segment prerenders the whole site from
-  the static registry at build time. Delivery characteristics match today's
-  static bundle, and first paint improves because the served HTML is real rather
-  than an empty root element.
+- `generateStaticParams` prerenders the brand, subject, and tool routes from the
+  static registry at build time. First paint improves across all of them, because
+  the served HTML carries the real shell and content rather than an empty root
+  element.
+
+  The group route is the exception, and this was measured rather than predicted.
+  Awaiting `searchParams` to read `?page=` makes `/[brandId]/[subjectId]/[groupId]`
+  dynamic, so Next serves it on demand and ignores its `generateStaticParams`.
+  That is a deliberate trade: `?page=` is genuine per-request state, and reading
+  it on the client instead would make every shared deep link paint page one
+  before correcting itself, which is worse precisely because sharing a deep link
+  is a feature of that screen. The cost is that group pages are served by a
+  function rather than from a static file.
+
+  So delivery characteristics match the old static bundle for every route except
+  the viewer, which trades CDN-only delivery for correct first paint.
+
+  The final build emits: `○ Static` for `/` and `/_not-found`; `● SSG` for
+  `/minene`, the 8 subject routes, and the 3 tool routes; `ƒ Dynamic` for the
+  group route. The manifest has 18 groups, not the 20 an earlier draft of the
+  implementation plan claimed.
 - Vercel autodetects Next.js. No project settings change is required beyond
   clearing any output directory override left from the Vite build.
 
