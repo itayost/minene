@@ -1,4 +1,22 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+// Metadata resolves through the session now, so that it cannot confirm a brand
+// the caller may not access. Standing the session in keeps these tests about
+// what the metadata says rather than about authentication.
+vi.mock('../src/auth/require-brand', async () => {
+  const actual = await vi.importActual<typeof import('../src/core/brand-registry')>(
+    '../src/core/brand-registry',
+  )
+  return {
+    LOGIN_PATH: '/login',
+    requireBrand: vi.fn(),
+    resolveUserBrand: vi.fn(async () => {
+      const brand = actual.getBrand('minene')
+      if (!brand) throw new Error('minene must be registered for this fixture')
+      return { brand, session: { tenantId: 'tenant-1', role: 'owner' as const, brandId: brand.id } }
+    }),
+  }
+})
 import { generateMetadata, generateViewport } from '../app/[brandId]/layout'
 import { mineneBrand } from '../src/brands/minene'
 

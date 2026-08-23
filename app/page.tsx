@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
-import { DEFAULT_BRAND_ID } from '../src/core/brand-registry'
+import { resolveUserBrand } from '../src/auth/require-brand'
 import { brandHref } from '../src/core/hrefs'
 
-export default function RootPage() {
-  redirect(brandHref(DEFAULT_BRAND_ID))
+export default async function RootPage() {
+  const { brand } = await resolveUserBrand()
+  redirect(brandHref(brand.id))
 }

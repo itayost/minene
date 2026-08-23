@@ -1,21 +1,22 @@
 import { notFound, redirect } from 'next/navigation'
+import { requireBrand } from '../../../src/auth/require-brand'
 import { SubjectMenu } from '../../../src/components/SubjectMenu'
-import { brandManifestEntries, getBrand } from '../../../src/core/brand-registry'
 import { groupHref } from '../../../src/core/hrefs'
 import { assertDefined } from '../../../src/core/invariant'
 import { resolveScreen } from '../../../src/core/navigation'
 
 type SubjectParams = { params: Promise<{ brandId: string; subjectId: string }> }
 
-export function generateStaticParams() {
-  return brandManifestEntries.flatMap(([brandId, brand]) =>
-    brand.subjects.map((subject) => ({ brandId, subjectId: subject.id })))
-}
+/**
+ * generateStaticParams is deliberately absent. This route reads cookies to
+ * verify the session, which makes it dynamic, so it would be ignored -- and
+ * prerendering a tenant's pages onto a CDN is not something to do accidentally
+ * now that a brand is a data boundary.
+ */
 
 export default async function SubjectPage({ params }: SubjectParams) {
   const { brandId, subjectId } = await params
-  const brand = getBrand(brandId)
-  if (!brand) notFound()
+  const { brand } = await requireBrand(brandId)
 
   const screen = resolveScreen(brand, [subjectId], null)
   if (!screen || screen.kind !== 'menu') notFound()

@@ -1,21 +1,22 @@
 import { notFound } from 'next/navigation'
 import { ToolScreen } from '../../../../src/components/ToolScreen'
-import { brandManifestEntries, getBrand } from '../../../../src/core/brand-registry'
+import { requireBrand } from '../../../../src/auth/require-brand'
 import { TOOLS_SEGMENT } from '../../../../src/core/hrefs'
 import { assertDefined } from '../../../../src/core/invariant'
 import { resolveScreen } from '../../../../src/core/navigation'
 
 type ToolParams = { params: Promise<{ brandId: string; toolId: string }> }
 
-export function generateStaticParams() {
-  return brandManifestEntries.flatMap(([brandId, brand]) =>
-    brand.tools.map((tool) => ({ brandId, toolId: tool.id })))
-}
+/**
+ * generateStaticParams is deliberately absent. This route reads cookies to
+ * verify the session, which makes it dynamic, so it would be ignored -- and
+ * prerendering a tenant's pages onto a CDN is not something to do accidentally
+ * now that a brand is a data boundary.
+ */
 
 export default async function ToolPage({ params }: ToolParams) {
   const { brandId, toolId } = await params
-  const brand = getBrand(brandId)
-  if (!brand) notFound()
+  const { brand } = await requireBrand(brandId)
 
   const screen = resolveScreen(brand, [TOOLS_SEGMENT, toolId], null)
   if (!screen || screen.kind !== 'tool') notFound()

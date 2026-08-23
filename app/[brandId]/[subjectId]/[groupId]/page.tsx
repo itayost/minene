@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { brandManifestEntries, getBrand } from '../../../../src/core/brand-registry'
+import { requireBrand } from '../../../../src/auth/require-brand'
 import { assertDefined } from '../../../../src/core/invariant'
 import { resolveScreen } from '../../../../src/core/navigation'
 import { ViewerClient } from './viewer-client'
@@ -10,22 +10,18 @@ type ViewerParams = {
 }
 
 /**
- * Next currently ignores this: awaiting searchParams to honour ?page= makes the
- * route dynamic, so nothing is prerendered from it. It is kept because it
- * encodes the correct set of params should the route ever become statically
- * renderable.
+ * generateStaticParams is deliberately absent. This route was already dynamic
+ * because awaiting searchParams to honour ?page= makes it so; it is now dynamic
+ * for a second reason too, since it reads cookies to verify the session. Either
+ * alone would make prerendering impossible, and prerendering a tenant's pages
+ * onto a CDN is not something to do accidentally now that a brand is a data
+ * boundary.
  */
-export function generateStaticParams() {
-  return brandManifestEntries.flatMap(([brandId, brand]) =>
-    brand.subjects.flatMap((subject) =>
-      subject.groups.map((group) => ({ brandId, subjectId: subject.id, groupId: group.id }))))
-}
 
 export default async function ViewerPage({ params, searchParams }: ViewerParams) {
   const { brandId, subjectId, groupId } = await params
   const query = await searchParams
-  const brand = getBrand(brandId)
-  if (!brand) notFound()
+  const { brand } = await requireBrand(brandId)
 
   const rawPage = query.page
   const pageParam = typeof rawPage === 'string' ? rawPage : null

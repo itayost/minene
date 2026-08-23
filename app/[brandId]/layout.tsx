@@ -1,24 +1,44 @@
 import type { Metadata, Viewport } from 'next'
-import { notFound } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { brandManifestEntries, getBrand } from '../../src/core/brand-registry'
+import { requireBrand, resolveUserBrand } from '../../src/auth/require-brand'
 import { BrandShellClient } from './brand-shell-client'
 
 type BrandParams = { params: Promise<{ brandId: string }> }
 
-export function generateStaticParams() {
-  return brandManifestEntries.map(([brandId]) => ({ brandId }))
+/**
+ * generateStaticParams is deliberately absent. Every route beneath this layout
+ * reads cookies to verify the session, which makes them dynamic, so it would be
+ * ignored -- and prerendering a tenant's pages onto a CDN is not something to do
+ * accidentally now that a brand is a data boundary.
+ */
+
+/**
+ * Metadata must not confirm a brand the caller may not access. Reading the
+ * manifest directly would return the real title and theme colour beside a 404
+ * that denies the same brand exists, which is exactly the enumeration the 404
+ * rule prevents.
+ *
+ * The try/catch is load-bearing: resolveUserBrand redirects by throwing, and a
+ * metadata function is not a place to navigate. Falling back to the generic
+ * title is correct, because the layout itself redirects a moment later.
+ */
+async function brandForMetadata(params: BrandParams['params']) {
+  const { brandId } = await params
+  try {
+    const { brand } = await resolveUserBrand()
+    return brand.id === brandId ? brand : null
+  } catch {
+    return null
+  }
 }
 
 export async function generateMetadata({ params }: BrandParams): Promise<Metadata> {
-  const { brandId } = await params
-  const brand = getBrand(brandId)
-  return brand ? { title: brand.title } : { title: 'Brand not found' }
+  const brand = await brandForMetadata(params)
+  return { title: brand?.title ?? 'Brand not found' }
 }
 
 export async function generateViewport({ params }: BrandParams): Promise<Viewport> {
-  const { brandId } = await params
-  const brand = getBrand(brandId)
+  const brand = await brandForMetadata(params)
   return {
     width: 'device-width',
     initialScale: 1,
@@ -29,12 +49,7 @@ export async function generateViewport({ params }: BrandParams): Promise<Viewpor
 
 export default async function BrandLayout({ children, params }: BrandParams & { children: ReactNode }) {
   const { brandId } = await params
-  const brand = getBrand(brandId)
-
-  // A missing brand is a missing resource, so it answers 404 rather than 200.
-  // The not-found boundary recovers the requested id from the URL, which keeps
-  // the message specific without costing the status code.
-  if (!brand) notFound()
+  const { brand } = await requireBrand(brandId)
 
   return <BrandShellClient brand={brand}>{children}</BrandShellClient>
 }

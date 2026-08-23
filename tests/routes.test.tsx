@@ -47,6 +47,35 @@ vi.mock('../src/core/brand-registry', async (importOriginal) => {
   }
 })
 
+// The route bodies now resolve the brand through the session rather than the
+// registry. Auth is stood in here because these tests exist to pin routing
+// behaviour -- which redirect fires, what is not found, what renders -- and the
+// session logic has its own tests in require-brand.test.ts. The stub mirrors
+// requireBrand's real contract: a brand the caller may not have throws the same
+// not-found signal, never a 403.
+vi.mock('../src/auth/require-brand', async () => {
+  const actual = await vi.importActual<typeof import('../src/core/brand-registry')>(
+    '../src/core/brand-registry',
+  )
+  const { demoBrand: fixture } = await import('./fixtures/demo-brand')
+  const baseSession = { tenantId: 'tenant-1', role: 'owner' as const }
+  const find = (id: string) => (id === fixture.id ? fixture : actual.getBrand(id))
+
+  return {
+    LOGIN_PATH: '/login',
+    requireBrand: vi.fn(async (brandId: string) => {
+      const brand = find(brandId)
+      if (!brand) throw new nav.NotFoundSignal('not found')
+      return { brand, session: { ...baseSession, brandId: brand.id } }
+    }),
+    resolveUserBrand: vi.fn(async () => {
+      const brand = actual.getBrand('minene')
+      if (!brand) throw new Error('minene must be registered for this fixture')
+      return { brand, session: { ...baseSession, brandId: brand.id } }
+    }),
+  }
+})
+
 const { BrandShellClient } = await import('../app/[brandId]/brand-shell-client')
 const { default: RootPage } = await import('../app/page')
 const { default: BrandHomePage } = await import('../app/[brandId]/page')
@@ -99,7 +128,7 @@ beforeEach(() => {
 })
 
 describe('route bodies', () => {
-  test('the site root sends the reader to the default brand', async () => {
+  test('the site root sends the reader to their own brand', async () => {
     expect(await redirectTarget(() => RootPage())).toBe('/minene')
   })
 
@@ -207,28 +236,70 @@ describe('route bodies', () => {
   })
 })
 
-// The counts below are the real manifest's current shape. They are stated as
-// numbers rather than derived from it so that a subject, group or tool that
-// stops being prerendered has to be an edit to this file.
-describe('prerendered paths', () => {
-  test('one path per subject of every registered brand', () => {
-    const params = subjectRoute.generateStaticParams()
-
-    expect(params).toHaveLength(8)
-    expect(params).toContainEqual({ brandId: mineneBrand.id, subjectId: 'tasks' })
+// These counts used to be asserted through each route's generateStaticParams.
+// Those functions are gone: every brand route reads cookies to verify the
+// session, which makes it dynamic, so Next would ignore them and their presence
+// would tell a reader the routes are prerendered when they are not.
+//
+// The manifest shape they pinned is still worth guarding, so it is asserted
+// directly. The numbers stay literal rather than derived, so a subject, group or
+// tool appearing or vanishing has to be a deliberate edit to this file.
+describe('manifest shape', () => {
+  test('the registered brand has eight subjects', () => {
+    expect(mineneBrand.subjects).toHaveLength(8)
+    expect(mineneBrand.subjects.map((subject) => subject.id)).toContain('tasks')
   })
 
-  test('one path per group of every registered brand', () => {
-    const params = viewerRoute.generateStaticParams()
+  test('the registered brand has eighteen groups', () => {
+    const groups = mineneBrand.subjects.flatMap((subject) => subject.groups)
 
-    expect(params).toHaveLength(18)
-    expect(params).toContainEqual({ brandId: mineneBrand.id, subjectId: 'tasks', groupId: 'daily-tasks' })
+    expect(groups).toHaveLength(18)
+    expect(groups.map((group) => group.id)).toContain('daily-tasks')
   })
 
-  test('one path per tool of every registered brand', () => {
-    const params = toolRoute.generateStaticParams()
+  test('the registered brand has three tools', () => {
+    expect(mineneBrand.tools).toHaveLength(3)
+    expect(mineneBrand.tools.map((tool) => tool.id)).toContain('brain')
+  })
+})
 
-    expect(params).toHaveLength(3)
-    expect(params).toContainEqual({ brandId: mineneBrand.id, toolId: 'brain' })
+// No brand route exports generateStaticParams any more, and that is load-bearing
+// rather than incidental: one reappearing would mean Next tried to prerender a
+// tenant's pages onto a CDN.
+describe('no brand route is prerendered', () => {
+  test('none of the dynamic routes offers static params', () => {
+    expect(subjectRoute).not.toHaveProperty('generateStaticParams')
+    expect(viewerRoute).not.toHaveProperty('generateStaticParams')
+    expect(toolRoute).not.toHaveProperty('generateStaticParams')
+  })
+})
+
+// Guards the protection itself. Without this a future edit could delete a
+// requireBrand call and every other test here would still pass, because they
+// assert routing behaviour and the stub would happily never be consulted.
+describe('every brand route is protected', () => {
+  test('each route resolves its brand through the auth helper', async () => {
+    const auth = await import('../src/auth/require-brand')
+    const requireBrandMock = vi.mocked(auth.requireBrand)
+
+    const calls: Array<[string, () => Promise<unknown>]> = [
+      ['home', () => BrandHomePage({ params: Promise.resolve({ brandId: demoBrand.id }) })],
+      ['subject', () => subjectRoute.default({
+        params: Promise.resolve({ brandId: demoBrand.id, subjectId: 'multiple' }),
+      })],
+      ['viewer', () => viewerRoute.default({
+        params: Promise.resolve({ brandId: demoBrand.id, subjectId: 'multiple', groupId: 'group-one' }),
+        searchParams: Promise.resolve({}),
+      })],
+      ['tool', () => toolRoute.default({
+        params: Promise.resolve({ brandId: demoBrand.id, toolId: demoBrand.tools[0]!.id }),
+      })],
+    ]
+
+    for (const [name, run] of calls) {
+      requireBrandMock.mockClear()
+      await run().catch(() => undefined)
+      expect(requireBrandMock, `${name} route must call requireBrand`).toHaveBeenCalledWith(demoBrand.id)
+    }
   })
 })
