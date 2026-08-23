@@ -3,7 +3,9 @@ import { HomeScreen } from '../../src/components/HomeScreen'
 import { getBrand } from '../../src/core/brand-registry'
 import { subjectHref } from '../../src/core/hrefs'
 
-export default async function BrandHomePage({ params }: { params: Promise<{ brandId: string }> }) {
+type BrandHomeParams = { params: Promise<{ brandId: string }> }
+
+export default async function BrandHomePage({ params }: BrandHomeParams) {
   const { brandId } = await params
   const brand = getBrand(brandId)
   if (!brand) notFound()

@@ -1,4 +1,4 @@
-import { describe, expect, it, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { demoBrand } from './fixtures/demo-brand'
 import { mineneBrand } from '../src/brands/minene'
 import { buildBrandRegistry, getBrand } from '../src/core/brand-registry'
@@ -189,7 +189,7 @@ describe('validateBrand', () => {
     })
   })
 
-  it('rejects a subject using the reserved tools identifier', () => {
+  test('rejects a subject using the reserved tools identifier', () => {
     const brand: BrandManifest = {
       ...demoBrand,
       subjects: [{ ...demoBrand.subjects[0]!, id: 'tools' }],
@@ -203,7 +203,7 @@ describe('validateBrand', () => {
     })
   })
 
-  it('accepts a tool using the identifier tools', () => {
+  test('accepts a tool using the identifier tools', () => {
     const brand: BrandManifest = {
       ...demoBrand,
       tools: [{ ...demoBrand.tools[0]!, id: 'tools' }],

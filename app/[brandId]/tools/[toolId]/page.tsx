@@ -5,12 +5,14 @@ import { TOOLS_SEGMENT } from '../../../../src/core/hrefs'
 import { assertDefined } from '../../../../src/core/invariant'
 import { resolveScreen } from '../../../../src/core/navigation'
 
+type ToolParams = { params: Promise<{ brandId: string; toolId: string }> }
+
 export function generateStaticParams() {
   return brandManifestEntries.flatMap(([brandId, brand]) =>
     brand.tools.map((tool) => ({ brandId, toolId: tool.id })))
 }
 
-export default async function ToolPage({ params }: { params: Promise<{ brandId: string; toolId: string }> }) {
+export default async function ToolPage({ params }: ToolParams) {
   const { brandId, toolId } = await params
   const brand = getBrand(brandId)
   if (!brand) notFound()
