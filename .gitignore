@@ -6,3 +6,6 @@ dist/
 tmp/
 
 .vercel
+
+test-results/
+playwright-report/

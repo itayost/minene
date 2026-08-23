@@ -7,11 +7,13 @@
   "scripts": {
     "dev": "vite",
     "validate:brands": "tsx scripts/validate-brands.ts",
-    "test": "vitest",
-    "test:run": "vitest run",
+    "test": "vitest --exclude tests/visual",
+    "test:run": "vitest run --exclude tests/visual",
     "build": "pnpm validate:brands && tsc --noEmit && vite build",
     "preview": "vite preview",
-    "check": "pnpm test:run && pnpm build"
+    "check": "pnpm test:run && pnpm build",
+    "visual:reference": "VIEWER_MODE=click playwright test --update-snapshots",
+    "visual:verify": "VIEWER_MODE=url playwright test"
   },
   "packageManager": "pnpm@10.34.5",
   "type": "module",
@@ -21,6 +23,7 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.5",
