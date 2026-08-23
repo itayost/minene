@@ -2,6 +2,12 @@ import type { BrandManifest, PageAsset, ValidationIssue } from './brand-types'
 
 const urlSafeId = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
+// `tools` is a static route segment under /[brandId]/. Next resolves it before
+// the dynamic [subjectId] segment, so a subject with this id would be
+// permanently unreachable. Tools themselves are unaffected: /minene/tools/tools
+// is unambiguous.
+export const RESERVED_SUBJECT_IDS: ReadonlySet<string> = new Set(['tools'])
+
 const themeTokens = [
   'primary',
   'primaryStrong',
@@ -101,6 +107,9 @@ export function validateBrand(brand: BrandManifest): ValidationIssue[] {
   brand.subjects.forEach((subject, subjectIndex) => {
     const subjectPath = `subjects[${subjectIndex}]`
     validateId(subject.id, `${subjectPath}.id`)
+    if (RESERVED_SUBJECT_IDS.has(subject.id)) {
+      addIssue(`${subjectPath}.id`, 'must not be a reserved identifier')
+    }
     if (subjectIds.has(subject.id)) addIssue(`${subjectPath}.id`, 'must be unique')
     subjectIds.add(subject.id)
     requireValue(subject.label, `${subjectPath}.label`)

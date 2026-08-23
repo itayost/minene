@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, it, test } from 'vitest'
+import { demoBrand } from './fixtures/demo-brand'
 import { mineneBrand } from '../src/brands/minene'
 import { buildBrandRegistry, getBrand, resolveBrandId } from '../src/core/brand-registry'
 import type { BrandManifest } from '../src/core/brand-types'
@@ -189,6 +190,33 @@ describe('validateBrand', () => {
       path: 'tools[0].icon',
       message: 'must begin with /brands/study-space/',
     })
+  })
+
+  it('rejects a subject using the reserved tools identifier', () => {
+    const brand: BrandManifest = {
+      ...demoBrand,
+      subjects: [{ ...demoBrand.subjects[0]!, id: 'tools' }],
+    }
+
+    const issues = validateBrand(brand)
+
+    expect(issues).toContainEqual({
+      path: 'subjects[0].id',
+      message: 'must not be a reserved identifier',
+    })
+  })
+
+  it('accepts a tool using the identifier tools', () => {
+    const brand: BrandManifest = {
+      ...demoBrand,
+      tools: [{ ...demoBrand.tools[0]!, id: 'tools' }],
+    }
+
+    const issues = validateBrand(brand)
+
+    expect(issues).not.toContainEqual(
+      expect.objectContaining({ path: 'tools[0].id' }),
+    )
   })
 })
 
