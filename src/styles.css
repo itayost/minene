@@ -839,3 +839,41 @@ a:focus-visible {
   opacity: 0.6;
   cursor: default;
 }
+
+/* מוח ארגוני entry points. New class names only, so nothing the frozen visual
+   references cover is affected. Matches the existing tool rows -- same radius,
+   same right-to-left alignment, same pink accent -- but weighted heavier so the
+   hierarchy reads: actions first, reference material second. */
+.brain-screen {
+  display: grid;
+  gap: 20px;
+}
+
+.brain-entries {
+  display: grid;
+  gap: 10px;
+}
+
+.brain-entry {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--primary, #e8368f);
+  background: var(--surface, #fffdfc);
+  text-align: right;
+  text-decoration: none;
+  color: inherit;
+  min-height: 44px;
+  align-content: center;
+}
+
+.brain-entry__label {
+  font-weight: 700;
+  color: var(--primary-strong, #c51f73);
+}
+
+.brain-entry__note {
+  font-size: 0.85rem;
+  color: var(--muted, #aea9b4);
+}
