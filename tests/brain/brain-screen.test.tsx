@@ -36,7 +36,7 @@ describe('the מוח ארגוני screen', () => {
 
     expect(screen.getByRole('link', { name: /לובי אושר/ })).toBeVisible()
     expect(screen.getByRole('link', { name: /חילוץ חוקים/ })).toBeVisible()
-    expect(screen.getByRole('link', { name: /דשבורד/ })).toBeVisible()
+    expect(screen.getByRole('link', { name: /נתוני המוח/ })).toBeVisible()
   })
 
   it('points each entry at its route beneath the tool', async () => {
@@ -45,7 +45,7 @@ describe('the מוח ארגוני screen', () => {
     const base = `/${mineneBrand.id}/tools/brain`
     expect(screen.getByRole('link', { name: /לובי אושר/ })).toHaveAttribute('href', `${base}/lobby`)
     expect(screen.getByRole('link', { name: /חילוץ חוקים/ })).toHaveAttribute('href', `${base}/extract`)
-    expect(screen.getByRole('link', { name: /דשבורד/ })).toHaveAttribute('href', `${base}/admin`)
+    expect(screen.getByRole('link', { name: /נתוני המוח/ })).toHaveAttribute('href', `${base}/admin`)
   })
 
   it('offers a staff member no entry points at all', async () => {

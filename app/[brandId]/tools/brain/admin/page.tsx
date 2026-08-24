@@ -4,7 +4,7 @@ import { AdminClient } from './admin-client'
 
 type AdminParams = { params: Promise<{ brandId: string }> }
 
-export const metadata = { title: 'דשבורד' }
+export const metadata = { title: 'נתוני המוח' }
 
 export default async function AdminPage({ params }: AdminParams) {
   const { brandId } = await params

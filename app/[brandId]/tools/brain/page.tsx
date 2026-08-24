@@ -50,7 +50,7 @@ export default async function BrainPage({ params }: BrainParams) {
         },
         {
           href: `${base}/admin`,
-          label: 'דשבורד',
+          label: 'נתוני המוח',
           note: 'היסטוריית החוקים',
           icon: '/brands/minene/icons/results.png',
           cardColor: '#f9f9fc',

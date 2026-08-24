@@ -20,6 +20,17 @@ const TABS: readonly { id: string | null; title: string }[] = [
 
 const kindLabel = (kind: RuleKind) => (kind === 'process' ? 'תהליך' : 'טיפ')
 
+const SEARCH_PANEL_ID = 'admin-search-panel'
+
+/* Inline rather than a lucide import: BrandShell draws its own icons this way,
+   and one glyph is not worth a dependency. */
+const searchIcon = (
+  <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="9" cy="9" r="6" />
+    <path d="m13.5 13.5 4 4" strokeLinecap="round" />
+  </svg>
+)
+
 type RequestState = { status: 'loading' | 'ready' } | { status: 'error'; message: string }
 
 export function AdminClient() {
@@ -38,12 +49,25 @@ export function AdminClient() {
   const [savingIds, setSavingIds] = useState<ReadonlySet<string>>(() => new Set())
   const [starError, setStarError] = useState('')
   const [kpiState, setKpiState] = useState<KpiState>({ status: 'loading' })
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   // Guards against a slow earlier request landing after a faster later one and
   // overwriting it. Switching topics quickly is exactly how that happens.
   const requestId = useRef(0)
 
   const cursor = cursorStack[cursorStack.length - 1] ?? null
+
+  // Counts only what is hidden behind the toggle while it is shut. An applied
+  // search term is not included: it stays spelled out in its own chip below, so
+  // counting it here would report the same filter twice.
+  const hiddenFilterCount = (filters.starredOnly ? 1 : 0) + (filters.kind ? 1 : 0)
+
+  // Opening a search control that does not take focus makes the reader hunt for
+  // the field they just asked for.
+  useEffect(() => {
+    if (isSearchOpen) searchInputRef.current?.focus()
+  }, [isSearchOpen])
 
   const loadRules = useCallback(async () => {
     const id = ++requestId.current
@@ -104,7 +128,23 @@ export function AdminClient() {
   return (
     <div className="brain-surface">
     <section aria-label="היסטוריית החוקים" className="admin-screen" dir="rtl">
-      <h2>דשבורד</h2>
+      <header className="admin-header">
+        <h2>נתוני המוח</h2>
+
+        <button
+          aria-controls={SEARCH_PANEL_ID}
+          aria-expanded={isSearchOpen}
+          aria-label="חיפוש וסינון"
+          className="admin-search-toggle"
+          onClick={() => setIsSearchOpen((open) => !open)}
+          type="button"
+        >
+          {searchIcon}
+          {hiddenFilterCount > 0 ? (
+            <span aria-hidden="true" className="admin-search-toggle__count">{hiddenFilterCount}</span>
+          ) : null}
+        </button>
+      </header>
 
       <KpiCards state={kpiState} />
 
@@ -122,41 +162,73 @@ export function AdminClient() {
         ))}
       </nav>
 
-      <form
-        className="admin-search"
-        onSubmit={(event) => { event.preventDefault(); applyFilters({ query: draftQuery }) }}
+      {/* hidden, not unmounted: the panel keeps its draft text between openings,
+          and aria-controls must point at an element that exists. */}
+      <section
+        aria-label="חיפוש וסינון חוקים"
+        className="admin-panel"
+        hidden={!isSearchOpen}
+        id={SEARCH_PANEL_ID}
       >
-        <label htmlFor="admin-query">חיפוש</label>
-        <input
-          id="admin-query"
-          onChange={(event) => setDraftQuery(event.target.value)}
-          type="search"
-          value={draftQuery}
-        />
-        <button type="submit">חיפוש</button>
-      </form>
-
-      <div className="admin-filters">
-        <label>
-          <input
-            checked={filters.starredOnly}
-            onChange={(event) => applyFilters({ starredOnly: event.target.checked })}
-            type="checkbox"
-          />
-          <span>מסומנים בלבד</span>
-        </label>
-
-        <label htmlFor="admin-kind">סוג</label>
-        <select
-          id="admin-kind"
-          onChange={(event) => applyFilters({ kind: (event.target.value || null) as RuleKind | null })}
-          value={filters.kind ?? ''}
+        <form
+          className="admin-search"
+          onSubmit={(event) => { event.preventDefault(); applyFilters({ query: draftQuery }) }}
         >
-          <option value="">הכל</option>
-          <option value="tip">טיפ</option>
-          <option value="process">תהליך</option>
-        </select>
-      </div>
+          <label htmlFor="admin-query">חיפוש בחוקים</label>
+          <div className="admin-search__row">
+            <input
+              // A phone keyboard reads these: `search` puts a search key where
+              // the newline key would be, and the three switches stop iOS
+              // autocapitalising and autocorrecting Hebrew search terms.
+              autoCapitalize="off"
+              autoComplete="off"
+              autoCorrect="off"
+              enterKeyHint="search"
+              id="admin-query"
+              onChange={(event) => setDraftQuery(event.target.value)}
+              ref={searchInputRef}
+              type="search"
+              value={draftQuery}
+            />
+            <button type="submit">חיפוש</button>
+          </div>
+        </form>
+
+        <div className="admin-filters">
+          <label>
+            <input
+              checked={filters.starredOnly}
+              onChange={(event) => applyFilters({ starredOnly: event.target.checked })}
+              type="checkbox"
+            />
+            <span>מסומנים בלבד</span>
+          </label>
+
+          <label htmlFor="admin-kind">סוג</label>
+          <select
+            id="admin-kind"
+            onChange={(event) => applyFilters({ kind: (event.target.value || null) as RuleKind | null })}
+            value={filters.kind ?? ''}
+          >
+            <option value="">הכל</option>
+            <option value="tip">טיפ</option>
+            <option value="process">תהליך</option>
+          </select>
+        </div>
+      </section>
+
+      {filters.query ? (
+        <p className="admin-chip">
+          <span>{`חיפוש: ${filters.query}`}</span>
+          <button
+            aria-label={`ניקוי החיפוש: ${filters.query}`}
+            onClick={() => { setDraftQuery(''); applyFilters({ query: '' }) }}
+            type="button"
+          >
+            ניקוי
+          </button>
+        </p>
+      ) : null}
 
       {starError ? <p className="admin-error" role="alert">{starError}</p> : null}
 
