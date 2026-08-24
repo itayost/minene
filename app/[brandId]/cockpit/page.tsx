@@ -25,10 +25,12 @@ export default async function CockpitPage({ params }: CockpitParams) {
           const style = { '--card-color': action.cardColor, '--card-accent': action.accent } as CardStyle
           const body = (
             <>
-              <span aria-hidden="true" className="cockpit-card__number">{action.number}</span>
-              <span className="cockpit-card__title">{action.title}</span>
-              <span className="cockpit-card__subtitle">{action.subtitle}</span>
-              <span className="cockpit-card__description">{action.description}</span>
+              <span className="cockpit-card__text">
+                <span className="cockpit-card__title">{action.title}</span>
+                <span className="cockpit-card__subtitle">{action.subtitle}</span>
+                <span className="cockpit-card__description">{action.description}</span>
+              </span>
+              <img alt="" className="cockpit-card__icon" src={action.icon} />
             </>
           )
 
