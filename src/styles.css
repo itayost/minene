@@ -1579,17 +1579,6 @@ a:focus-visible {
   opacity: 0.72;
 }
 
-.cockpit-card__soon {
-  grid-column: 1 / -1;
-  justify-self: start;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgb(29 38 69 / 8%);
-  font-size: 10.5px;
-  font-weight: 700;
-  color: var(--muted, #7d7885);
-}
-
 /* The mentor composer. Replaces the prompt bar: the same question, but the
    reader can answer it here instead of being asked and then left with nowhere to
    put the answer. Deliberately unlabelled on screen -- the bar's own shape says

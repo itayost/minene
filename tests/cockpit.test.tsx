@@ -45,7 +45,9 @@ describe('the cockpit', () => {
     const links = screen.getAllByRole('link')
     expect(links).toHaveLength(1)
     expect(links[0]).toHaveAttribute('href', `/${mineneBrand.id}/cockpit/video`)
-    expect(screen.getAllByText('בקרוב')).toHaveLength(7)
+    // The other seven render, but as plain content: linking to a route that
+    // 404s is worse than not linking at all.
+    expect(screen.queryAllByText('בקרוב')).toHaveLength(0)
   })
 
   it('closes with the mentor composer rather than a prompt with nowhere to answer', async () => {

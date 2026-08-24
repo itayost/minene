@@ -48,12 +48,12 @@ export default async function CockpitPage({ params }: CockpitParams) {
                   {body}
                 </Link>
               ) : (
-                // Rendered as plain content, not a link. A card that looks
-                // tappable and then goes nowhere reads as a broken app, so an
-                // unbuilt flow says so instead of pretending.
+                // Not a link. Without a flow behind it there is nowhere to go,
+                // and linking to a route that 404s is worse than not linking at
+                // all. It stays visually dimmed so an unbuilt card is not
+                // indistinguishable from a working one.
                 <div className="cockpit-card cockpit-card--soon" style={style}>
                   {body}
-                  <span className="cockpit-card__soon">בקרוב</span>
                 </div>
               )}
             </li>
