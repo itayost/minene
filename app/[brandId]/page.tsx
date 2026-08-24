@@ -1,63 +1,111 @@
-import Link from 'next/link'
-import type { CSSProperties } from 'react'
+import Image from 'next/image'
 import { requireBrand } from '../../src/auth/require-brand'
-import { COCKPIT_ACTIONS } from '../../src/cockpit/actions'
 import { MentorBar } from './cockpit/mentor-bar'
 
 type BrandHomeParams = { params: Promise<{ brandId: string }> }
 
-type CardStyle = CSSProperties & { '--card-color': string; '--card-accent': string }
+type WireframeTool = {
+  title: string
+  icon: string
+  compact?: boolean
+}
+
+const WIREFRAME_TOOLS: readonly WireframeTool[] = [
+  {
+    title: 'חיים אישיים',
+    icon: '/brands/minene/icons/home-tools/personal-life.png',
+  },
+  {
+    title: 'תכנית ופרוייקט',
+    icon: '/brands/minene/icons/home-tools/plan-project.png',
+  },
+  {
+    title: 'ניתוח נתונים',
+    icon: '/brands/minene/icons/home-tools/data-analysis.png',
+  },
+  {
+    title: 'תרגילי הדרכה',
+    icon: '/brands/minene/icons/home-tools/training-exercises.png',
+  },
+  {
+    title: 'עידוד ושכנוע',
+    icon: '/brands/minene/icons/home-tools/encouragement-persuasion.png',
+  },
+  {
+    title: 'מנטורינג לעובדת',
+    icon: '/brands/minene/icons/home-tools/employee-mentoring.png',
+  },
+  {
+    title: 'יצירת סרטון',
+    icon: '/brands/minene/icons/home-tools/create-video.png',
+    compact: true,
+  },
+  {
+    title: 'יצירת תמונה',
+    icon: '/brands/minene/icons/home-tools/create-image.png',
+    compact: true,
+  },
+] as const
+
+const sparkleIcon = (
+  <svg aria-hidden="true" viewBox="0 0 20 20">
+    <path d="M10 2c.7 4 2 5.3 6 6-4 .7-5.3 2-6 6-.7-4-2-5.3-6-6 4-.7 5.3-2 6-6Z" />
+    <path d="M16 13c.3 1.7.8 2.2 2.5 2.5-1.7.3-2.2.8-2.5 2.5-.3-1.7-.8-2.2-2.5-2.5 1.7-.3 2.2-.8 2.5-2.5Z" />
+  </svg>
+)
+
+const arrowIcon = (
+  <svg aria-hidden="true" viewBox="0 0 24 24">
+    <path d="M19 12H5m6-6-6 6 6 6" />
+  </svg>
+)
 
 export default async function BrandHomePage({ params }: BrandHomeParams) {
   const { brandId } = await params
-  const { brand } = await requireBrand(brandId)
+  await requireBrand(brandId)
 
   return (
     <div className="cockpit" dir="rtl">
-      {/* Hidden, not removed. Without it the screen has no heading at all, so
-          the document outline and every screen reader see an unnamed grid of
-          eight links. ToolScreen does the same thing for the same reason. */}
-      <h2 className="visually-hidden">הקוקפיט שלך כמנהלת חנות</h2>
+      <section aria-labelledby="recommendation-title" className="cockpit-feature">
+        <div className="cockpit-feature__copy">
+          <div className="cockpit-feature__label">
+            {sparkleIcon}
+            <span>המשך מומלץ</span>
+          </div>
+          <h1 id="recommendation-title">יש לך שיחה חשובה בקרוב</h1>
+          <p>נתכונן יחד לשיחה ונבנה את התוכנית שלך.</p>
+          <span className="cockpit-feature__action">
+            <span>התחילי הכנה</span>
+            {arrowIcon}
+          </span>
+        </div>
 
-      <ul className="cockpit__grid" role="list">
-        {COCKPIT_ACTIONS.map((action) => {
-          const style = { '--card-color': action.cardColor, '--card-accent': action.accent } as CardStyle
-          const body = (
-            <>
-              {/* Headline and icon only, matching the home grid's density. The
-                  description is the action's own copy and belongs on its screen,
-                  not crowded onto a card the reader is scanning. */}
-              <span className="cockpit-card__text">
-                <span className="cockpit-card__title">{action.title}</span>
-                <span className="cockpit-card__subtitle">{action.subtitle}</span>
-              </span>
-              <img alt="" className="cockpit-card__icon" src={action.icon} />
-            </>
-          )
+        <div className="cockpit-feature__visual">
+          <Image
+            alt="מנהלת ועובדת צעירות מנהלות שיחה מקצועית"
+            fill
+            priority
+            sizes="(max-width: 539px) 52vw, 210px"
+            src="/brands/minene/home-manager-conversation-v3.png"
+          />
+        </div>
+      </section>
 
-          return (
-            <li key={action.number}>
-              {action.slug ? (
-                <Link
-                  className="cockpit-card"
-                  href={`/${brand.id}/cockpit/${action.slug}`}
-                  style={style}
-                >
-                  {body}
-                </Link>
-              ) : (
-                // Not a link. Without a flow behind it there is nowhere to go,
-                // and linking to a route that 404s is worse than not linking at
-                // all. It stays visually dimmed so an unbuilt card is not
-                // indistinguishable from a working one.
-                <div className="cockpit-card cockpit-card--soon" style={style}>
-                  {body}
+      <section aria-labelledby="tools-title" className="cockpit-tools">
+        <h2 id="tools-title">כלים עבורך</h2>
+        <ul className="cockpit-tools__grid" role="list">
+          {WIREFRAME_TOOLS.map((tool) => (
+            <li className={tool.compact ? 'cockpit-tools__item--compact' : undefined} key={tool.title}>
+              <article className={`cockpit-tool${tool.compact ? ' cockpit-tool--compact' : ''}`}>
+                <div className="cockpit-tool__icon">
+                  <Image alt="" height={44} src={tool.icon} width={44} />
                 </div>
-              )}
+                <h3>{tool.title}</h3>
+              </article>
             </li>
-          )
-        })}
-      </ul>
+          ))}
+        </ul>
+      </section>
 
       <MentorBar />
     </div>

@@ -54,10 +54,7 @@ export function MentorBar() {
           type="button"
         >
           {liveIcon}
-          <span aria-hidden="true" className="mentor__live">LIVE</span>
         </button>
-
-        <span aria-hidden="true" className="mentor__divider" />
 
         <button
           aria-label="הקלטה קולית"

@@ -132,7 +132,7 @@ describe('route bodies', () => {
     expect(await redirectTarget(() => RootPage())).toBe('/minene')
   })
 
-  // The brand home is the Brain cockpit now, not the subject grid. The subject
+  // The brand home is the Minene cockpit now, not the subject grid. The subject
   // and group routes below still resolve by address -- nothing links to them
   // from the home screen any more, which is what "the viewer retires" meant.
   test('a brand home screen shows the cockpit rather than the brand subjects', async () => {
@@ -140,7 +140,7 @@ describe('route bodies', () => {
 
     expect(screen.queryByRole('link', { name: /Single subject/ })).toBeNull()
     expect(screen.queryByRole('link', { name: /Multiple subject/ })).toBeNull()
-    expect(screen.getByRole('heading', { name: 'הקוקפיט שלך כמנהלת חנות' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'יש לך שיחה חשובה בקרוב' })).toBeInTheDocument()
   })
 
   test('an unknown brand is not found', async () => {

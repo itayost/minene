@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-24T16:05:59Z",
+  "title": "Design System: Minene Cockpit",
+  "extensions": {
+    "colorMeta": {
+      "minene-pink": {
+        "role": "primary",
+        "displayName": "Minene Pink",
+        "canonical": "#E8368F",
+        "tonalRamp": ["oklch(15% 0.21 350)", "oklch(27% 0.21 350)", "oklch(39% 0.21 350)", "oklch(51% 0.21 350)", "oklch(63% 0.21 350)", "oklch(75% 0.21 350)", "oklch(87% 0.21 350)", "oklch(95% 0.21 350)"]
+      },
+      "minene-pink-strong": {
+        "role": "primary",
+        "displayName": "Deep Minene Pink",
+        "canonical": "#C51F73",
+        "tonalRamp": ["oklch(15% 0.20 350)", "oklch(27% 0.20 350)", "oklch(39% 0.20 350)", "oklch(51% 0.20 350)", "oklch(63% 0.20 350)", "oklch(75% 0.20 350)", "oklch(87% 0.20 350)", "oklch(95% 0.20 350)"]
+      },
+      "minene-pink-tint": {
+        "role": "secondary",
+        "displayName": "Minene Pink Tint",
+        "canonical": "#F7A9CE",
+        "tonalRamp": ["oklch(15% 0.08 350)", "oklch(27% 0.08 350)", "oklch(39% 0.08 350)", "oklch(51% 0.08 350)", "oklch(63% 0.08 350)", "oklch(75% 0.08 350)", "oklch(87% 0.08 350)", "oklch(95% 0.08 350)"]
+      },
+      "cockpit-navy": {
+        "role": "neutral",
+        "displayName": "Cockpit Navy",
+        "canonical": "#1D2645",
+        "tonalRamp": ["oklch(15% 0.055 270)", "oklch(27% 0.055 270)", "oklch(39% 0.055 270)", "oklch(51% 0.055 270)", "oklch(63% 0.055 270)", "oklch(75% 0.055 270)", "oklch(87% 0.055 270)", "oklch(95% 0.055 270)"]
+      },
+      "supporting-navy": {
+        "role": "neutral",
+        "displayName": "Supporting Navy",
+        "canonical": "#39405A",
+        "tonalRamp": ["oklch(15% 0.045 270)", "oklch(27% 0.045 270)", "oklch(39% 0.045 270)", "oklch(51% 0.045 270)", "oklch(63% 0.045 270)", "oklch(75% 0.045 270)", "oklch(87% 0.045 270)", "oklch(95% 0.045 270)"]
+      },
+      "muted-copy": {
+        "role": "neutral",
+        "displayName": "Muted Copy",
+        "canonical": "#555B70",
+        "tonalRamp": ["oklch(15% 0.035 270)", "oklch(27% 0.035 270)", "oklch(39% 0.035 270)", "oklch(51% 0.035 270)", "oklch(63% 0.035 270)", "oklch(75% 0.035 270)", "oklch(87% 0.035 270)", "oklch(95% 0.035 270)"]
+      },
+      "quiet-copy": {
+        "role": "neutral",
+        "displayName": "Quiet Copy",
+        "canonical": "#AEA9B4",
+        "tonalRamp": ["oklch(15% 0.015 315)", "oklch(27% 0.015 315)", "oklch(39% 0.015 315)", "oklch(51% 0.015 315)", "oklch(63% 0.015 315)", "oklch(75% 0.015 315)", "oklch(87% 0.015 315)", "oklch(95% 0.015 315)"]
+      },
+      "warm-surface": {
+        "role": "neutral",
+        "displayName": "Warm Surface",
+        "canonical": "#FFFDFC",
+        "tonalRamp": ["oklch(15% 0.006 40)", "oklch(27% 0.006 40)", "oklch(39% 0.006 40)", "oklch(51% 0.006 40)", "oklch(63% 0.006 40)", "oklch(75% 0.006 40)", "oklch(87% 0.006 40)", "oklch(95% 0.006 40)"]
+      },
+      "feature-surface": {
+        "role": "neutral",
+        "displayName": "Feature Surface",
+        "canonical": "#FCFAF9",
+        "tonalRamp": ["oklch(15% 0.008 50)", "oklch(27% 0.008 50)", "oklch(39% 0.008 50)", "oklch(51% 0.008 50)", "oklch(63% 0.008 50)", "oklch(75% 0.008 50)", "oklch(87% 0.008 50)", "oklch(95% 0.008 50)"]
+      },
+      "tool-surface": {
+        "role": "neutral",
+        "displayName": "Tool Surface",
+        "canonical": "#FBF8F7",
+        "tonalRamp": ["oklch(15% 0.010 40)", "oklch(27% 0.010 40)", "oklch(39% 0.010 40)", "oklch(51% 0.010 40)", "oklch(63% 0.010 40)", "oklch(75% 0.010 40)", "oklch(87% 0.010 40)", "oklch(95% 0.010 40)"]
+      },
+      "field-surface": {
+        "role": "neutral",
+        "displayName": "Field Surface",
+        "canonical": "#F7F6F8",
+        "tonalRamp": ["oklch(15% 0.008 315)", "oklch(27% 0.008 315)", "oklch(39% 0.008 315)", "oklch(51% 0.008 315)", "oklch(63% 0.008 315)", "oklch(75% 0.008 315)", "oklch(87% 0.008 315)", "oklch(95% 0.008 315)"]
+      },
+      "shell-ground": {
+        "role": "neutral",
+        "displayName": "Shell Ground",
+        "canonical": "#E9E9EE",
+        "tonalRamp": ["oklch(15% 0.006 285)", "oklch(27% 0.006 285)", "oklch(39% 0.006 285)", "oklch(51% 0.006 285)", "oklch(63% 0.006 285)", "oklch(75% 0.006 285)", "oklch(87% 0.006 285)", "oklch(95% 0.006 285)"]
+      },
+      "mist-border": {
+        "role": "neutral",
+        "displayName": "Mist Border",
+        "canonical": "#E7E3E9",
+        "tonalRamp": ["oklch(15% 0.010 315)", "oklch(27% 0.010 315)", "oklch(39% 0.010 315)", "oklch(51% 0.010 315)", "oklch(63% 0.010 315)", "oklch(75% 0.010 315)", "oklch(87% 0.010 315)", "oklch(95% 0.010 315)"]
+      },
+      "feature-border": {
+        "role": "neutral",
+        "displayName": "Feature Border",
+        "canonical": "#E5DFDF",
+        "tonalRamp": ["oklch(15% 0.012 40)", "oklch(27% 0.012 40)", "oklch(39% 0.012 40)", "oklch(51% 0.012 40)", "oklch(63% 0.012 40)", "oklch(75% 0.012 40)", "oklch(87% 0.012 40)", "oklch(95% 0.012 40)"]
+      },
+      "live-red": {
+        "role": "tertiary",
+        "displayName": "Live Red",
+        "canonical": "#E5322B",
+        "tonalRamp": ["oklch(15% 0.21 29)", "oklch(27% 0.21 29)", "oklch(39% 0.21 29)", "oklch(51% 0.21 29)", "oklch(63% 0.21 29)", "oklch(75% 0.21 29)", "oklch(87% 0.21 29)", "oklch(95% 0.21 29)"]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "White",
+        "canonical": "#FFFFFF",
+        "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Reserved for rare page-level prompts; intentionally omitted from the current home." },
+      "headline": { "displayName": "Headline", "purpose": "Major section statements and recommendation-scale hierarchy." },
+      "title": { "displayName": "Title", "purpose": "Compact practical-tool and component titles." },
+      "body": { "displayName": "Body", "purpose": "Clear explanatory copy inside recommendations and fields." },
+      "label": { "displayName": "Label", "purpose": "Recommendation labels and compact status language." },
+      "navigation": { "displayName": "Navigation", "purpose": "Persistent bottom-navigation labels." }
+    },
+    "shadows": [
+      { "name": "outer-shell", "value": "0 26px 60px rgb(15 18 32 / .34)", "purpose": "Ambient lift for the complete bounded product on canvases at least 540px wide." }
+    ],
+    "motion": [
+      { "name": "screen-enter", "value": "opacity 260ms ease, transform 260ms ease", "purpose": "A brief RTL-aware fade and horizontal arrival for the home surface." },
+      { "name": "reduced-motion", "value": "0.01ms", "purpose": "Effectively removes animation and transition duration when reduced motion is requested." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "350px" },
+      { "name": "bounded-shell", "value": "540px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Brand Header",
+      "kind": "nav",
+      "description": "The centered Minene lockup at the top of the bounded product shell.",
+      "html": "<header class=\"ds-brand-header\" dir=\"rtl\"><span class=\"ds-brand-header__spacer\" aria-hidden=\"true\"></span><div class=\"ds-brand-lockup\"><img class=\"ds-brand-lockup__logo\" src=\"/brands/minene/icons/logo-pink.svg\" alt=\"\"><span class=\"ds-brand-lockup__name\">MINENE COCKPIT</span></div><span class=\"ds-brand-header__spacer\" aria-hidden=\"true\"></span></header>",
+      "css": ".ds-brand-header { min-height: 59px; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 12px 10px; background: #fffdfc; border-block-end: 1px solid color-mix(in srgb, #1d2645 7%, transparent); color: #1d2645; font-family: Heebo, Arial, sans-serif; } .ds-brand-header__spacer { width: 44px; flex: 0 0 44px; } .ds-brand-lockup { min-width: 0; display: flex; align-items: center; gap: 8px; } .ds-brand-lockup__logo { width: 34px; height: 28px; object-fit: contain; } .ds-brand-lockup__name { overflow: hidden; color: #1d2645; font-size: 14px; font-weight: 900; letter-spacing: .08em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }"
+    },
+    {
+      "name": "Bottom Navigation",
+      "kind": "nav",
+      "refersTo": "navigation-action-active",
+      "description": "Quiet persistent navigation with a pink current destination and 44px touch targets.",
+      "html": "<nav class=\"ds-bottom-nav\" aria-label=\"ניווט ראשי\" dir=\"rtl\"><a class=\"ds-nav-action\" href=\"#\" aria-current=\"page\"><svg aria-hidden=\"true\" viewBox=\"0 0 23 22\"><path d=\"M2 9.5 11.5 2 21 9.5M4 8v11a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V8\"/></svg><span>בית</span></a><a class=\"ds-nav-action\" href=\"#\"><svg aria-hidden=\"true\" viewBox=\"0 0 24 24\"><path d=\"M12 3 4 8l8 5 8-5-8-5ZM7 11v6c3 2 7 2 10 0v-6\"/></svg><span>משאבים</span></a><a class=\"ds-nav-action\" href=\"#\"><svg aria-hidden=\"true\" viewBox=\"0 0 24 24\"><path d=\"M12 3c.7 4 2 5.3 6 6-4 .7-5.3 2-6 6-.7-4-2-5.3-6-6 4-.7 5.3 2 6-6Z\"/></svg><span>מנטור AI</span></a><a class=\"ds-nav-action\" href=\"#\"><svg aria-hidden=\"true\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M5 21v-2a7 7 0 0 1 14 0v2\"/></svg><span>פרופיל</span></a></nav>",
+      "css": ".ds-bottom-nav { display: flex; padding: 7px 4px 8px; border-block-start: 1px solid color-mix(in srgb, #1d2645 8%, transparent); background: #fffdfc; font-family: Heebo, Arial, sans-serif; } .ds-nav-action { min-width: 0; min-height: 44px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px 2px; border-radius: 10px; background: transparent; color: #aea9b4; text-decoration: none; } .ds-nav-action svg { width: 22px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; } .ds-nav-action span { max-width: 100%; overflow: hidden; font-size: 10.5px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; } .ds-nav-action[aria-current='page'] { color: #e8368f; } .ds-nav-action:hover { color: #aea9b4; } .ds-nav-action[aria-current='page']:hover { color: #e8368f; } .ds-nav-action:focus-visible { outline: 3px solid color-mix(in srgb, #e8368f 64%, white); outline-offset: 2px; }"
+    },
+    {
+      "name": "Personal Greeting",
+      "kind": "custom",
+      "description": "The compact personal greeting that opens the current home before the recommendation.",
+      "html": "<div class=\"ds-focus\" dir=\"rtl\"><p class=\"ds-focus__greeting\"><span>בוקר טוב, דנה</span><svg aria-hidden=\"true\" viewBox=\"0 0 24 24\"><path d=\"M12 20.2C3.9 15.3 3.1 8.7 6.7 6.2c2.2-1.6 4.3-.4 5.3 1.2 1-1.6 3.1-2.8 5.3-1.2 3.6 2.5 2.8 9.1-5.3 14Z\"/></svg></p></div>",
+      "css": ".ds-focus { display: grid; gap: 4px; padding-inline: 4px; color: #1d2645; font-family: Heebo, Arial, sans-serif; } .ds-focus__greeting { margin: 0; display: flex; align-items: center; gap: 7px; font-size: 15px; line-height: 1.4; } .ds-focus__greeting svg { width: 20px; height: 20px; fill: none; stroke: #e8368f; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }"
+    },
+    {
+      "name": "Recommendation Card",
+      "kind": "card",
+      "refersTo": "recommendation-card",
+      "description": "The photo-and-copy surface that places one prepared next step directly after the greeting.",
+      "html": "<article class=\"ds-recommendation\" dir=\"rtl\"><div class=\"ds-recommendation__copy\"><div class=\"ds-recommendation__label\"><svg aria-hidden=\"true\" viewBox=\"0 0 20 20\"><path d=\"M10 2c.7 4 2 5.3 6 6-4 .7-5.3 2-6 6-.7-4-2-5.3-6-6 4-.7 5.3-2 6-6Z\"/></svg><span>המשך מומלץ</span></div><h1>יש לך שיחה חשובה בקרוב?</h1><p>נתכונן יחד לשיחה ונבנה את התוכנית שלך.</p><span class=\"ds-recommendation__action\">התחילי הכנה <svg aria-hidden=\"true\" viewBox=\"0 0 24 24\"><path d=\"M19 12H5m6-6-6 6 6 6\"/></svg></span></div><div class=\"ds-recommendation__visual\"><img src=\"/brands/minene/home-manager-recommendation.png\" alt=\"מנהלת מתכוננת לשיחת עבודה מול המחשב\"></div></article>",
+      "css": ".ds-recommendation { min-height: 194px; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.22fr); overflow: hidden; border: 1px solid #e5dfdf; border-radius: 16px; background: #fcfaf9; color: #1d2645; font-family: Heebo, Arial, sans-serif; } .ds-recommendation__copy { position: relative; z-index: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; padding: 19px 15px 17px 12px; } .ds-recommendation__label { display: flex; align-items: center; gap: 5px; color: #c51f73; font-size: 12px; font-weight: 700; } .ds-recommendation__label svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; } .ds-recommendation h1 { margin: 15px 0 0; font-size: 21px; font-weight: 800; line-height: 1.16; letter-spacing: -.025em; text-wrap: balance; } .ds-recommendation p { margin: 10px 0 0; color: #39405a; font-size: 13.5px; line-height: 1.45; } .ds-recommendation__action { margin-block-start: auto; display: inline-flex; align-items: center; gap: 7px; color: #c51f73; font-size: 15px; font-weight: 750; } .ds-recommendation__action svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } .ds-recommendation__visual { position: relative; min-width: 0; min-height: 194px; overflow: hidden; } .ds-recommendation__visual::after { content: ''; position: absolute; inset-block: 0; inset-inline-start: 0; width: 24px; background: linear-gradient(to left, #fcfaf9, transparent); pointer-events: none; } .ds-recommendation__visual img { width: 100%; height: 100%; object-fit: cover; object-position: 31% center; } @media (max-width: 350px) { .ds-recommendation { grid-template-columns: 1fr; } .ds-recommendation__visual { order: -1; min-height: 138px; } .ds-recommendation__copy { min-height: 205px; } }"
+    },
+    {
+      "name": "Practical Tool Card",
+      "kind": "card",
+      "refersTo": "tool-card",
+      "description": "A calm catalog tile with a precise line icon, compact explanation, and RTL action cue.",
+      "html": "<article class=\"ds-tool\" dir=\"rtl\"><div class=\"ds-tool__icon\"><svg aria-hidden=\"true\" viewBox=\"0 0 64 64\"><path d=\"M12 48v-5.5c0-6 4.5-10.5 10.5-10.5S33 36.5 33 42.5V48M31 48v-7c0-6.6 5-11.5 11.5-11.5S54 34.4 54 41v7\"/><circle cx=\"22.5\" cy=\"23\" r=\"6\"/><circle cx=\"42.5\" cy=\"20.5\" r=\"6.5\"/><path class=\"ds-tool__accent\" d=\"M32 17.7c-4.2-3.8-9.5 2.3 0 8.3 9.5-6 4.2-12.1 0-8.3Z\"/></svg></div><h3>לעודד את העובדות</h3><p>חיזוקי מוטיבציה, קשר והרגשת שייכות.</p><span class=\"ds-tool__arrow\"><svg aria-hidden=\"true\" viewBox=\"0 0 24 24\"><path d=\"M19 12H5m6-6-6 6 6 6\"/></svg></span></article>",
+      "css": ".ds-tool { position: relative; min-height: 177px; display: grid; grid-template-rows: auto auto 1fr; justify-items: center; align-content: start; gap: 7px; padding: 14px 9px 27px; border-radius: 14px; background: #fbf8f7; color: #1d2645; text-align: center; font-family: Heebo, Arial, sans-serif; } .ds-tool__icon { width: 52px; height: 52px; color: #35405a; } .ds-tool__icon svg { width: 100%; height: 100%; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; } .ds-tool__icon .ds-tool__accent { fill: #f7a9ce; stroke: #c51f73; } .ds-tool h3 { margin: 0; font-size: 15px; font-weight: 800; line-height: 1.2; text-wrap: balance; } .ds-tool p { margin: 0; color: #555b70; font-size: 11px; line-height: 1.38; } .ds-tool__arrow { position: absolute; inset-inline-end: 9px; inset-block-end: 8px; width: 18px; height: 18px; color: #e8368f; } .ds-tool__arrow svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }"
+    },
+    {
+      "name": "Mentor Composer",
+      "kind": "input",
+      "refersTo": "mentor-field",
+      "description": "The honest, persistent mentor input with attach, voice, and live-call controls.",
+      "html": "<section class=\"ds-mentor\" aria-label=\"דברו עם המנטור\" dir=\"rtl\"><div class=\"ds-mentor__bar\"><button class=\"ds-mentor__round ds-mentor__round--live\" type=\"button\" aria-label=\"שיחת לייב עם אווטאר\"><svg aria-hidden=\"true\" viewBox=\"0 0 24 24\"><rect x=\"2\" y=\"7\" width=\"13\" height=\"10\" rx=\"2.5\"/><path d=\"m15 11 6-3.5v9L15 13z\"/></svg><span aria-hidden=\"true\" class=\"ds-mentor__live\">LIVE</span></button><span class=\"ds-mentor__divider\" aria-hidden=\"true\"></span><button class=\"ds-mentor__round\" type=\"button\" aria-label=\"הקלטה קולית\"><svg aria-hidden=\"true\" viewBox=\"0 0 24 24\"><rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0 0 14 0M12 18v3\"/></svg></button><input class=\"ds-mentor__field\" aria-label=\"הודעה למנטור\" placeholder=\"כתבי למנטור…\" type=\"text\"><button class=\"ds-mentor__round\" type=\"button\" aria-label=\"הוספת קובץ\"><svg aria-hidden=\"true\" viewBox=\"0 0 24 24\"><path d=\"M12 6v12M6 12h12\"/></svg></button></div></section>",
+      "css": ".ds-mentor { display: grid; justify-items: center; padding-block-start: 4px; font-family: Heebo, Arial, sans-serif; color: #1d2645; } .ds-mentor__bar { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px; border: 2px solid #1d2645; border-radius: 999px; background: #fffdfc; } .ds-mentor__field { flex: 1; min-width: 0; min-height: 40px; padding: 0 14px; border: 1px solid #e7e3e9; border-radius: 999px; background: #f7f6f8; color: #1d2645; font: inherit; font-size: 13px; } .ds-mentor__round { position: relative; flex: none; display: grid; place-items: center; width: 40px; height: 40px; border: 1.5px solid #1d2645; border-radius: 999px; background: #fffdfc; color: #1d2645; cursor: pointer; } .ds-mentor__round svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } .ds-mentor__divider { flex: none; width: 1px; align-self: stretch; margin-inline: 2px; background: #e7e3e9; } .ds-mentor__live { position: absolute; inset-block-start: -6px; inset-inline-end: -8px; padding: 1px 5px; border-radius: 999px; background: #e5322b; color: #fff; font-size: 8.5px; font-weight: 800; letter-spacing: .04em; } .ds-mentor__round:hover { background: #fffdfc; } .ds-mentor__round:active { background: #fffdfc; } .ds-mentor__round:focus-visible { outline: 3px solid color-mix(in srgb, #e8368f 64%, white); outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Attentive Co-Manager",
+    "overview": "Minene Cockpit feels like a capable partner who has prepared the manager's desk before she arrives: personal without becoming chatty clutter, polished without becoming corporate, and supportive without hiding direct access to the work. The shipped world uses a calm editorial reading order, warm near-white layers, navy Hebrew hierarchy, and a deliberately scarce pink accent to turn attention into one useful next step.\n\nThe interface is feminine, human, and managerial rather than decorative. Lifestyle photography supplies real-world context; precise line icons, quiet surfaces, and generous breathing room keep the experience operational. The approved home establishes the expression: welcome the manager, make one recommendation legible, organize the practical catalog, then keep the mentor composer within reach.",
+    "keyCharacteristics": [
+      "Hebrew-first RTL hierarchy with one clear focus at a time.",
+      "Warm near-white surfaces grounded by Minene navy and selective pink.",
+      "Lifestyle photography paired with restrained, consistent line icons.",
+      "Airy page rhythm with dense choices grouped into calm, legible regions.",
+      "Tonal separation and hairline borders, with elevation reserved for the outer shell."
+    ],
+    "rules": [
+      { "name": "The Pink Has a Job Rule", "body": "Pink identifies Minene, current state, or a meaningful action; it is never scattered as decoration across every component.", "section": "colors" },
+      { "name": "The Near-White Layer Rule", "body": "Warm Surface, Feature Surface, Tool Surface, and Field Surface may separate adjacent regions, but their differences stay subtle enough that the product still reads as one prepared workspace.", "section": "colors" },
+      { "name": "The Hebrew First Rule", "body": "Type scale, wrapping, alignment, icon direction, and line length are resolved in Hebrew RTL first; LTR assumptions never define the composition.", "section": "typography" },
+      { "name": "The Weight Carries Hierarchy Rule", "body": "Use Heebo's weight and controlled scale to create authority; do not add a second display face merely to manufacture personality.", "section": "typography" },
+      { "name": "The Bounded Workspace Rule", "body": "Desktop space frames the mobile management product; it does not stretch touch-oriented controls across the browser.", "section": "layout" },
+      { "name": "The Useful Step First Rule", "body": "On guided entry surfaces, reveal the prepared recommendation before the complete catalog while keeping direct tool access in the same scroll.", "section": "layout" },
+      { "name": "The Quiet Depth Rule", "body": "If a border, tonal shift, or clipped photograph already explains hierarchy, do not add a shadow.", "section": "elevation" },
+      { "name": "The Soft, Not Toy-Like Rule", "body": "Rounded geometry should feel welcoming and controlled; avoid bubbly proportions, excessive pills, or thick cartoon outlines outside compact controls.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do lead Hebrew RTL layouts with a single legible management priority, then keep practical alternatives close.",
+      "Do preserve the official Minene logo, Heebo hierarchy, navy authority, warm near-whites, and restrained pink action cues.",
+      "Do use real or properly licensed lifestyle photography with a thoughtful, credible management context.",
+      "Do keep line-icon stroke, optical size, rounded joins, and pink-accent behavior consistent across a set.",
+      "Do preserve 44px touch targets, visible focus treatment, safe-area behavior, and narrow-screen reflow.",
+      "Do make recommendation, personalization, unavailable-action, and mentor states honest about their real data and capability."
+    ],
+    "donts": [
+      "Don't flatten a guided entry surface into an undifferentiated launcher grid where every action competes equally.",
+      "Don't replace lifestyle photography with generic gradients, decorative glass, or an unrelated illustration style.",
+      "Don't turn every warm surface into a bordered, shadowed floating card.",
+      "Don't use pink as ambient decoration or let Live Red become a second brand accent.",
+      "Don't invent routes, recommendations, profile data, or working AI behavior to make a visual state appear complete.",
+      "Don't let pale text, thin icons, or compact labels fall below accessible contrast or touch-size requirements."
+    ]
+  }
+}

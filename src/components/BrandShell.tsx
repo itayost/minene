@@ -125,16 +125,20 @@ export function BrandShell({
           inert={isModalOpen ? true : undefined}
           onClickCapture={isModalOpen ? blockBackgroundClick : undefined}
         >
-          <header className={`app-header ${isHome ? 'app-header--home' : 'app-header--inner'}`}>
+          <header className={`app-header ${isHome ? 'app-header--home' : 'app-header--inner'}${isHome && brand.id === 'minene' ? ' app-header--minene-home' : ''}`}>
             {isHome ? (
-              <>
-                <span className="app-header__spacer" aria-hidden="true" />
-                <div className="brand-lockup">
-                  <img className="brand-lockup__logo" src={brand.logo.src} alt="" />
-                  <span className="brand-lockup__name">{brand.name}</span>
-                </div>
-                <span className="app-header__spacer" aria-hidden="true" />
-              </>
+              brand.id === 'minene' ? (
+                <img className="app-header__home-logo" src={brand.logo.src} alt={brand.logo.alt} />
+              ) : (
+                <>
+                  <span className="app-header__spacer" aria-hidden="true" />
+                  <div className="brand-lockup">
+                    <img className="brand-lockup__logo" src={brand.logo.src} alt="" />
+                    <span className="brand-lockup__name">{brand.name}</span>
+                  </div>
+                  <span className="app-header__spacer" aria-hidden="true" />
+                </>
+              )
             ) : (
               <>
                 <Link className="icon-button back-button" href={backHref} aria-label={brand.labels.back}>
@@ -160,9 +164,11 @@ export function BrandShell({
 
           <main className="shell-content">{children}</main>
 
-          <nav className="bottom-nav" aria-label={brand.labels.navigation}>
+          <nav className={`bottom-nav${brand.id === 'minene' ? ' bottom-nav--minene' : ''}`} aria-label={brand.labels.navigation}>
             <Link className="bottom-nav__action" href={homeHref} aria-current={isHome ? 'page' : undefined}>
-              {homeIcon}
+              {brand.id === 'minene'
+                ? <img src="/brands/minene/icons/navigation/home.png" alt="" />
+                : homeIcon}
               <span>{brand.labels.home}</span>
             </Link>
             {brand.tools.map((tool) => (

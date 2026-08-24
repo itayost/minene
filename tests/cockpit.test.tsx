@@ -16,12 +16,24 @@ const { default: CockpitPage } = await import('../app/[brandId]/page')
 const { VideoWizard } = await import('../app/[brandId]/cockpit/video/video-wizard')
 
 describe('the cockpit', () => {
-  it('offers all eight actions', async () => {
+  it('shows the approved eight-item tool catalog and daily recommendation', async () => {
     render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
 
-    expect(COCKPIT_ACTIONS).toHaveLength(8)
-    for (const action of COCKPIT_ACTIONS) {
-      expect(screen.getByText(action.subtitle)).toBeVisible()
+    expect(screen.queryByText('במה תרצי להתמקד היום?')).toBeNull()
+    expect(screen.getByRole('heading', { level: 1, name: 'יש לך שיחה חשובה בקרוב' })).toBeVisible()
+    expect(screen.getByRole('region', { name: 'יש לך שיחה חשובה בקרוב' })).toBeVisible()
+
+    for (const tool of [
+      'חיים אישיים',
+      'תכנית ופרוייקט',
+      'ניתוח נתונים',
+      'תרגילי הדרכה',
+      'עידוד ושכנוע',
+      'מנטורינג לעובדת',
+      'יצירת סרטון',
+      'יצירת תמונה',
+    ]) {
+      expect(screen.getByRole('heading', { name: tool })).toBeVisible()
     }
   })
 
@@ -36,15 +48,12 @@ describe('the cockpit', () => {
     }
   })
 
-  it('links only the flow that exists, and marks the rest unavailable', async () => {
+  it('keeps the wireframe catalog static without unavailable badges', async () => {
     render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
 
-    // A card that looks tappable and then 404s reads as a broken app.
-    const links = screen.getAllByRole('link')
-    expect(links).toHaveLength(1)
-    expect(links[0]).toHaveAttribute('href', `/${mineneBrand.id}/cockpit/video`)
-    // The other seven render, but as plain content: linking to a route that
-    // 404s is worse than not linking at all.
+    // This approved phase is visual structure only; navigation is deliberately
+    // deferred until the eight destination flows are defined.
+    expect(screen.queryAllByRole('link')).toHaveLength(0)
     expect(screen.queryAllByText('בקרוב')).toHaveLength(0)
   })
 

@@ -95,6 +95,23 @@ button {
   white-space: nowrap;
 }
 
+.app-header__home-logo {
+  width: 74px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.app-header--minene-home {
+  justify-content: center;
+  padding-inline: 20px;
+  background: #e5c6c7;
+  border-block-end: 0;
+}
+
+.app-header--minene-home .app-header__home-logo {
+  filter: grayscale(1) brightness(.28);
+}
+
 .icon-button {
   appearance: none;
   /* Colour is set below, so only the anchor underline needs clearing. */
@@ -570,6 +587,54 @@ button {
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.bottom-nav--minene {
+  margin: 0 12px calc(10px + env(safe-area-inset-bottom));
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgb(255 255 255 / 76%), rgb(241 232 224 / 54%));
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  backdrop-filter: blur(18px) saturate(1.15);
+}
+
+.bottom-nav--minene .bottom-nav__action {
+  color: #70635e;
+}
+
+.bottom-nav--minene .bottom-nav__action svg {
+  width: 26px;
+  height: 25px;
+}
+
+.bottom-nav--minene .bottom-nav__action img {
+  height: 24px;
+  transform: scale(1.35);
+  transform-origin: center;
+}
+
+.bottom-nav--minene .bottom-nav__action[aria-current='page'] {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+  color: #8f4859;
+}
+
+.bottom-nav--minene .bottom-nav__action[aria-current='page'] svg {
+  fill: currentColor;
+}
+
+.bottom-nav--minene .bottom-nav__action[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset-block: 0;
+  left: 50%;
+  width: 72px;
+  border-radius: 999px;
+  background: #ead0d1;
+  transform: translateX(-50%);
 }
 
 .brand-not-found {
@@ -1572,9 +1637,14 @@ a:focus-visible {
    put the answer. Deliberately unlabelled on screen -- the bar's own shape says
    what it is. */
 .mentor {
+  position: sticky;
+  z-index: 3;
+  inset-block-end: 0;
+  align-self: end;
   display: grid;
   justify-items: center;
-  padding-block-start: 4px;
+  padding-block-start: 8px;
+  background: linear-gradient(to top, var(--surface, #fffdfc) 78%, transparent);
 }
 
 .mentor__bar {
@@ -1583,9 +1653,10 @@ a:focus-visible {
   align-items: center;
   gap: 8px;
   padding: 8px;
-  border: 2px solid var(--text, #1d2645);
+  border: 0;
   border-radius: 999px;
-  background: var(--surface, #fffdfc);
+  background: #f1e8e0;
+  box-shadow: 0 8px 20px rgb(63 53 50 / 12%), 0 2px 6px rgb(143 72 89 / 8%);
 }
 
 .mentor__field {
@@ -1593,11 +1664,17 @@ a:focus-visible {
   min-width: 0;
   min-height: 40px;
   padding: 0 14px;
-  border: 1px solid var(--border, #e7e3e9);
+  border: 0;
   border-radius: 999px;
-  background: #f7f6f8;
+  background: #fffcf8;
+  color: #3f3532;
   font: inherit;
   font-size: 13px;
+  box-shadow: 0 3px 9px rgb(63 53 50 / 9%);
+}
+
+.mentor__field::placeholder {
+  color: #887c77;
 }
 
 .mentor__round {
@@ -1607,11 +1684,12 @@ a:focus-visible {
   place-items: center;
   width: 40px;
   height: 40px;
-  border: 1.5px solid var(--text, #1d2645);
+  border: 0;
   border-radius: 999px;
-  background: var(--surface, #fffdfc);
-  color: var(--text, #1d2645);
+  background: #ead0d1;
+  color: #3f3532;
   cursor: pointer;
+  box-shadow: 0 4px 10px rgb(63 53 50 / 11%), 0 1px 3px rgb(143 72 89 / 9%);
 }
 
 .mentor__round svg {
@@ -1619,36 +1697,243 @@ a:focus-visible {
   height: 20px;
 }
 
-.mentor__divider {
-  flex: none;
-  width: 1px;
-  align-self: stretch;
-  margin-inline: 2px;
-  background: var(--border, #e7e3e9);
-}
-
-.mentor__round--live {
-  border-color: var(--text, #1d2645);
-}
-
-.mentor__live {
-  position: absolute;
-  inset-block-start: -6px;
-  inset-inline-end: -8px;
-  padding: 1px 5px;
-  border-radius: 999px;
-  background: #e5322b;
-  color: #fff;
-  font-size: 8.5px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-}
-
 .mentor__notice {
   margin: 6px 0 0;
   font-size: 11.5px;
   color: var(--muted, #7d7885);
   text-align: center;
+}
+
+/* Approved Minene home wireframe. These rules intentionally follow the static
+   mockup while leaving the compact mentor composer above intact. */
+.cockpit {
+  --screen-enter-x: 8%;
+  grid-template-rows: auto auto minmax(64px, 1fr);
+  padding: 22px 20px 26px;
+  gap: 24px;
+  background: var(--surface, #fffdfc);
+  scrollbar-width: none;
+}
+
+.cockpit::-webkit-scrollbar {
+  display: none;
+}
+
+.cockpit-feature {
+  min-height: 194px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.22fr);
+  overflow: hidden;
+  border: 0;
+  border-radius: 16px;
+  background: #eee5dd;
+}
+
+.cockpit-feature__copy {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 19px 15px 17px 12px;
+}
+
+.cockpit-feature__label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--primary-strong, #c51f73);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cockpit-feature__label svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.cockpit-feature__copy h1 {
+  margin: 15px 0 0;
+  color: var(--text, #1d2645);
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.16;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.cockpit-feature__copy p {
+  margin: 10px 0 0;
+  color: #665a55;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.cockpit-feature__action {
+  margin-block-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--primary-strong, #c51f73);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.cockpit-feature__action svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cockpit-feature__visual {
+  position: relative;
+  min-width: 0;
+  min-height: 194px;
+  overflow: hidden;
+}
+
+.cockpit-feature__visual::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 24px;
+  background: linear-gradient(to left, #eee5dd, transparent);
+  pointer-events: none;
+}
+
+.cockpit-feature__visual img {
+  object-fit: cover;
+  object-position: center;
+}
+
+.cockpit-tools {
+  display: grid;
+  gap: 12px;
+}
+
+.cockpit-tools > h2 {
+  margin: 0;
+  color: var(--text, #1d2645);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.cockpit-tools__grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cockpit-tools__grid > li {
+  min-width: 0;
+  grid-column: span 2;
+}
+
+.cockpit-tools__grid > .cockpit-tools__item--compact {
+  grid-column: span 3;
+}
+
+.cockpit-tool {
+  position: relative;
+  height: 100%;
+  min-height: 130px;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  justify-items: center;
+  gap: 7px;
+  padding: 10px 9px 12px;
+  border-radius: 14px;
+  background: #f1e8e0;
+  text-align: center;
+}
+
+.cockpit-tool__icon {
+  width: 64px;
+  height: 64px;
+  align-self: center;
+}
+
+.cockpit-tool__icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.cockpit-tool h3 {
+  align-self: end;
+  margin: 0;
+  color: var(--text, #1d2645);
+  font-size: 13.5px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.cockpit-tool--compact {
+  min-height: 60px;
+  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-rows: 1fr;
+  align-items: center;
+  justify-items: start;
+  gap: 7px;
+  padding: 8px 10px;
+  text-align: start;
+  background: #ead0d1;
+}
+
+.cockpit-tool--compact .cockpit-tool__icon {
+  width: 42px;
+  height: 42px;
+}
+
+.cockpit-tool--compact h3 {
+  align-self: center;
+  font-size: 14px;
+}
+
+@media (max-width: 350px) {
+  .cockpit {
+    padding-inline: 14px;
+  }
+
+  .cockpit-feature {
+    grid-template-columns: 1fr;
+  }
+
+  .cockpit-feature__visual {
+    order: -1;
+    min-height: 138px;
+  }
+
+  .cockpit-feature__copy {
+    min-height: 205px;
+  }
+
+  .cockpit-tools__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cockpit-tools__grid > li,
+  .cockpit-tools__grid > .cockpit-tools__item--compact {
+    grid-column: span 1;
+  }
+
+  .cockpit-tool h3 {
+    font-size: 15px;
+  }
 }
 
 /* A single-page video brief: completed decisions compress into branded
