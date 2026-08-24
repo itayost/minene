@@ -1495,25 +1495,6 @@ a:focus-visible {
   gap: 14px;
 }
 
-.cockpit__intro {
-  display: grid;
-  gap: 2px;
-  text-align: center;
-}
-
-.cockpit__title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--text, #1d2645);
-}
-
-.cockpit__tagline {
-  margin: 0;
-  font-size: 13px;
-  color: var(--primary, #e8368f);
-}
-
 .cockpit__grid {
   margin: 0;
   padding: 0;

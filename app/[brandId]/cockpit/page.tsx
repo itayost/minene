@@ -16,10 +16,10 @@ export default async function CockpitPage({ params }: CockpitParams) {
 
   return (
     <div className="cockpit" dir="rtl">
-      <header className="cockpit__intro">
-        <h2 className="cockpit__title">הקוקפיט שלך כמנהלת חנות</h2>
-        <p className="cockpit__tagline">כל מה שאת צריכה – במקום אחד</p>
-      </header>
+      {/* Hidden, not removed. Without it the screen has no heading at all, so
+          the document outline and every screen reader see an unnamed grid of
+          eight links. ToolScreen does the same thing for the same reason. */}
+      <h2 className="visually-hidden">הקוקפיט שלך כמנהלת חנות</h2>
 
       <ul className="cockpit__grid" role="list">
         {COCKPIT_ACTIONS.map((action) => {
