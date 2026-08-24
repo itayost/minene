@@ -1663,6 +1663,33 @@ a:focus-visible {
   background: #fffdfc;
 }
 
+/* The shell cannot render a back control here: resolveScreen does not
+   recognise the cockpit paths, so this screen gets home chrome. The wizard
+   draws its own, sized like the shell's .back-button. */
+.wizard__back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 4px 2px;
+  color: var(--wizard-pink-strong);
+  font-size: 13px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.wizard__back svg {
+  /* flex: none matters — without it the chevron stretches to the flex line. */
+  flex: none;
+  width: 11px;
+  height: 18px;
+}
+
+[dir='ltr'] .wizard__back svg {
+  transform: scaleX(-1);
+}
+
 .wizard__intro {
   display: grid;
   justify-items: center;

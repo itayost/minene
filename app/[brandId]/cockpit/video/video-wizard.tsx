@@ -190,7 +190,7 @@ export function VideoWizard({ backHref }: { backHref: string }) {
           recognise this path, so the header falls back to home chrome with no
           back control, which would leave the browser button as the only exit. */}
       <Link className="wizard__back" href={backHref}>
-        <svg aria-hidden="true" viewBox="0 0 11 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <svg aria-hidden="true" width="11" height="18" viewBox="0 0 11 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <path d="m1.5 1.5 7.5 7.5-7.5 7.5" />
         </svg>
         <span>חזרה</span>

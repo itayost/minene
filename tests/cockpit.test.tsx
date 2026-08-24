@@ -77,6 +77,21 @@ describe('the video wizard', () => {
   const pick = async (user: ReturnType<typeof userEvent.setup>, label: string | RegExp) =>
     user.click(screen.getByRole('button', { name: label }))
 
+  it('offers a way back whose icon carries its own dimensions', () => {
+    // The shell renders home chrome on this path, so this link is the only exit.
+    // The icon is asserted to be intrinsically sized because it once shipped
+    // relying solely on a stylesheet rule, and when that rule went missing the
+    // chevron expanded to fill the screen and buried the wizard.
+    render(<VideoWizard backHref="/minene" />)
+
+    const back = screen.getByRole('link', { name: 'חזרה' })
+    expect(back).toHaveAttribute('href', '/minene')
+
+    const icon = back.querySelector('svg')
+    expect(icon).toHaveAttribute('width', '11')
+    expect(icon).toHaveAttribute('height', '18')
+  })
+
   it('reveals one decision at a time and keeps completed answers editable', async () => {
     const user = userEvent.setup()
     render(<VideoWizard backHref="/minene" />)

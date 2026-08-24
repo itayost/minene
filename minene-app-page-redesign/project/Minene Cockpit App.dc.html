@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #E9E9EE; }
+  a { color: #E8368F; text-decoration: none; }
+  a:hover { color: #C51F73; }
+  @keyframes mnSlide { from { opacity: 0; transform: translateX(-8%); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes mnSheet { from { transform: translateY(101%); } to { transform: translateY(0); } }
+  @keyframes mnSpin { to { transform: rotate(360deg); } }
+</style>
+</helmet>
+<div style="{{ stageStyle }}">
+  <div style="{{ shellStyle }}">
+    <div style="height:100%;display:flex;flex-direction:column;background:#FFFDFC;direction:rtl;font-family:Heebo,-apple-system,BlinkMacSystemFont,Arial,sans-serif;overflow:hidden;position:relative;">
+
+      <div style="flex-shrink:0;height:42px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 3px;font-size:13px;font-weight:700;color:#1D2645;direction:ltr;">
+        <span>9:41</span>
+        <span style="display:flex;gap:5px;align-items:center;">
+          <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#1D2645"></rect><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#1D2645"></rect><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#1D2645"></rect><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#1D2645"></rect></svg>
+          <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="0.5" width="19" height="11" rx="3" fill="none" stroke="#1D2645" stroke-opacity="0.45"></rect><rect x="2" y="2" width="14" height="8" rx="1.8" fill="#1D2645"></rect><path d="M21.5 4v4a2.2 2.2 0 000-4z" fill="#1D2645" fill-opacity="0.45"></path></svg>
+        </span>
+      </div>
+
+      <div style="flex-shrink:0;padding:4px 12px 10px;background:#FFFDFC;border-bottom:1px solid rgba(29,38,69,0.07);">
+        <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <button onClick="{{ toggleFull }}" title="מסך מלא" style="all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:4px;padding:10px;cursor:pointer;">
+              <span style="display:block;width:19px;height:2.5px;border-radius:2px;background:#E8368F;"></span>
+              <span style="display:block;width:19px;height:2.5px;border-radius:2px;background:#E8368F;"></span>
+              <span style="display:block;width:12px;height:2.5px;border-radius:2px;background:#E8368F;"></span>
+            </button>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
+              <svg width="32" height="24" viewBox="0 0 34 26" fill="none"><path d="M17 24C13 19.5 3 14.4 3 8.6 3 4.9 5.9 2 9.5 2c3 0 5.6 2 7.5 5.2C18.9 4 21.5 2 24.5 2 28.1 2 31 4.9 31 8.6 31 14.4 21 19.5 17 24z" stroke="#E8368F" stroke-width="2.6" stroke-linejoin="round"></path></svg>
+              <div style="display:flex;align-items:baseline;gap:6px;direction:ltr;">
+                <span style="font-size:14px;font-weight:900;color:#E8368F;letter-spacing:1.1px;">MINENE</span>
+                <span style="font-size:14px;font-weight:900;color:#1D2645;letter-spacing:1.1px;">COCKPIT</span>
+              </div>
+            </div>
+            <div style="width:39px;"></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isInner }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+            <button onClick="{{ goBack }}" style="all:unset;box-sizing:border-box;display:flex;align-items:center;padding:10px;cursor:pointer;">
+              <svg width="11" height="18" viewBox="0 0 11 18" fill="none"><path d="M1.5 1.5L9 9l-7.5 7.5" stroke="#E8368F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </button>
+            <div style="flex:1;min-width:0;text-align:center;">
+              <div style="font-size:15.5px;font-weight:800;color:#1D2645;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ headerTitle }}</div>
+              <div style="font-size:11px;font-weight:500;color:#AEA9B4;">{{ headerSub }}</div>
+            </div>
+            <button onClick="{{ openSheet }}" style="all:unset;box-sizing:border-box;display:flex;align-items:center;padding:10px;cursor:pointer;">
+              <svg width="17" height="19" viewBox="0 0 18 20" fill="none"><circle cx="13.5" cy="4.5" r="2.9" stroke="#E8368F" stroke-width="1.9"></circle><circle cx="4.5" cy="10" r="2.9" stroke="#E8368F" stroke-width="1.9"></circle><circle cx="13.5" cy="15.5" r="2.9" stroke="#E8368F" stroke-width="1.9"></circle><path d="M11.1 6L7 8.6M7 11.4l4.1 2.6" stroke="#E8368F" stroke-width="1.7"></path></svg>
+            </button>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="flex:1;min-height:0;position:relative;background:#FFFDFC;">
+
+        <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;padding:14px 13px 18px;">
+
+              <button onClick="{{ h0 }}" style="all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:6px;background:#fef2f6;border-radius:19px;padding:13px;min-height:126px;cursor:pointer;transition:transform .12s ease;" style-active="transform:scale(0.965)">
+                <span style="flex:1;text-align:right;font-size:16.5px;font-weight:800;color:#1D2645;line-height:1.25;">משימות יומיות</span>
+                <img src="icons/tasks.png" alt="" style="width:58px;height:58px;object-fit:contain;flex-shrink:0;" />
+              </button>
+
+              <button onClick="{{ h1 }}" style="all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:6px;background:#fcf4f0;border-radius:19px;padding:13px;min-height:126px;cursor:pointer;transition:transform .12s ease;" style-active="transform:scale(0.965)">
+                <span style="flex:1;text-align:right;font-size:16.5px;font-weight:800;color:#1D2645;line-height:1.25;">לשמור על עצמי</span>
+                <img src="icons/self.png" alt="" style="width:58px;height:58px;object-fit:contain;flex-shrink:0;" />
+              </button>
+
+              <button onClick="{{ h2 }}" style="all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:6px;background:#f8f9f8;border-radius:19px;padding:13px;min-height:126px;cursor:pointer;transition:transform .12s ease;" style-active="transform:scale(0.965)">
+                <span style="flex:1;text-align:right;font-size:16.5px;font-weight:800;color:#1D2645;line-height:1.25;">אנרגיות, הטעינה</span>
+                <img src="icons/energy.png" alt="" style="width:58px;height:58px;object-fit:contain;flex-shrink:0;" />
+              </button>
+
+              <button onClick="{{ h3 }}" style="all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:6px;background:#f9f5fa;border-radius:19px;padding:13px;min-height:126px;cursor:pointer;transition:transform .12s ease;" style-active="transform:scale(0.965)">
+                <span style="flex:1;text-align:right;font-size:16.5px;font-weight:800;color:#1D2645;line-height:1.25;">הכי חשוב</span>
+                <img src="icons/top.png" alt="" style="width:58px;height:58px;object-fit:contain;flex-shrink:0;" />
+              </button>
+
+              <button onClick="{{ h4 }}" style="all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:6px;background:#f9f9fc;border-radius:19px;padding:13px;min-height:126px;cursor:pointer;transition:transform .12s ease;" style-active="transform:scale(0.965)">
+                <span style="flex:1;text-align:right;font-size:16.5px;font-weight:800;color:#1D2645;line-height:1.25;">תוכנית חנות שנתית</span>
+                <img src="icons/plan.png" alt="" style="width:58px;height:58px;object-fit:contain;flex-shrink:0;" />
+              </button>
+
+              <button onClick="{{ h5 }}" style="all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:6px;background:#fdf9f6;border-radius:19px;padding:13px;min-height:126px;cursor:pointer;transition:transform .12s ease;" style-active="transform:scale(0.965)">
+                <span style="flex:1;text-align:right;font-size:16.5px;font-weight:800;color:#1D2645;line-height:1.25;">תוצאות</span>
+                <img src="icons/results.png" alt="" style="width:58px;height:58px;object-fit:contain;flex-shrink:0;" />
+              </button>
+
+              <button onClick="{{ h6 }}" style="all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:6px;background:#fdf8f9;border-radius:19px;padding:13px;min-height:126px;cursor:pointer;transition:transform .12s ease;" style-active="transform:scale(0.965)">
+                <span style="flex:1;text-align:right;font-size:16.5px;font-weight:800;color:#1D2645;line-height:1.25;">שימור עובדים וגיוס</span>
+                <img src="icons/people.png" alt="" style="width:58px;height:58px;object-fit:contain;flex-shrink:0;" />
+              </button>
+
+              <button onClick="{{ h7 }}" style="all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:6px;background:#f8f6fc;border-radius:19px;padding:13px;min-height:126px;cursor:pointer;transition:transform .12s ease;" style-active="transform:scale(0.965)">
+                <span style="flex:1;text-align:right;font-size:16.5px;font-weight:800;color:#1D2645;line-height:1.25;">הדרכה</span>
+                <img src="icons/training.png" alt="" style="width:58px;height:58px;object-fit:contain;flex-shrink:0;" />
+              </button>
+
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isMenu }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;overflow-y:auto;animation:mnSlide .26s ease both;background:linear-gradient(180deg,#FFFDFC 0%,#FFF7FA 100%);">
+            <div style="padding:14px 18px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+              <svg width="52" height="40" viewBox="0 0 34 26" fill="none"><path d="M17 24C13 19.5 3 14.4 3 8.6 3 4.9 5.9 2 9.5 2c3 0 5.6 2 7.5 5.2C18.9 4 21.5 2 24.5 2 28.1 2 31 4.9 31 8.6 31 14.4 21 19.5 17 24z" stroke="#DE2C7F" stroke-width="2.8" stroke-linejoin="round"></path></svg>
+              <div style="font-size:27px;font-weight:900;color:#DE2C7F;line-height:1.1;text-align:center;">{{ menuTitle }}</div>
+              <svg width="180" height="16" viewBox="0 0 180 16" fill="none"><path d="M4 12C40 4 140 3 176 9" stroke="#DE2C7F" stroke-width="4.5" stroke-linecap="round"></path></svg>
+            </div>
+            <div style="padding:14px 15px 22px;display:flex;flex-direction:column;gap:13px;">
+              <sc-for list="{{ menuItems }}" as="item" hint-placeholder-count="3">
+                <button onClick="{{ item.open }}" style="all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;background:#FDEFF5;border-radius:20px;padding:15px 16px;min-height:78px;cursor:pointer;transition:transform .12s ease;" style-active="transform:scale(0.985)">
+                  <svg width="13" height="21" viewBox="0 0 11 18" fill="none" style="flex-shrink:0;transform:rotate(180deg);"><path d="M1.5 1.5L9 9l-7.5 7.5" stroke="#DE2C7F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  <span style="flex:1;text-align:center;font-size:18px;font-weight:800;color:#1D2645;line-height:1.25;">{{ item.label }}</span>
+                  <span style="width:56px;height:56px;border-radius:50%;background:#F1A9C8;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                    <img src="{{ item.icon }}" alt="" style="width:34px;height:34px;object-fit:contain;" />
+                  </span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isPages }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;animation:mnSlide .26s ease both;">
+            <div onTouchStart="{{ onTouchStart }}" onTouchEnd="{{ onTouchEnd }}" style="flex:1;min-height:0;overflow:auto;background:#FFFFFF;touch-action:pinch-zoom pan-y;position:relative;">
+              <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#FFFDFC;z-index:2;">
+                  <span style="width:34px;height:34px;border-radius:50%;border:3px solid #F7D6E5;border-top-color:#E8368F;animation:mnSpin .8s linear infinite;display:block;"></span>
+                </div>
+              </sc-if>
+              <img src="{{ pageSrc }}" alt="" onLoad="{{ onImgLoad }}" style="display:block;width:100%;height:auto;" />
+            </div>
+            <div style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;background:#FFFDFC;border-top:1px solid rgba(29,38,69,0.06);">
+              <sc-for list="{{ dots }}" as="d" hint-placeholder-count="4">
+                <button onClick="{{ d.go }}" style="{{ d.style }}"></button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isTab }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;overflow-y:auto;animation:mnSlide .26s ease both;">
+            <div style="padding:18px 16px 24px;">
+              <div style="font-size:12px;font-weight:700;color:#E8368F;letter-spacing:0.4px;margin-bottom:12px;">{{ tabNote }}</div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <sc-for list="{{ tabItems }}" as="t" hint-placeholder-count="8">
+                  <div style="display:flex;align-items:flex-start;gap:10px;background:#FBF7F9;border-radius:14px;padding:13px 14px;">
+                    <span style="width:7px;height:7px;border-radius:50%;background:#E8368F;flex-shrink:0;margin-top:7px;"></span>
+                    <span style="flex:1;font-size:15px;font-weight:600;color:#1D2645;line-height:1.4;">{{ t.text }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:rgba(29,38,69,0.35);z-index:5;display:flex;align-items:flex-end;">
+            <div style="width:100%;background:#FFFFFF;border-radius:22px 22px 0 0;padding:10px 14px 18px;animation:mnSheet .22s ease both;">
+              <div style="width:38px;height:4px;border-radius:3px;background:#E7E3E9;margin:0 auto 12px;"></div>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <button style="all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;cursor:pointer;" style-hover="background:#FDF1F6">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 13V3m0 0L6.5 6.5M10 3l3.5 3.5" stroke="#E8368F" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path><path d="M3.5 12.5v3a2 2 0 002 2h9a2 2 0 002-2v-3" stroke="#E8368F" stroke-width="1.9" stroke-linecap="round"></path></svg>
+                  <span style="font-size:15.5px;font-weight:700;color:#1D2645;">שיתוף</span>
+                </button>
+                <button style="all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;cursor:pointer;" style-hover="background:#FDF1F6">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3v10m0 0l3.5-3.5M10 13L6.5 9.5" stroke="#E8368F" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path><path d="M3.5 15.5v.5a2 2 0 002 2h9a2 2 0 002-2v-.5" stroke="#E8368F" stroke-width="1.9" stroke-linecap="round"></path></svg>
+                  <span style="font-size:15.5px;font-weight:700;color:#1D2645;">שמירה</span>
+                </button>
+                <button style="all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;cursor:pointer;" style-hover="background:#FDF1F6">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2.6a7.4 7.4 0 00-6.3 11.3L2.8 17.4l3.6-.9A7.4 7.4 0 1010 2.6z" stroke="#E8368F" stroke-width="1.8" stroke-linejoin="round"></path><path d="M7.4 7.2c.3-.5.6-.5.9-.5.3 0 .5.1.7.5l.4 1c.1.3 0 .5-.2.7l-.3.3c-.1.2-.1.3 0 .5.3.6.9 1.2 1.6 1.5.2.1.4.1.5-.1l.3-.3c.2-.2.4-.2.7-.1l1 .4c.3.2.4.4.4.7 0 .3-.1.6-.5.9-.3.2-.7.4-1.2.3-1-.1-2-.7-2.8-1.5-.8-.8-1.3-1.7-1.4-2.7-.1-.5.1-.9.3-1.1z" fill="#E8368F"></path></svg>
+                  <span style="font-size:15.5px;font-weight:700;color:#1D2645;">שליחה בוואטסאפ</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+
+      <div style="flex-shrink:0;display:flex;background:#FFFFFF;border-top:1px solid rgba(29,38,69,0.08);padding:7px 4px 8px;">
+        <button onClick="{{ goHome }}" style="all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;padding:6px 2px;cursor:pointer;">
+          <svg width="22" height="21" viewBox="0 0 23 22" fill="none"><path d="M2 9.5L11.5 2l9.5 7.5" stroke="{{ homeColor }}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path><path d="M4 8v11a1 1 0 001 1h13a1 1 0 001-1V8" stroke="{{ homeColor }}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <span style="font-size:10.5px;font-weight:700;color:{{ homeColor }};">בית</span>
+        </button>
+        <button onClick="{{ openCampaign }}" style="all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;padding:6px 2px;cursor:pointer;">
+          <img src="icons/campaign.png" alt="" style="height:20px;width:auto;object-fit:contain;" />
+          <span style="font-size:10.5px;font-weight:700;color:{{ campaignColor }};">קמפיינר</span>
+        </button>
+        <button onClick="{{ openPersuade }}" style="all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;padding:6px 2px;cursor:pointer;">
+          <img src="icons/negotiate.png" alt="" style="height:20px;width:auto;object-fit:contain;" />
+          <span style="font-size:10.5px;font-weight:700;color:{{ persuadeColor }};">משכנע</span>
+        </button>
+        <button onClick="{{ openBrain }}" style="all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;padding:6px 2px;cursor:pointer;">
+          <img src="icons/brain.png" alt="" style="height:20px;width:auto;object-fit:contain;" />
+          <span style="font-size:10.5px;font-weight:700;color:{{ brainColor }};">מוח ארגני</span>
+        </button>
+      </div>
+
+      <div style="flex-shrink:0;display:flex;justify-content:center;padding:5px 0 7px;background:#FFFFFF;">
+        <span style="width:118px;height:4.5px;border-radius:3px;background:#1D2645;opacity:0.25;display:block;"></span>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:520,&quot;height&quot;:980}}">
+const P = n => `pdfimg/p${String(n).padStart(2,'0')}_0.png`;
+
+const SECTIONS = {
+  tasks:  { label: 'משימות יומיות', groups: [{ label: 'משימות יומיות', icon: 'icons/tasks.png', pages: [10] }] },
+  self:   { label: 'לשמור על עצמי', groups: [{ label: 'לשמור על עצמי', icon: 'icons/self.png', pages: [8] }] },
+  energy: { label: 'אנרגיות, הטעינה', groups: [{ label: 'אנרגיות, הטעינה', icon: 'icons/energy.png', pages: [16] }] },
+  top:    { label: 'הכי חשוב', groups: [{ label: 'הכי חשוב', icon: 'icons/top.png', pages: [12, 13, 14] }] },
+  plan:   { label: 'תוכנית חנות שנתית', groups: [{ label: 'תוכנית חנות שנתית', icon: 'icons/plan.png', pages: [18] }] },
+  results: { label: 'תוצאות', groups: [
+    { label: 'סקירה כללית', icon: 'icons/results.png', pages: [20] },
+    { label: 'עמידה ביעד, ומה חורג', icon: 'icons/results.png', pages: [21, 22] },
+    { label: 'יחס המרה, סל קניה, טראפיק', icon: 'icons/results.png', pages: [23, 24, 25] },
+    { label: 'הוצאות – שכר עבודה', icon: 'icons/results.png', pages: [26, 27] }
+  ] },
+  people: { label: 'שימור עובדים וגיוס', groups: [
+    { label: 'חבילת ערך לעובדת', icon: 'icons/people.png', pages: [86, 42, 43, 44, 45, 46, 47, 48] },
+    { label: 'עידוד עובדות', icon: 'icons/people.png', pages: [87, 88, 89, 36, 37, 39, 40, 41] },
+    { label: 'גיוס וקליטת עובדת חדשה', icon: 'icons/people.png', pages: [49, 51, 52, 53, 54] },
+    { label: 'ניהול קושי ושגרות ניהול', icon: 'icons/people.png', pages: [55, 57, 58, 59, 60, 61, 62] }
+  ] },
+  training: { label: 'הדרכה', groups: [
+    { label: 'תפריט הדרכה', icon: 'icons/training.png', pages: [65] },
+    { label: 'הדרכת תפקיד', icon: 'icons/training.png', pages: [66, 68, 69, 70] },
+    { label: 'דפי מוצר', icon: 'icons/training.png', pages: [72, 73, 74, 75, 76, 77] },
+    { label: 'הדרכה למקצוענות', icon: 'icons/training.png', pages: [78, 80] },
+    { label: 'הדרכת AI', icon: 'icons/training.png', pages: [81] }
+  ] }
+};
+
+const ORDER = ['tasks', 'self', 'energy', 'top', 'plan', 'results', 'people', 'training'];
+
+const TABS = {
+  campaign: { label: 'קמפיינר', note: 'תצוגה מקדימה – התכנים מתוך המסמך', items: [
+    'תבחרי נושא לקדם בצוות שלך',
+    'רוצה סרטון חד פעמי? תמונה חד פעמית?',
+    'רוצה קמפיין של שבוע, כל יום סרטון או תמונה?',
+    'נושא: מה יוצא לך ממיננה?',
+    'מכירת מוצר ספציפי',
+    'תרגיל אנרגיות טיל',
+    'פי 2 בטחון עצמי',
+    'חיבור למכירות',
+    'חששות ותשובות',
+    'שיפור יחס המרה',
+    'שיפור סל קניה',
+    'סטנדרד גבוה',
+    'המותג שלנו',
+    'עידוד עובדות',
+    'בחירת דמות וסגנון: אירופאי / ישראלי, בחור / בחורה, מבוגר / צעיר',
+    'מתלהב / רגוע, שפה גבוהה / עממית, בחנות / במקום אחר'
+  ] },
+  persuade: { label: 'משכנע', note: 'תצוגה מקדימה – התכנים מתוך המסמך', items: [
+    'לחייך',
+    'לעזוב טלפון',
+    'לקבל לקוחה בכניסה (משפיע על יחס המרה)',
+    'לתרגל אנרגיות טיל',
+    'ללמוד מוצרים',
+    'סל קניה – להציע מוצר',
+    'שימור – להישאר עוד',
+    'גיוס – להצטרף אלינו',
+    'פולואפ אישי: תזכורת לשתות מים',
+    'תזכורת לאכול בריא',
+    'לשלוח וואטסאפ לצוות שלי',
+    'להציע מוצרים / אפסייל'
+  ] },
+  brain: { label: 'מוח ארגני', note: 'תצוגה מקדימה – התכנים מתוך המסמך', items: [
+    'גיוס ידע בקרב 1500 סניפים',
+    'גידול בידע ב-13% לשבוע',
+    'כל הסניפים בטבלה',
+    'כל ידיעה נשמר אצלנו',
+    'עושי / אל תעשי',
+    'מקרים ותגובות',
+    'הגדרות המשקי',
+    'צ׳ק ליסט מקצועי',
+    'איך למדוד דברים',
+    'מה בד״כ מסתמסמים'
+  ] }
+};
+
+class Component extends DCLogic {
+  state = { view: 'home', section: null, group: 0, index: 0, loading: true, sheetOpen: false, full: false, resume: {} };
+
+  componentDidMount() {
+    try {
+      const raw = localStorage.getItem('minene.cockpit.resume');
+      if (raw) this.setState({ resume: JSON.parse(raw) });
+    } catch (e) {}
+  }
+
+  saveResume(key, index) {
+    const resume = { ...this.state.resume, [key]: index };
+    this.setState({ resume });
+    try { localStorage.setItem('minene.cockpit.resume', JSON.stringify(resume)); } catch (e) {}
+  }
+
+  openSection(key) {
+    const sec = SECTIONS[key];
+    if (sec.groups.length === 1) return this.openGroup(key, 0);
+    this.setState({ view: 'menu', section: key, sheetOpen: false });
+  }
+
+  openGroup(section, group) {
+    const k = section + '/' + group;
+    const saved = this.state.resume[k] || 0;
+    this.setState({ view: 'pages', section, group, index: saved, loading: true, sheetOpen: false });
+  }
+
+  step(dir) {
+    const pages = SECTIONS[this.state.section].groups[this.state.group].pages;
+    const next = this.state.index + dir;
+    if (next < 0 || next >= pages.length) return;
+    this.setState({ index: next, loading: true });
+    this.saveResume(this.state.section + '/' + this.state.group, next);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const sec = st.section ? SECTIONS[st.section] : null;
+    const grp = sec && st.view === 'pages' ? sec.groups[st.group] : null;
+    const pages = grp ? grp.pages : [];
+
+    const stageStyle = st.full
+      ? 'position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:50;'
+      : 'min-height:100vh;display:flex;align-items:center;justify-content:center;background:#E9E9EE;padding:32px 20px;';
+
+    const shellStyle = st.full
+      ? 'width:100%;max-width:520px;height:100%;background:#FFFDFC;overflow:hidden;'
+      : 'width:402px;height:846px;border-radius:44px;background:#FFFDFC;overflow:hidden;box-shadow:0 0 0 11px #0F1220, 0 0 0 13px #2A2E3E, 0 26px 60px rgba(15,18,32,0.34);';
+
+    const tab = TABS[st.section] || null;
+
+    return {
+      stageStyle, shellStyle,
+      isHome: st.view === 'home',
+      isMenu: st.view === 'menu',
+      isPages: st.view === 'pages',
+      isTab: st.view === 'tab',
+      isInner: st.view !== 'home',
+      loading: st.loading,
+      sheetOpen: st.sheetOpen,
+      pageSrc: pages.length ? P(pages[st.index]) : '',
+      headerTitle: st.view === 'tab' ? (tab ? tab.label : '') : (sec ? sec.label : ''),
+      headerSub: st.view === 'pages'
+        ? (sec && sec.groups.length > 1 ? grp.label + ' · ' + (st.index + 1) + ' / ' + pages.length : (st.index + 1) + ' / ' + pages.length)
+        : (st.view === 'menu' ? sec.groups.length + ' נושאים' : ''),
+      menuTitle: sec ? sec.label : '',
+      tabNote: tab ? tab.note : '',
+      tabItems: tab ? tab.items.map((text, i) => ({ text, key: i })) : [],
+      menuItems: sec && st.view === 'menu' ? sec.groups.map((g, i) => ({
+        label: g.label,
+        icon: g.icon,
+        count: g.pages.length === 1 ? 'מסך אחד' : g.pages.length + ' מסכים',
+        open: () => this.openGroup(st.section, i)
+      })) : [],
+      dots: pages.map((p, i) => ({
+        go: () => { this.setState({ index: i, loading: true }); this.saveResume(st.section + '/' + st.group, i); },
+        style: 'all:unset;box-sizing:border-box;display:block;cursor:pointer;border-radius:99px;transition:all .18s ease;'
+          + (i === st.index ? 'width:20px;height:7px;background:#E8368F;' : 'width:7px;height:7px;background:#EFD7E3;')
+      })),
+      onImgLoad: () => this.setState({ loading: false }),
+      onTouchStart: (e) => { this._x = e.touches[0].clientX; this._y = e.touches[0].clientY; },
+      onTouchEnd: (e) => {
+        if (this._x == null || e.touches.length) return;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - this._x, dy = t.clientY - this._y;
+        this._x = null;
+        if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4) this.step(dx > 0 ? -1 : 1);
+      },
+      goBack: () => {
+        if (st.view === 'pages' && SECTIONS[st.section] && SECTIONS[st.section].groups.length > 1) {
+          this.setState({ view: 'menu', sheetOpen: false });
+        } else {
+          this.setState({ view: 'home', section: null, sheetOpen: false });
+        }
+      },
+      goHome: () => this.setState({ view: 'home', section: null, sheetOpen: false }),
+      openSheet: () => this.setState({ sheetOpen: true }),
+      closeSheet: () => this.setState({ sheetOpen: false }),
+      toggleFull: () => this.setState({ full: !st.full }),
+      openCampaign: () => this.setState({ view: 'tab', section: 'campaign', sheetOpen: false }),
+      openPersuade: () => this.setState({ view: 'tab', section: 'persuade', sheetOpen: false }),
+      openBrain: () => this.setState({ view: 'tab', section: 'brain', sheetOpen: false }),
+      homeColor: st.view === 'home' ? '#E8368F' : '#9A96A0',
+      campaignColor: st.section === 'campaign' ? '#E8368F' : '#9A96A0',
+      persuadeColor: st.section === 'persuade' ? '#E8368F' : '#9A96A0',
+      brainColor: st.section === 'brain' ? '#E8368F' : '#9A96A0',
+      h0: () => this.openSection('tasks'),
+      h1: () => this.openSection('self'),
+      h2: () => this.openSection('energy'),
+      h3: () => this.openSection('top'),
+      h4: () => this.openSection('plan'),
+      h5: () => this.openSection('results'),
+      h6: () => this.openSection('people'),
+      h7: () => this.openSection('training')
+    };
+  }
+}
+</script>
+</body>
+</html>
