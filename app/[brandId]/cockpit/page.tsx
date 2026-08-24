@@ -25,10 +25,12 @@ export default async function CockpitPage({ params }: CockpitParams) {
           const style = { '--card-color': action.cardColor, '--card-accent': action.accent } as CardStyle
           const body = (
             <>
+              {/* Headline and icon only, matching the home grid's density. The
+                  description is the action's own copy and belongs on its screen,
+                  not crowded onto a card the reader is scanning. */}
               <span className="cockpit-card__text">
                 <span className="cockpit-card__title">{action.title}</span>
                 <span className="cockpit-card__subtitle">{action.subtitle}</span>
-                <span className="cockpit-card__description">{action.description}</span>
               </span>
               <img alt="" className="cockpit-card__icon" src={action.icon} />
             </>

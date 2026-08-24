@@ -1533,11 +1533,11 @@ a:focus-visible {
    text starts wherever the badge sat. */
 .cockpit-card {
   height: 100%;
-  min-height: 132px;
+  min-height: 126px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 13px;
   border: 0;
   border-radius: 19px;
@@ -1553,7 +1553,7 @@ a:focus-visible {
 }
 
 .cockpit-card__title {
-  font-size: 16.5px;
+  font-size: 17px;
   font-weight: 800;
   line-height: 1.15;
   color: var(--card-accent, #5b3fd6);
@@ -1561,24 +1561,16 @@ a:focus-visible {
 }
 
 .cockpit-card__subtitle {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
   line-height: 1.2;
   color: var(--text, #1d2645);
   text-align: start;
 }
 
-.cockpit-card__description {
-  margin-block-start: 3px;
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--muted, #7d7885);
-  text-align: start;
-}
-
 .cockpit-card__icon {
-  width: 46px;
-  height: 46px;
+  width: 54px;
+  height: 54px;
   object-fit: contain;
 }
 

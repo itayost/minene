@@ -2,6 +2,7 @@ export type CockpitAction = {
   number: number
   title: string
   subtitle: string
+  /** Not shown on the card. It is the action's own copy, for its screen. */
   description: string
   cardColor: string
   accent: string
