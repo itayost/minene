@@ -37,11 +37,16 @@ async function settle(page: import('@playwright/test').Page) {
   ))
 }
 
-test('home', async ({ page }) => {
-  await page.goto(mode === 'click' ? '/' : '/minene')
-  await settle(page)
-  await expect(page).toHaveScreenshot('home.png')
-})
+/*
+ * The `home` comparison is retired. /minene is the Brain cockpit now, so the
+ * screen those references captured does not exist to be compared against.
+ *
+ * This is retirement, not regeneration. The guards in playwright.config.ts and
+ * the visual:reference script exist to stop a reference being silently
+ * overwritten with post-conversion output; deleting one whose screen has been
+ * deliberately replaced is a different act, and the remaining fifteen stay a
+ * live gate over the three screens that still exist.
+ */
 
 test('subject chooser', async ({ page }) => {
   if (mode === 'click') {

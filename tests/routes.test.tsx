@@ -132,11 +132,15 @@ describe('route bodies', () => {
     expect(await redirectTarget(() => RootPage())).toBe('/minene')
   })
 
-  test('a brand home screen lists the brand subjects', async () => {
+  // The brand home is the Brain cockpit now, not the subject grid. The subject
+  // and group routes below still resolve by address -- nothing links to them
+  // from the home screen any more, which is what "the viewer retires" meant.
+  test('a brand home screen shows the cockpit rather than the brand subjects', async () => {
     render(await BrandHomePage({ params: Promise.resolve({ brandId: demoBrand.id }) }))
 
-    expect(screen.getByRole('link', { name: /Single subject/ })).toHaveAttribute('href', '/demo/single')
-    expect(screen.getByRole('link', { name: /Multiple subject/ })).toHaveAttribute('href', '/demo/multiple')
+    expect(screen.queryByRole('link', { name: /Single subject/ })).toBeNull()
+    expect(screen.queryByRole('link', { name: /Multiple subject/ })).toBeNull()
+    expect(screen.getByRole('heading', { name: 'הקוקפיט שלך כמנהלת חנות' })).toBeInTheDocument()
   })
 
   test('an unknown brand is not found', async () => {

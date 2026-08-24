@@ -12,7 +12,7 @@ vi.mock('../src/auth/require-brand', () => ({
   })),
 }))
 
-const { default: CockpitPage } = await import('../app/[brandId]/cockpit/page')
+const { default: CockpitPage } = await import('../app/[brandId]/page')
 const { VideoWizard } = await import('../app/[brandId]/cockpit/video/video-wizard')
 
 describe('the cockpit', () => {
@@ -79,7 +79,7 @@ describe('the video wizard', () => {
 
   it('reveals one decision at a time and keeps completed answers editable', async () => {
     const user = userEvent.setup()
-    render(<VideoWizard />)
+    render(<VideoWizard backHref="/minene" />)
 
     expect(screen.getByText('שלב 1 מתוך 4')).toBeVisible()
     expect(screen.getByRole('button', { name: /שלב 1.*בחרי נושא/ })).toHaveAttribute(
@@ -109,7 +109,7 @@ describe('the video wizard', () => {
 
   it('refuses to submit until all four choices are made', async () => {
     const user = userEvent.setup()
-    render(<VideoWizard />)
+    render(<VideoWizard backHref="/minene" />)
 
     const submit = screen.getByRole('button', { name: /השלימי את הבחירות.*נשארו 4 בחירות/ })
     expect(submit).toBeDisabled()
@@ -130,7 +130,7 @@ describe('the video wizard', () => {
 
   it('records style and length independently', async () => {
     const user = userEvent.setup()
-    render(<VideoWizard />)
+    render(<VideoWizard backHref="/minene" />)
 
     await pick(user, 'מכירות')
     await pick(user, 'שיציעו מוצר נוסף')
@@ -147,7 +147,7 @@ describe('the video wizard', () => {
 
   it('reports the choices back and does not claim a video exists', async () => {
     const user = userEvent.setup()
-    render(<VideoWizard />)
+    render(<VideoWizard backHref="/minene" />)
 
     await pick(user, 'שירות')
     await pick(user, 'שיחייכו יותר')

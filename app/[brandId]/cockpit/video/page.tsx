@@ -7,7 +7,7 @@ export const metadata = { title: 'יצירת סרטון הדרכה' }
 
 export default async function VideoPage({ params }: VideoParams) {
   const { brandId } = await params
-  await requireBrand(brandId)
+  const { brand } = await requireBrand(brandId)
 
-  return <VideoWizard />
+  return <VideoWizard backHref={`/${brand.id}`} />
 }
