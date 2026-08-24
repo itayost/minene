@@ -33,7 +33,8 @@ describe('the cockpit', () => {
       'יצירת סרטון',
       'יצירת תמונה',
     ]) {
-      expect(screen.getByRole('heading', { name: tool })).toBeVisible()
+      // Every card is a control: a link when it has a screen, a button otherwise.
+      expect(screen.getByRole(tool === 'יצירת סרטון' ? 'link' : 'button', { name: tool })).toBeVisible()
     }
   })
 
@@ -48,13 +49,39 @@ describe('the cockpit', () => {
     }
   })
 
-  it('keeps the wireframe catalog static without unavailable badges', async () => {
+  it('sends the video card to the brief wizard', async () => {
     render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
 
-    // This approved phase is visual structure only; navigation is deliberately
-    // deferred until the eight destination flows are defined.
-    expect(screen.queryAllByRole('link')).toHaveLength(0)
+    expect(screen.getByRole('link', { name: 'יצירת סרטון' })).toHaveAttribute(
+      'href',
+      `/${mineneBrand.id}/cockpit/video`,
+    )
+
+    // It is the only card with a screen behind it, so it is the only link.
+    expect(screen.queryAllByRole('link')).toHaveLength(1)
     expect(screen.queryAllByText('בקרוב')).toHaveLength(0)
+  })
+
+  it('admits a tool is not connected instead of ignoring a press', async () => {
+    const user = userEvent.setup()
+    render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
+
+    // A card that silently ignores a press reads as broken, and the whole grid
+    // did exactly that: every card was an <article>.
+    expect(screen.queryByText(/לא מחובר/)).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'ניתוח נתונים' }))
+    expect(screen.getByText(/הכלי הזה עדיין לא מחובר/)).toBeVisible()
+  })
+
+  it('gives the recommendation a control that can actually be pressed', async () => {
+    const user = userEvent.setup()
+    render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
+
+    // It shipped as a span: the most prominent control on the screen could not
+    // be focused or reached by keyboard.
+    const action = screen.getByRole('button', { name: 'התחילי הכנה' })
+    await user.click(action)
+    expect(screen.getByText(/הכלי הזה עדיין לא מחובר/)).toBeVisible()
   })
 
   it('closes with the mentor composer rather than a prompt with nowhere to answer', async () => {
