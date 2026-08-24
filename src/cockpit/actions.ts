@@ -23,7 +23,7 @@ export type CockpitAction = {
 export const COCKPIT_ACTIONS: readonly CockpitAction[] = [
   {
     number: 1,
-    icon: '/brands/minene/icons/campaign.png',
+    icon: '/brands/minene/icons/cockpit/create-training-video.png',
     title: 'ליצור',
     subtitle: 'סרטון הדרכה',
     description: 'צרי סרטון לעובדות על מוצר, מכירות, שירות, אנרגיות או כל מסר שחשוב לך.',
@@ -33,7 +33,7 @@ export const COCKPIT_ACTIONS: readonly CockpitAction[] = [
   },
   {
     number: 2,
-    icon: '/brands/minene/icons/training.png',
+    icon: '/brands/minene/icons/cockpit/create-training-image.png',
     title: 'ליצור',
     subtitle: 'תמונת הדרכה',
     description: 'הפכי מסר אחד לתמונה פשוטה וברורה שאפשר לשלוח מיד לצוות.',
@@ -42,7 +42,7 @@ export const COCKPIT_ACTIONS: readonly CockpitAction[] = [
   },
   {
     number: 3,
-    icon: '/brands/minene/icons/people.png',
+    icon: '/brands/minene/icons/cockpit/encourage-employees.png',
     title: 'לעודד',
     subtitle: 'את העובדות',
     description: 'פירגון, מוטיבציה, אנרגיות, חיזוק ביטחון או מסר לפתיחת ויום.',
@@ -51,7 +51,7 @@ export const COCKPIT_ACTIONS: readonly CockpitAction[] = [
   },
   {
     number: 4,
-    icon: '/brands/minene/icons/negotiate.png',
+    icon: '/brands/minene/icons/cockpit/persuade.png',
     title: 'לעשות',
     subtitle: 'לשכנע',
     description: 'מה החסם של העובדת? איך לרתום אותה לפעולה שאני רוצה.',
@@ -60,7 +60,7 @@ export const COCKPIT_ACTIONS: readonly CockpitAction[] = [
   },
   {
     number: 5,
-    icon: '/brands/minene/icons/results.png',
+    icon: '/brands/minene/icons/cockpit/analyze.png',
     title: 'לעשות',
     subtitle: 'לנתח',
     description: 'משהו לא עובד? למה? מה הסיבות? במה כדאי לטפל?',
@@ -69,7 +69,7 @@ export const COCKPIT_ACTIONS: readonly CockpitAction[] = [
   },
   {
     number: 6,
-    icon: '/brands/minene/icons/energy.png',
+    icon: '/brands/minene/icons/cockpit/team-exercise.png',
     title: 'לעשות',
     subtitle: 'תרגיל לצוות',
     description: 'תרגיל טיל, אנרגיות, שפת גוף, ביטחון עצמי או פינג-פונג מוצרים.',
@@ -78,7 +78,7 @@ export const COCKPIT_ACTIONS: readonly CockpitAction[] = [
   },
   {
     number: 7,
-    icon: '/brands/minene/icons/tasks.png',
+    icon: '/brands/minene/icons/cockpit/employee-conversation.png',
     title: 'לעשות',
     subtitle: 'בשיחה עם עובדת',
     description: 'הכנה לשיחה, משוב, גבולות, שימור, גיוס או התמודדות עם קושי.',
@@ -87,7 +87,7 @@ export const COCKPIT_ACTIONS: readonly CockpitAction[] = [
   },
   {
     number: 8,
-    icon: '/brands/minene/icons/self.png',
+    icon: '/brands/minene/icons/cockpit/personal-control.png',
     title: 'לעשות',
     subtitle: 'שליטה אישית',
     description: 'לעצור רגע בשבילי: אנרגיה, רוגע, עומס, נשימה, משפחה ואיך אני מגיעה ליום.',

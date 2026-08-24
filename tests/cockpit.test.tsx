@@ -28,13 +28,11 @@ describe('the cockpit', () => {
   it('gives every action its own icon', () => {
     const icons = COCKPIT_ACTIONS.map((action) => action.icon)
 
-    // Distinct, so no two actions are confusable at a glance. They are drawn
-    // from the brand's existing icon set rather than a dedicated cockpit folder:
-    // there is no cockpit artwork, and inventing a path for files that do not
-    // exist would ship eight broken images.
+    // Distinct, so no two actions are confusable at a glance, and cockpit-owned
+    // so the action set cannot silently drift back to generic home/tool artwork.
     expect(new Set(icons)).toHaveLength(8)
     for (const icon of icons) {
-      expect(icon).toMatch(/^\/brands\/minene\/icons\/[a-z-]+\.png$/)
+      expect(icon).toMatch(/^\/brands\/minene\/icons\/cockpit\/[a-z-]+\.png$/)
     }
   })
 
