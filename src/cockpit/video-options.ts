@@ -24,7 +24,7 @@ export const VIDEO_GOALS: readonly Choice<VideoGoal>[] = [
   { id: 'love-the-work', label: 'שיאהבו את מה שהן עושות' },
 ]
 
-/** Step 3 carries two choices rather than one: a style and a length. */
+/** The final two decisions shape the video's style and duration. */
 export const VIDEO_STYLES: readonly Choice<VideoStyle>[] = [
   { id: 'encouraging', label: 'מעודד' },
   { id: 'energetic', label: 'אנרגטי' },

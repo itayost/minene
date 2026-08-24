@@ -74,36 +74,75 @@ describe('the cockpit', () => {
 })
 
 describe('the video wizard', () => {
-  const pick = async (user: ReturnType<typeof userEvent.setup>, label: string) =>
+  const pick = async (user: ReturnType<typeof userEvent.setup>, label: string | RegExp) =>
     user.click(screen.getByRole('button', { name: label }))
+
+  it('reveals one decision at a time and keeps completed answers editable', async () => {
+    const user = userEvent.setup()
+    render(<VideoWizard />)
+
+    expect(screen.getByText('שלב 1 מתוך 4')).toBeVisible()
+    expect(screen.getByRole('button', { name: /שלב 1.*בחרי נושא/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(screen.queryByRole('button', { name: 'שיציעו מוצר נוסף' })).toBeNull()
+
+    await pick(user, 'מכירות')
+
+    expect(screen.getByText('שלב 2 מתוך 4')).toBeVisible()
+    expect(screen.getByRole('button', { name: /שלב 1.*נושא: מכירות.*עריכה/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(screen.getByRole('button', { name: /שלב 2.*מה תרצי שיקרה/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(screen.getByRole('button', { name: 'שיציעו מוצר נוסף' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: /שלב 1.*נושא: מכירות.*עריכה/ }))
+
+    expect(screen.getByText('שלב 1 מתוך 4')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'מכירות' })).toHaveAttribute('aria-pressed', 'true')
+  })
 
   it('refuses to submit until all four choices are made', async () => {
     const user = userEvent.setup()
     render(<VideoWizard />)
 
-    const submit = screen.getByRole('button', { name: /צורו סרטון/ })
+    const submit = screen.getByRole('button', { name: /השלימי את הבחירות.*נשארו 4 בחירות/ })
     expect(submit).toBeDisabled()
 
     await pick(user, 'מכירות')
     await pick(user, 'שיציעו מוצר נוסף')
     await pick(user, 'אנרגטי')
     expect(submit).toBeDisabled()
+    expect(submit).toHaveAccessibleName(/נשארו 1 בחירות/)
 
-    // Step 3 carries two choices, so style alone does not complete it.
     await pick(user, '20 שניות')
     expect(submit).toBeEnabled()
+    expect(submit).toHaveAccessibleName('צרי סרטון')
+    expect(screen.getByLabelText('סיכום הבחירות')).toHaveTextContent(
+      'מכירות · שיציעו מוצר נוסף · אנרגטי · 20 שניות',
+    )
   })
 
   it('records style and length independently', async () => {
     const user = userEvent.setup()
     render(<VideoWizard />)
 
+    await pick(user, 'מכירות')
+    await pick(user, 'שיציעו מוצר נוסף')
     await pick(user, 'מקצועי')
     await pick(user, '30 שניות')
 
+    await user.click(screen.getByRole('button', { name: /שלב 3.*סגנון: מקצועי.*עריכה/ }))
     expect(screen.getByRole('button', { name: 'מקצועי' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: '30 שניות' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'אנרגטי' })).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(screen.getByRole('button', { name: /שלב 4.*אורך: 30 שניות.*עריכה/ }))
+    expect(screen.getByRole('button', { name: '30 שניות' })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('reports the choices back and does not claim a video exists', async () => {
@@ -114,7 +153,7 @@ describe('the video wizard', () => {
     await pick(user, 'שיחייכו יותר')
     await pick(user, 'מעודד')
     await pick(user, '10 שניות')
-    await pick(user, /צורו סרטון/ as unknown as string)
+    await pick(user, /צרי סרטון/)
 
     expect(screen.getByRole('status')).toHaveTextContent('שירות · שיחייכו יותר · מעודד · 10 שניות')
     // Implying a render is coming would be a promise this screen cannot keep.
