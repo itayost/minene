@@ -1478,3 +1478,280 @@ a:focus-visible {
   cursor: pointer;
 }
 
+
+/* Brain cockpit. New class names only. */
+.cockpit {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  --screen-enter-x: -8%;
+  padding: 16px 13px 22px;
+  animation: screen-enter 0.26s ease both;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.cockpit__intro {
+  display: grid;
+  gap: 2px;
+  text-align: center;
+}
+
+.cockpit__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text, #1d2645);
+}
+
+.cockpit__tagline {
+  margin: 0;
+  font-size: 13px;
+  color: var(--primary, #e8368f);
+}
+
+.cockpit__grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.cockpit-card {
+  position: relative;
+  height: 100%;
+  min-height: 150px;
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  padding: 14px 13px;
+  border-radius: 18px;
+  background: var(--card-color, #f3f0fd);
+  text-decoration: none;
+  color: inherit;
+  text-align: start;
+}
+
+/* A normal grid row rather than an absolutely positioned badge. Absolute
+   positioning overlapped the title: the title is a full-width grid item, so
+   text-align start puts its first word wherever the badge was, whichever corner
+   that was. In flow it cannot collide with anything. */
+.cockpit-card__number {
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--card-accent, #5b3fd6);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cockpit-card__title {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--card-accent, #5b3fd6);
+  line-height: 1.1;
+}
+
+.cockpit-card__subtitle {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text, #1d2645);
+  line-height: 1.2;
+}
+
+.cockpit-card__description {
+  margin-block-start: 4px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--muted, #7d7885);
+}
+
+/* An unbuilt flow reads as unavailable rather than tappable. */
+.cockpit-card--soon {
+  opacity: 0.72;
+}
+
+.cockpit-card__soon {
+  margin-block-start: 6px;
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgb(29 38 69 / 8%);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--muted, #7d7885);
+}
+
+.cockpit__prompt {
+  margin: 0;
+  padding: 14px;
+  border-radius: 16px;
+  background: #2f1d86;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+}
+
+/* The three-step video wizard. */
+.wizard { gap: 14px; }
+
+.wizard__intro {
+  display: grid;
+  gap: 2px;
+  text-align: center;
+}
+
+.wizard__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text, #1d2645);
+}
+
+.wizard__tagline {
+  margin: 0;
+  font-size: 13px;
+  color: var(--primary, #e8368f);
+}
+
+.wizard-step {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--surface, #fffdfc);
+}
+
+.wizard-step__number {
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.wizard-step--1 .wizard-step__number { background: #2f1d86; }
+.wizard-step--2 .wizard-step__number { background: #e8368f; }
+.wizard-step--3 .wizard-step__number { background: #12897e; }
+
+.wizard-step__body {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.wizard-step__title {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 800;
+  color: var(--text, #1d2645);
+  text-align: center;
+}
+
+.wizard-step__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted, #7d7885);
+  text-align: center;
+}
+
+.wizard-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.wizard-choice {
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 12px;
+  background: var(--surface, #fffdfc);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.wizard-choice[aria-pressed='true'] {
+  border-color: var(--primary, #e8368f);
+  background: #fef2f6;
+  font-weight: 700;
+}
+
+.wizard-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.wizard-pair__label {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--muted, #7d7885);
+  text-align: center;
+}
+
+.wizard-submit {
+  display: grid;
+  gap: 2px;
+  padding: 14px;
+  border: 0;
+  border-radius: 16px;
+  background: #2f1d86;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.wizard-submit:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.wizard-submit__label {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.wizard-submit__note {
+  font-size: 12px;
+}
+
+.wizard-summary {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fef2f6;
+  text-align: center;
+}
+
+.wizard-summary h3 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--primary-strong, #c51f73);
+}
+
+.wizard-summary p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text, #1d2645);
+}
+
+.wizard-summary__note {
+  font-size: 11.5px !important;
+  color: var(--muted, #7d7885) !important;
+}
