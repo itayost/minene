@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { CSSProperties } from 'react'
 import { requireBrand } from '../../../src/auth/require-brand'
 import { COCKPIT_ACTIONS } from '../../../src/cockpit/actions'
+import { MentorBar } from './mentor-bar'
 
 type CockpitParams = { params: Promise<{ brandId: string }> }
 
@@ -60,7 +61,7 @@ export default async function CockpitPage({ params }: CockpitParams) {
         })}
       </ul>
 
-      <p className="cockpit__prompt">מה את רוצה לעשות עכשיו?</p>
+      <MentorBar />
     </div>
   )
 }

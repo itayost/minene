@@ -35,10 +35,25 @@ describe('the cockpit', () => {
     expect(screen.getAllByText('בקרוב')).toHaveLength(7)
   })
 
-  it('closes with the prompt that names the whole point of the screen', async () => {
+  it('closes with the mentor composer rather than a prompt with nowhere to answer', async () => {
     render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
 
-    expect(screen.getByText('מה את רוצה לעשות עכשיו?')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'דברו עם המנטור' })).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'הודעה למנטור' })).toBeVisible()
+    for (const control of ['הוספת קובץ', 'הקלטה קולית', 'שיחת לייב עם אווטאר']) {
+      expect(screen.getByRole('button', { name: control })).toBeVisible()
+    }
+  })
+
+  it('admits the mentor is not connected instead of ignoring a press', async () => {
+    const user = userEvent.setup()
+    render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
+
+    await user.click(screen.getByRole('button', { name: 'הקלטה קולית' }))
+
+    // A control that silently ignores you reads as broken; one that pretends to
+    // work is worse.
+    expect(screen.getByRole('status')).toHaveTextContent(/המנטור עדיין לא מחובר/)
   })
 })
 
