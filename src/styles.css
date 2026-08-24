@@ -853,7 +853,12 @@ a:focus-visible {
    This wrapper therefore takes the screen role itself -- positioning, scrolling
    and the enter animation -- and returns the ToolScreen inside it to normal
    flow. */
-.brain-screen {
+/* .shell-content is overflow: hidden, so a surface that is not itself the
+   positioned, scrolling screen is simply clipped: content below the fold cannot
+   be reached at all. Every brain surface therefore takes the screen role, the
+   same way .tool-screen and .page-viewer already do. */
+.brain-screen,
+.brain-surface {
   position: absolute;
   inset: 0;
   overflow-x: hidden;
@@ -868,6 +873,10 @@ a:focus-visible {
   gap: 20px;
 }
 
+.brain-surface {
+  gap: 16px;
+}
+
 .brain-screen .tool-screen {
   position: static;
   inset: auto;
@@ -876,33 +885,66 @@ a:focus-visible {
   animation: none;
 }
 
+/* Mirrors .subject-card: these are the same kind of thing a reader taps on the
+   home grid, so they should not look like a different species of control. Same
+   pastel fill, radius, label weight and icon size; the only addition is a note
+   line, because unlike a subject these need to say what they do. */
 .brain-entries {
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
 }
 
 .brain-entry {
-  display: grid;
-  gap: 2px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  border: 1px solid var(--primary, #e8368f);
-  background: var(--surface, #fffdfc);
-  text-align: right;
+  appearance: none;
+  /* An anchor carries neither of the resets the global button rule supplied. */
   text-decoration: none;
   color: inherit;
-  min-height: 44px;
-  align-content: center;
+  min-width: 0;
+  min-height: 126px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  padding: 13px;
+  border: 0;
+  border-radius: 19px;
+  background: var(--card-color, #fef2f6);
+  cursor: pointer;
+}
+
+/* An odd last card spans the row rather than leaving a gap beside it. With
+   three entries that is the third; the rule keeps the composition tidy at any
+   count. */
+.brain-entry:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.brain-entry__text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
 .brain-entry__label {
-  font-weight: 700;
-  color: var(--primary-strong, #c51f73);
+  color: var(--text, #1d2645);
+  font-size: 16.5px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: start;
 }
 
 .brain-entry__note {
-  font-size: 0.85rem;
   color: var(--muted, #aea9b4);
+  font-size: 12.5px;
+  line-height: 1.3;
+  text-align: start;
+}
+
+.brain-entry__icon {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
 }
 
 /* Rule extraction and the recent-documents list. New class names only. */

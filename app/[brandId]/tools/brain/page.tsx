@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { CSSProperties } from 'react'
 import { notFound } from 'next/navigation'
 import { requireBrand } from '../../../../src/auth/require-brand'
 import { ToolScreen } from '../../../../src/components/ToolScreen'
@@ -33,9 +34,27 @@ export default async function BrainPage({ params }: BrainParams) {
   // 404 for them reads as a broken app rather than as a permission boundary.
   const entries = session.role === 'owner'
     ? [
-        { href: `${base}/lobby`, label: 'לובי אושר', note: 'חוקים הממתינים לאישור' },
-        { href: `${base}/extract`, label: 'חילוץ חוקים', note: 'העלאת PDF וחילוץ חוקים' },
-        { href: `${base}/admin`, label: 'דשבורד', note: 'היסטוריית החוקים' },
+        {
+          href: `${base}/lobby`,
+          label: 'לובי אושר',
+          note: 'חוקים הממתינים לאישור',
+          icon: '/brands/minene/icons/tasks.png',
+          cardColor: '#fef2f6',
+        },
+        {
+          href: `${base}/extract`,
+          label: 'חילוץ חוקים',
+          note: 'העלאת PDF וחילוץ חוקים',
+          icon: '/brands/minene/icons/training.png',
+          cardColor: '#f8f6fc',
+        },
+        {
+          href: `${base}/admin`,
+          label: 'דשבורד',
+          note: 'היסטוריית החוקים',
+          icon: '/brands/minene/icons/results.png',
+          cardColor: '#f9f9fc',
+        },
       ]
     : []
 
@@ -43,9 +62,17 @@ export default async function BrainPage({ params }: BrainParams) {
     <div className="brain-screen">
       <nav className="brain-entries" aria-label="כלי מוח ארגוני">
         {entries.map((entry) => (
-          <Link className="brain-entry" href={entry.href} key={entry.href}>
-            <span className="brain-entry__label">{entry.label}</span>
-            <span className="brain-entry__note">{entry.note}</span>
+          <Link
+            className="brain-entry"
+            href={entry.href}
+            key={entry.href}
+            style={{ '--card-color': entry.cardColor } as CSSProperties & { '--card-color': string }}
+          >
+            <span className="brain-entry__text">
+              <span className="brain-entry__label">{entry.label}</span>
+              <span className="brain-entry__note">{entry.note}</span>
+            </span>
+            <img className="brain-entry__icon" src={entry.icon} alt="" />
           </Link>
         ))}
       </nav>

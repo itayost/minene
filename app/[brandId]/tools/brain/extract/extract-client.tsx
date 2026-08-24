@@ -100,7 +100,7 @@ export function ExtractClient({ tenantId }: { tenantId: string }) {
   }
 
   return (
-    <>
+    <div className="brain-surface">
       <section className="upload-page" aria-label="העלאת מסמך לחילוץ חוקים" dir="rtl">
         <h2>העלאת מסמך</h2>
         <p className="upload-page__intro">
@@ -167,6 +167,6 @@ export function ExtractClient({ tenantId }: { tenantId: string }) {
         onError={handleError}
         reloadToken={documentsVersion}
       />
-    </>
+    </div>
   )
 }

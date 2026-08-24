@@ -102,6 +102,7 @@ export function AdminClient() {
   }
 
   return (
+    <div className="brain-surface">
     <section aria-label="היסטוריית החוקים" className="admin-screen" dir="rtl">
       <h2>דשבורד</h2>
 
@@ -212,5 +213,6 @@ export function AdminClient() {
         </>
       )}
     </section>
+    </div>
   )
 }

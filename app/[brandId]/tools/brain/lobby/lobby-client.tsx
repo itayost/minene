@@ -123,14 +123,17 @@ export function LobbyClient() {
 
   if (requestState.status === 'error') {
     return (
+      <div className="brain-surface">
       <section aria-label="לובי אישור חוקים ממתינים" className="approval-lobby" dir="rtl">
         <h2>לובי אושר</h2>
         <p className="approval-lobby__error" role="alert">{requestState.message}</p>
       </section>
+      </div>
     )
   }
 
   return (
+    <div className="brain-surface">
     <section aria-label="לובי אישור חוקים ממתינים" className="approval-lobby" dir="rtl">
       <h2>לובי אושר</h2>
       <p className="approval-lobby__intro">
@@ -213,5 +216,6 @@ export function LobbyClient() {
         />
       ) : null}
     </section>
+    </div>
   )
 }
