@@ -25,6 +25,19 @@ describe('the cockpit', () => {
     }
   })
 
+  it('gives every action its own icon', () => {
+    const icons = COCKPIT_ACTIONS.map((action) => action.icon)
+
+    // Distinct, so no two actions are confusable at a glance. They are drawn
+    // from the brand's existing icon set rather than a dedicated cockpit folder:
+    // there is no cockpit artwork, and inventing a path for files that do not
+    // exist would ship eight broken images.
+    expect(new Set(icons)).toHaveLength(8)
+    for (const icon of icons) {
+      expect(icon).toMatch(/^\/brands\/minene\/icons\/[a-z-]+\.png$/)
+    }
+  })
+
   it('links only the flow that exists, and marks the rest unavailable', async () => {
     render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
 
@@ -38,7 +51,10 @@ describe('the cockpit', () => {
   it('closes with the mentor composer rather than a prompt with nowhere to answer', async () => {
     render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
 
-    expect(screen.getByRole('heading', { name: 'דברו עם המנטור' })).toBeVisible()
+    // No visible heading by design, so the region's accessible name is what
+    // identifies the composer.
+    expect(screen.queryByRole('heading', { name: 'דברו עם המנטור' })).toBeNull()
+    expect(screen.getByRole('region', { name: 'דברו עם המנטור' })).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'הודעה למנטור' })).toBeVisible()
     for (const control of ['הוספת קובץ', 'הקלטה קולית', 'שיחת לייב עם אווטאר']) {
       expect(screen.getByRole('button', { name: control })).toBeVisible()

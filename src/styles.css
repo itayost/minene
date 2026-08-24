@@ -1592,27 +1592,12 @@ a:focus-visible {
 
 /* The mentor composer. Replaces the prompt bar: the same question, but the
    reader can answer it here instead of being asked and then left with nowhere to
-   put the answer. */
+   put the answer. Deliberately unlabelled on screen -- the bar's own shape says
+   what it is. */
 .mentor {
   display: grid;
-  gap: 4px;
   justify-items: center;
   padding-block-start: 4px;
-}
-
-.mentor__title {
-  margin: 0;
-  font-size: 19px;
-  font-weight: 800;
-  color: var(--text, #1d2645);
-}
-
-.mentor__subtitle {
-  margin: 0 0 8px;
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--muted, #7d7885);
-  text-align: center;
 }
 
 .mentor__bar {

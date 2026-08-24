@@ -29,6 +29,10 @@ const NOT_CONNECTED = 'המנטור עדיין לא מחובר. הכפתורים
  * The composer for talking to the mentor: attach, type, speak, or open a live
  * avatar call.
  *
+ * No visible heading by design: aria-label is what names the composer, and
+ * without it the bar would be four unlabelled controls to anyone not looking at
+ * the screen.
+ *
  * None of it is wired to anything. Pressing a control says so rather than doing
  * nothing, because a button that silently ignores you reads as broken, and one
  * that pretends to work is worse.
@@ -39,11 +43,6 @@ export function MentorBar() {
 
   return (
     <section aria-label="דברו עם המנטור" className="mentor" dir="rtl">
-      <h2 className="mentor__title">דברו עם המנטור</h2>
-      <p className="mentor__subtitle">
-        במיקרופון, בנסיעה באוטו, או בשיחת לייב עם אווטאר לייב
-      </p>
-
       {/* Order here is visual, not semantic: in RTL the first child renders
           rightmost. The reference reads, right to left, live call, microphone,
           field, attach -- so that is the order they appear in. */}
