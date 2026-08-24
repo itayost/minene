@@ -48,11 +48,20 @@ describe('the מוח ארגוני screen', () => {
     expect(screen.getByRole('link', { name: /דשבורד/ })).toHaveAttribute('href', `${base}/admin`)
   })
 
-  it('hides the dashboard from a staff member rather than letting them hit a 404', async () => {
+  it('offers a staff member no entry points at all', async () => {
     await renderBrain('staff')
 
-    expect(screen.getAllByRole('link')).toHaveLength(2)
-    expect(screen.queryByRole('link', { name: /דשבורד/ })).toBeNull()
+    // Every rules and documents policy behind these three requires the owner
+    // role, so all three would 404. Showing a link to a page that refuses you
+    // reads as a broken app rather than as a permission boundary.
+    expect(screen.queryAllByRole('link')).toHaveLength(0)
+  })
+
+  it('still shows a staff member the preview list', async () => {
+    await renderBrain('staff')
+
+    // The tool itself is not owner-only, only its three surfaces are.
+    expect(screen.getByText('גיוס ידע בקרב 1500 סניפים')).toBeVisible()
   })
 
   it('keeps the existing preview list beneath the entries', async () => {

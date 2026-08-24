@@ -1298,3 +1298,32 @@ a:focus-visible {
   display: flex;
   gap: 8px;
 }
+
+/* The edit sheet's layer and backdrop. Ported alongside RuleEditSheet, which
+   references both: without them the layer is an unstyled div in normal flow and
+   the backdrop is a bare button, so the sheet is not a sheet. */
+.action-sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  padding: 18px;
+}
+
+.action-sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: rgb(34 28 39 / 42%);
+  border: 0;
+  cursor: pointer;
+}
+
+.rule-edit-sheet {
+  position: relative;
+  width: min(420px, 100%);
+}

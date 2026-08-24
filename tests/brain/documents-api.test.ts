@@ -15,6 +15,7 @@ function client(outcomes: {
   const inserts: Record<string, unknown>[] = []
 
   const supabase = {
+    auth: { getUser: async () => ({ data: { user: { id: 'user-1' } }, error: null }) },
     functions: {
       invoke: vi.fn(async () => outcomes.invoke ?? { data: { ruleCount: 4 }, error: null }),
     },
@@ -60,14 +61,31 @@ describe('uploadDocument', () => {
   })
 
   it('builds the storage path the policy matches on', async () => {
-    const { api, uploads, inserts } = client()
+    const { api, uploads } = client()
     const { documentId } = await api.uploadDocument({ file: file(), tenantId: TENANT, topicId: 'store' })
 
     // "<tenant_id>/<document_id>.pdf" is load-bearing, not a naming convention:
     // the storage policy matches on that prefix.
     expect(uploads[0]?.path).toBe(`${TENANT}/${documentId}.pdf`)
     expect(uploads[0]?.contentType).toBe('application/pdf')
-    expect(inserts[0]).toMatchObject({ id: documentId, storage_path: `${TENANT}/${documentId}.pdf` })
+  })
+
+  it('writes every not-null column the documents row requires', async () => {
+    const { api, inserts } = client()
+    const { documentId } = await api.uploadDocument({ file: file(), tenantId: TENANT, topicId: 'store' })
+
+    // toEqual, not toMatchObject. A subset match hid a real bug here: tenant_id
+    // and uploaded_by are NOT NULL with no default and no trigger, and omitting
+    // either fails the insert at 23502 -- after the PDF is already in the bucket,
+    // leaving an orphan object no row references.
+    expect(inserts[0]).toEqual({
+      id: documentId,
+      tenant_id: TENANT,
+      topic_id: 'store',
+      filename: 'rules.pdf',
+      storage_path: `${TENANT}/${documentId}.pdf`,
+      uploaded_by: 'user-1',
+    })
   })
 
   it('reports an expired session rather than a generic upload failure', async () => {

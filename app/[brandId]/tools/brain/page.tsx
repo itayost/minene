@@ -27,16 +27,17 @@ export default async function BrainPage({ params }: BrainParams) {
 
   const base = `/${brand.id}/tools/${BRAIN_TOOL_ID}`
 
-  // The dashboard entry is owner-only, matching the route it points at. Showing
-  // a staff member a link to a page that will 404 for them reads as a broken
-  // app rather than as a permission boundary.
-  const entries = [
-    { href: `${base}/lobby`, label: 'לובי אושר', note: 'חוקים הממתינים לאישור' },
-    { href: `${base}/extract`, label: 'חילוץ חוקים', note: 'העלאת PDF וחילוץ חוקים' },
-    ...(session.role === 'owner'
-      ? [{ href: `${base}/admin`, label: 'דשבורד', note: 'היסטוריית החוקים' }]
-      : []),
-  ]
+  // All three are owner-only, matching the routes they point at, which in turn
+  // match what the database allows: every rules and documents policy behind them
+  // requires the owner role. Showing a staff member a link to a page that will
+  // 404 for them reads as a broken app rather than as a permission boundary.
+  const entries = session.role === 'owner'
+    ? [
+        { href: `${base}/lobby`, label: 'לובי אושר', note: 'חוקים הממתינים לאישור' },
+        { href: `${base}/extract`, label: 'חילוץ חוקים', note: 'העלאת PDF וחילוץ חוקים' },
+        { href: `${base}/admin`, label: 'דשבורד', note: 'היסטוריית החוקים' },
+      ]
+    : []
 
   return (
     <div className="brain-screen">

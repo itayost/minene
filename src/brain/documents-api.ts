@@ -51,6 +51,7 @@ type DocumentQuery = {
 }
 
 export type DocumentsClient = {
+  auth: { getUser: () => PromiseLike<{ data: { user: { id: string } | null } | null; error: unknown }> }
   functions: {
     invoke: (name: string, options: { body: unknown }) => PromiseLike<{
       data: unknown
@@ -98,11 +99,25 @@ export function createDocumentsApi(client: DocumentsClient) {
         throw isAuthError(uploadError, uploadError.status) ? unauthorized() : uploadFailed()
       }
 
+      // uploaded_by is read from the session rather than threaded in from the
+      // caller: the signed-in session already carries it, and unlike tenantId
+      // and topicId -- which are deliberately client-known state -- an identity
+      // claim must never be spoofable from the browser.
+      //
+      // Both tenant_id and uploaded_by are NOT NULL with no default and no
+      // trigger to fill them. Omitting either fails the insert at 23502, and by
+      // then the PDF is already in the bucket, leaving an orphan object no row
+      // references.
+      const { data: userData, error: userError } = await client.auth.getUser()
+      if (userError || !userData?.user) throw saveFailed()
+
       const { error: insertError, status: insertStatus } = await client.from('documents').insert({
         id: documentId,
+        tenant_id: tenantId,
         topic_id: topicId,
         filename: file.name,
         storage_path: storagePath,
+        uploaded_by: userData.user.id,
       })
 
       if (insertError) {
