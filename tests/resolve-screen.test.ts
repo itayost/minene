@@ -20,7 +20,7 @@ describe('resolveScreen', () => {
   it('resolves a known tool', () => {
     const toolId = demoBrand.tools[0]!.id
     expect(resolveScreen(demoBrand, ['tools', toolId], null))
-      .toEqual({ kind: 'tool', toolId })
+      .toEqual({ kind: 'tool', toolId, subPath: [] })
   })
 
   it('rejects an unknown subject', () => {
@@ -85,6 +85,41 @@ describe('parentHref', () => {
   })
 
   it('returns the brand root from a tool', () => {
-    expect(parentHref(demoBrand, { kind: 'tool', toolId: demoBrand.tools[0]!.id })).toBe('/demo')
+    expect(parentHref(demoBrand, { kind: 'tool', toolId: demoBrand.tools[0]!.id, subPath: [] })).toBe('/demo')
+  })
+})
+
+describe('tool subtrees', () => {
+  it('resolves a tool sub-screen to that tool, carrying the rest of the path', () => {
+    const toolId = demoBrand.tools[0]!.id
+    expect(resolveScreen(demoBrand, ['tools', toolId, 'lobby'], null))
+      .toEqual({ kind: 'tool', toolId, subPath: ['lobby'] })
+  })
+
+  it('carries a deeper sub-path too', () => {
+    const toolId = demoBrand.tools[0]!.id
+    expect(resolveScreen(demoBrand, ['tools', toolId, 'rules', '123'], null))
+      .toEqual({ kind: 'tool', toolId, subPath: ['rules', '123'] })
+  })
+
+  it('resolves the tool root with an empty sub-path', () => {
+    const toolId = demoBrand.tools[0]!.id
+    expect(resolveScreen(demoBrand, ['tools', toolId], null))
+      .toEqual({ kind: 'tool', toolId, subPath: [] })
+  })
+
+  it('still rejects an unknown tool however deep the path', () => {
+    expect(resolveScreen(demoBrand, ['tools', 'nope', 'lobby'], null)).toBeNull()
+  })
+
+  it('returns the tool root as the parent of a sub-screen', () => {
+    const toolId = demoBrand.tools[0]!.id
+    expect(parentHref(demoBrand, { kind: 'tool', toolId, subPath: ['lobby'] }))
+      .toBe(`/demo/tools/${toolId}`)
+  })
+
+  it('returns the brand root as the parent of the tool root', () => {
+    const toolId = demoBrand.tools[0]!.id
+    expect(parentHref(demoBrand, { kind: 'tool', toolId, subPath: [] })).toBe('/demo')
   })
 })

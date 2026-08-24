@@ -194,7 +194,7 @@ describe('shared branded components', () => {
   })
 
   it('marks the current bottom-tool destination and renders its screen', () => {
-    render(<SharedComponentHarness initialScreen={{ kind: 'tool', toolId: 'notes' }} />)
+    render(<SharedComponentHarness initialScreen={{ kind: 'tool', toolId: 'notes', subPath: [] }} />)
 
     expect(screen.getByRole('link', { name: 'Notes' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current')
@@ -204,7 +204,7 @@ describe('shared branded components', () => {
   })
 
   it('keeps tool items exposed as a list to assistive technologies', () => {
-    render(<SharedComponentHarness initialScreen={{ kind: 'tool', toolId: 'notes' }} />)
+    render(<SharedComponentHarness initialScreen={{ kind: 'tool', toolId: 'notes', subPath: [] }} />)
 
     expect(screen.getByRole('list')).toHaveAttribute('role', 'list')
   })
