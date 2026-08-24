@@ -844,9 +844,36 @@ a:focus-visible {
    references cover is affected. Matches the existing tool rows -- same radius,
    same right-to-left alignment, same pink accent -- but weighted heavier so the
    hierarchy reads: actions first, reference material second. */
+/* Every screen in this shell is absolutely positioned inside .shell-content,
+   which is position: relative with overflow hidden. A plain wrapper div does not
+   contain them: the nested .tool-screen is position: absolute with inset 0, so
+   it resolves against .shell-content, escapes the wrapper entirely, and overlays
+   the entries it is supposed to sit below.
+
+   This wrapper therefore takes the screen role itself -- positioning, scrolling
+   and the enter animation -- and returns the ToolScreen inside it to normal
+   flow. */
 .brain-screen {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  --screen-enter-x: -8%;
+  padding: 18px 16px 24px;
+  animation: screen-enter 0.26s ease both;
   display: grid;
+  align-content: start;
   gap: 20px;
+}
+
+.brain-screen .tool-screen {
+  position: static;
+  inset: auto;
+  padding: 0;
+  overflow: visible;
+  animation: none;
 }
 
 .brain-entries {
