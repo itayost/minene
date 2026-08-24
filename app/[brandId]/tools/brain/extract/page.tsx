@@ -1,0 +1,16 @@
+import { requireBrand } from '../../../../../src/auth/require-brand'
+import { ExtractClient } from './extract-client'
+
+type ExtractParams = { params: Promise<{ brandId: string }> }
+
+export const metadata = { title: 'חילוץ חוקים' }
+
+export default async function ExtractPage({ params }: ExtractParams) {
+  const { brandId } = await params
+  const { session } = await requireBrand(brandId)
+
+  // The tenant id comes from the verified session and is passed down as a prop.
+  // uploadDocument needs it to build the storage path the policy matches on, and
+  // it must never come from user input.
+  return <ExtractClient tenantId={session.tenantId} />
+}
