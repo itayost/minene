@@ -1075,6 +1075,8 @@ a:focus-visible {
 }
 
 .rule-edit-sheet {
+  position: relative;
+  width: min(420px, 100%);
   display: grid;
   gap: 12px;
   padding: 16px;
@@ -1323,7 +1325,3 @@ a:focus-visible {
   cursor: pointer;
 }
 
-.rule-edit-sheet {
-  position: relative;
-  width: min(420px, 100%);
-}
