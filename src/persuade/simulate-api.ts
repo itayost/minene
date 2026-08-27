@@ -38,11 +38,28 @@ export interface SimulateRequest {
  */
 const unauthorized = () => new RulesApiError('UNAUTHORIZED', 401, 'ההרשאה פגה. נא להתחבר מחדש.')
 
-const refused = (status: number) => new RulesApiError(
-  'REQUEST_FAILED',
-  status,
-  status === 403 ? 'רק בעלים יכול להריץ סימולציה.' : 'הרצת הסימולציה נכשלה.',
-)
+/**
+ * The route's own sentence when it has one.
+ *
+ * It answers `{ error }` on every refusal, and some of those sentences are the
+ * only thing that explains the failure -- "the storage layer is not configured,
+ * SUPABASE_SECRET_KEY is missing" is actionable in a way that "the simulation
+ * failed" is not. Replacing it with a generic message threw away the diagnosis.
+ */
+async function refused(response: { status: number; json: () => Promise<unknown> }) {
+  const fallback = response.status === 403
+    ? 'רק בעלים יכול להריץ סימולציה.'
+    : 'הרצת הסימולציה נכשלה.'
+  const said = await response.json().then(
+    (body) => (body as { error?: unknown })?.error,
+    () => undefined,
+  )
+  return new RulesApiError(
+    'REQUEST_FAILED',
+    response.status,
+    typeof said === 'string' && said.trim() ? said : fallback,
+  )
+}
 
 /**
  * Streams the run to `onEvent` line by line. Rejects before the first event when
@@ -64,7 +81,8 @@ export async function streamSimulation(
   })
 
   if (response.status === 401) throw unauthorized()
-  if (!response.ok || !response.body) throw refused(response.status)
+  if (!response.ok) throw await refused(response)
+  if (!response.body) throw new RulesApiError('REQUEST_FAILED', response.status, 'הרצת הסימולציה נכשלה.')
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()

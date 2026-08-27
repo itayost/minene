@@ -1,4 +1,5 @@
 import { resolveCaller, loadActionableAssignment, type Caller } from './caller';
+import { isStorageConfigured, StorageNotConfiguredError } from './supabase';
 import { defaultContext, type RunContext } from './store';
 
 /**
@@ -28,7 +29,7 @@ export function anonymousAllowed(): boolean {
 
 export type AccessResult =
   | { ok: true; caller: Caller | null; context: RunContext }
-  | { ok: false; status: 401 | 403; error: string };
+  | { ok: false; status: 401 | 403 | 503; error: string };
 
 /**
  * Resolves the caller and works out which conversation they are allowed to
@@ -49,6 +50,22 @@ export async function resolveAccess(
   const caller = await resolveCaller(authorization);
 
   if (!caller) {
+    /**
+     * Only on the failure path, and only when a token was actually presented.
+     *
+     * Credentials that cannot be checked are not the same as credentials that
+     * were never sent, and only the first is the server's fault. resolveCaller
+     * returns null for every failure and never says which -- exactly right for
+     * a bad token, exactly wrong for a missing service key: without one it can
+     * verify nobody, so every caller is told to sign in for a problem no
+     * sign-in can fix. That cost a whole wrong diagnosis: an owner with a fresh
+     * session, told their session had expired, on a machine whose server had no
+     * key to check it with.
+     */
+    if (authorization.replace(/^Bearer\s+/i, '').trim() && !isStorageConfigured()) {
+      return { ok: false, status: 503, error: new StorageNotConfiguredError().message };
+    }
+
     // An assignment names a real person, so it is never reachable without a
     // session -- not even in anonymous drafting mode.
     if (assignmentId) {

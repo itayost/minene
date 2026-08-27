@@ -209,8 +209,36 @@ describe('starting a simulation', () => {
     expect(await screen.findByText(/לא נוקדה/)).toBeVisible()
   })
 
+  it('shows what the server actually said, not a generic failure', async () => {
+    // The lab spent an afternoon reading "הרצת הסימולציה נכשלה" while the route
+    // was returning a precise sentence naming the missing configuration. A
+    // generic message here throws away the only thing that explains the failure.
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: 'שכבת האחסון לא מוגדרת. צריך SUPABASE_URL ו-SUPABASE_SECRET_KEY בסביבה.' }),
+    })))
+    const { user } = setup()
+    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/SUPABASE_SECRET_KEY/)
+    expect(router.replace).not.toHaveBeenCalled()
+  })
+
+  it('falls back to its own words when the body carries none', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: false, status: 500, json: async () => { throw new Error('not json') },
+    })))
+    const { user } = setup()
+    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/נכשלה/)
+  })
+
   it('reports a refusal rather than looking like it is still running', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 403 })))
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 403, json: async () => ({}) })))
     const { user } = setup()
     await user.type(screen.getByLabelText('ענף'), 'אופנה')
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
@@ -226,7 +254,7 @@ describe('starting a simulation', () => {
     // fails, with nothing on it that fixes the problem. Every other surface here
     // routes a 401 through useApiErrorHandler, which navigates instead; this one
     // reported it as an error message and stranded them.
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 401 })))
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 401, json: async () => ({}) })))
     const { user } = setup()
     await user.type(screen.getByLabelText('ענף'), 'אופנה')
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
