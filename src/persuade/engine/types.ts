@@ -150,6 +150,10 @@ export interface RuleViolation {
 }
 
 export interface Run {
+  /** Set by a separate scoring pass, so absent on a run nobody has judged. */
+  score?: RunScore;
+  /** Set when somebody reported what actually happened. */
+  followUp?: FollowUp;
   id: string;
   createdAt: string;
   planId: string;
@@ -174,4 +178,57 @@ export interface TargetPersona {
   motivatedBy: string[];
   style: string;
   agreesWhen: string;
+}
+
+/**
+ * What a scored run knows about itself. Optional on Run because scoring is a
+ * separate pass: a conversation is complete before anyone has judged it.
+ */
+export interface RunScore {
+  persuaded: 'yes' | 'no' | 'partial';
+  winningArgument: string | null;
+  winningCategory: ArgumentCategory | null;
+  mainObjection: string | null;
+  whatBrokeIt: string | null;
+  whatFailed: string | null;
+  grade: number;
+  notes: string;
+}
+
+/** What actually happened afterwards. A partial is recorded, never rounded up. */
+export interface FollowUpReport {
+  executed: 'yes' | 'no' | 'partial';
+  timesDone: number;
+  whatHappened: string;
+}
+
+export interface FollowUp {
+  report: FollowUpReport;
+}
+
+/**
+ * A rate is null when its denominator is zero, never 0.
+ *
+ * "Nobody has agreed yet" and "everybody who agreed failed to do it" are
+ * opposite facts, and reporting the first as 0% claims total failure where
+ * there is nothing to report. The same null-is-not-zero rule the knowledge
+ * base's like_pct already follows.
+ */
+export interface Rates {
+  runs: number;
+  agreed: number;
+  executed: number;
+
+  persuasionRate: number | null;
+  executionRate: number | null;
+  deliveryRate: number | null;
+
+  avgInteractionsToYes: number | null;
+  violationsPerRun: number | null;
+  criticalViolationsPerRun: number | null;
+
+  byArgumentCategory: { category: ArgumentCategory; closes: number }[];
+  byPersona: { personaId: string; runs: number; persuasionRate: number | null; executionRate: number | null }[];
+  byBlocker: { blocker: BlockerId; encountered: number; overcome: number }[];
+  topViolations: { rule: string; count: number }[];
 }
