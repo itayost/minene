@@ -35,6 +35,8 @@ type ThemeStyle = CSSProperties & {
   '--muted': string
   '--background': string
   '--surface': string
+  '--surface-sunken': string
+  '--positive': string
   '--border': string
   '--font-family': string
 }
@@ -109,6 +111,8 @@ export function BrandShell({
     '--muted': brand.theme.muted,
     '--background': brand.theme.background,
     '--surface': brand.theme.surface,
+    '--surface-sunken': brand.theme.surfaceSunken,
+    '--positive': brand.theme.positive,
     '--border': brand.theme.border,
     '--font-family': brand.theme.fontFamily,
   }

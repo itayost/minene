@@ -14,6 +14,8 @@ export const demoBrand: BrandManifest = {
     muted: '#66758A',
     background: '#E9F1FC',
     surface: '#FFFFFF',
+    surfaceSunken: '#F1F5FA',
+    positive: '#0F6F66',
     border: '#D5E2F3',
     fontFamily: 'Arial, sans-serif',
   },

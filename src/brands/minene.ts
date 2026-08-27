@@ -19,6 +19,8 @@ export const mineneBrand: BrandManifest = {
     muted: '#887C77',
     background: '#EEEAE7',
     surface: '#FFFCF8',
+    surfaceSunken: '#F7F2EC',
+    positive: '#0F6F66',
     border: '#DED5CD',
     fontFamily: 'Heebo, -apple-system, BlinkMacSystemFont, Arial, sans-serif',
   },

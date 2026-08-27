@@ -19,6 +19,8 @@ const validBrand: BrandManifest = {
     muted: '#5b6773',
     background: '#f4f7f9',
     surface: '#ffffff',
+    surfaceSunken: '#f2f6f9',
+    positive: '#0f6f66',
     border: '#d4dce3',
     fontFamily: 'Heebo Variable',
   },
@@ -229,5 +231,30 @@ describe('buildBrandRegistry', () => {
     expect(() => buildBrandRegistry([
       ['study-space-alias', validBrand],
     ])).toThrow('registry key "study-space-alias" must match manifest id "study-space"')
+  })
+})
+
+describe('the semantic surface tokens', () => {
+  test('refuses a brand with no sunken surface', () => {
+    const brand = {
+      ...validBrand,
+      theme: { ...validBrand.theme, surfaceSunken: '' },
+    } as BrandManifest
+
+    // A missing token used to fall through to whatever hex was written beside
+    // the var() call, which is how the brain ended up painted in three
+    // palettes. Failing the build is the point of naming them here.
+    expect(validateBrand(brand).map((issue) => issue.path))
+      .toContain('theme.surfaceSunken')
+  })
+
+  test('refuses a brand with no positive colour', () => {
+    const brand = {
+      ...validBrand,
+      theme: { ...validBrand.theme, positive: '' },
+    } as BrandManifest
+
+    expect(validateBrand(brand).map((issue) => issue.path))
+      .toContain('theme.positive')
   })
 })

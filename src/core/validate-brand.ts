@@ -15,6 +15,8 @@ const themeTokens = [
   'muted',
   'background',
   'surface',
+  'surfaceSunken',
+  'positive',
   'border',
   'fontFamily',
 ] as const

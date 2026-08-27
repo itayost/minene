@@ -32,6 +32,10 @@ export type BrandTheme = {
   muted: string
   background: string
   surface: string
+  /** The fill for a row or card that sits on top of `surface`. */
+  surfaceSunken: string
+  /** עשה, a proven process, a high rating. Never decoration. */
+  positive: string
   border: string
   fontFamily: string
 }
