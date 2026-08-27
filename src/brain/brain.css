@@ -606,31 +606,20 @@
   color: var(--primary-strong);
 }
 
-/* Four Hebrew labels do not fit across a 402px shell, and wrapping them into
-   two rows makes a tab strip read as a menu. It scrolls instead, with the
-   scrollbar hidden.
-   
-   "Discoverable by dragging" turned out not to be true: at this width the
-   fourth tab falls entirely outside the strip with nothing peeking, so the
-   control looks like it has three. The mask fades the trailing edge, which is
-   what says there is more. It is unconditional because these four labels never
-   fit -- there is no width at which the fade would be lying. */
-
-.knowledge-tabs {
-  display: flex;
+/* Two rows of two, not one scrolling row.
+ *
+ * Four Hebrew labels do not fit on one line at 320, and the fade that used to
+ * hint at the overflow was a patch: the fourth tab began past the edge with
+ * nothing peeking, so the control read as though it had three. These are peers
+ * and should look like peers, all of them visible.
+ */
+.knowledge-tabs--grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding-bottom: 2px;
-  mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent 100%);
-}
-
-.knowledge-tabs::-webkit-scrollbar {
-  display: none;
 }
 
 .knowledge-tab {
-  flex: 0 0 auto;
   min-height: 38px;
   padding: 0 11px;
   border: 1px solid var(--border);

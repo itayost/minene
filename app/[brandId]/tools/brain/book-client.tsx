@@ -167,7 +167,7 @@ export function BookClient({ role }: { role: 'owner' | 'staff' }) {
       <section aria-label="ספר החוקים" className="knowledge-shell" dir="rtl">
         <h2>ספר החוקים</h2>
 
-        <div aria-label="תצוגות הידע" className="knowledge-tabs" role="tablist">
+        <div aria-label="תצוגות הידע" className="knowledge-tabs knowledge-tabs--grid" role="tablist">
           {TABS.map((item) => (
             <button
               aria-selected={tab === item.id}

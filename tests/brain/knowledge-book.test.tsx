@@ -45,6 +45,17 @@ const openTab = async (user: ReturnType<typeof userEvent.setup>, name: string) =
 }
 
 describe('the four ways the floor reads the knowledge base', () => {
+  it('shows all four views at once rather than scrolling one out of reach', () => {
+    render(<BookClient role="staff" />)
+
+    const strip = screen.getByRole('tablist', { name: 'תצוגות הידע' })
+    // Two rows of two. At 320 the fourth label starts beyond the edge with
+    // nothing peeking, so a control with four tabs reads as one with three --
+    // which made the whole proven-process ranking unreachable.
+    expect(strip).toHaveClass('knowledge-tabs--grid')
+    expect(within(strip).getAllByRole('tab')).toHaveLength(4)
+  })
+
   it('opens on every approved rule, filtered by nothing', async () => {
     render(<BookClient role="staff" />)
 
