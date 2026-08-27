@@ -1250,3 +1250,21 @@
   font-size: 0.75rem;
   color: var(--muted);
 }
+
+/* The shared sheet. .rule-edit-sheet used to carry this shape itself; now every
+   sheet gets it, along with the dismissal behaviour it never had. */
+.bottom-sheet {
+  position: relative;
+  width: min(420px, 100%);
+  /* Its own scroll, because the edit sheet grew a second textarea and a role
+     list: on a short viewport its actions now sit below the fold, and a sheet
+     you cannot reach the bottom of is a sheet you cannot save from. */
+  max-height: 85dvh;
+  overflow-y: auto;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px 16px 0 0;
+  background: var(--surface);
+  text-align: right;
+}
