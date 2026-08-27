@@ -274,17 +274,6 @@
   cursor: default;
 }
 
-.rule-edit-sheet {
-  position: relative;
-  width: min(420px, 100%);
-  display: grid;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 16px 16px 0 0;
-  background: var(--surface);
-  text-align: right;
-}
-
 .rule-edit-sheet__title {
   margin: 0;
   font-size: 1rem;

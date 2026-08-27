@@ -1,5 +1,7 @@
 'use client'
 
+import { useRef } from 'react'
+import { BottomSheet } from './BottomSheet'
 import { RULE_TOPICS } from './topics'
 import type { Role, RuleKind, RulePolarity } from './types'
 
@@ -34,6 +36,7 @@ export function RuleEditSheet({ draft, error, isSaving, onCancel, onChange, onSa
   roles: readonly Role[]
 }) {
   const isCase = draft.kind === 'case'
+  const textRef = useRef<HTMLTextAreaElement>(null)
 
   const toggleRole = (roleId: string) => {
     const next = draft.roleIds.includes(roleId)
@@ -43,15 +46,12 @@ export function RuleEditSheet({ draft, error, isSaving, onCancel, onChange, onSa
   }
 
   return (
-    <div className="action-sheet-layer">
-      <button
-        aria-label="סגירת עריכה"
-        className="action-sheet__backdrop"
-        onClick={onCancel}
-        type="button"
-      />
-
-      <section aria-label="עריכת חוק" className="rule-edit-sheet" dir="rtl">
+    <BottomSheet
+      initialFocusRef={textRef}
+      label="עריכת חוק"
+      onDismiss={onCancel}
+      openKey={draft.ruleId}
+    >
         <h2 className="rule-edit-sheet__title">עריכת חוק</h2>
 
         <label className="rule-edit-sheet__field" htmlFor="rule-edit-text">
@@ -60,6 +60,7 @@ export function RuleEditSheet({ draft, error, isSaving, onCancel, onChange, onSa
             className="rule-edit-sheet__textarea"
             id="rule-edit-text"
             onChange={(event) => onChange({ ...draft, text: event.target.value })}
+            ref={textRef}
             rows={4}
             value={draft.text}
           />
@@ -168,7 +169,6 @@ export function RuleEditSheet({ draft, error, isSaving, onCancel, onChange, onSa
             ביטול
           </button>
         </div>
-      </section>
-    </div>
+    </BottomSheet>
   )
 }

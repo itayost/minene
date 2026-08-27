@@ -81,6 +81,43 @@ describe('correcting every axis a rule has', () => {
   })
 })
 
+describe('the edit sheet as a sheet', () => {
+  it('closes on Escape, like every other sheet', async () => {
+    const onCancel = vi.fn()
+    render(
+      <RuleEditSheet
+        draft={DRAFT}
+        error=""
+        isSaving={false}
+        onCancel={onCancel}
+        onChange={vi.fn()}
+        onSave={vi.fn()}
+        roles={ROLES}
+      />,
+    )
+    await userEvent.setup().keyboard('{Escape}')
+
+    expect(onCancel).toHaveBeenCalled()
+  })
+
+  it('puts focus on the rule text when it opens', () => {
+    render(
+      <RuleEditSheet
+        draft={DRAFT}
+        error=""
+        isSaving={false}
+        onCancel={vi.fn()}
+        onChange={vi.fn()}
+        onSave={vi.fn()}
+        roles={ROLES}
+      />,
+    )
+
+    // The field a reviewer came to correct, not the topic select above it.
+    expect(screen.getByLabelText('נוסח החוק')).toHaveFocus()
+  })
+})
+
 describe('who a rule is addressed to', () => {
   it('checks the roles it already addresses', () => {
     sheet({ roleIds: ['role-2'] })
