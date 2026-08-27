@@ -42,12 +42,43 @@ export function BottomSheet({ openKey, label, onDismiss, initialFocusRef, childr
   const focusRef = useRef(initialFocusRef)
   focusRef.current = initialFocusRef
 
+  const sheetRef = useRef<HTMLElement>(null)
+
   useEffect(() => {
     if (!openKey) return undefined
 
     const trigger = document.activeElement as HTMLElement | null
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onDismissRef.current()
+      if (event.key === 'Escape') {
+        onDismissRef.current()
+        return
+      }
+      if (event.key !== 'Tab') return
+
+      // aria-modal is a promise, and nothing here makes the page behind the
+      // sheet inert -- so without this a keyboard user tabs straight out into
+      // the list underneath while the backdrop still covers it, with no way to
+      // see where their focus went.
+      const focusable = sheetRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )
+      if (!focusable?.length) return
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement
+
+      // Wrapping rather than blocking: Tab past the end returns to the start and
+      // Shift+Tab before the start goes to the end, which is what a real dialog
+      // does. Blocking would strand somebody at the last control.
+      if (!event.shiftKey && active === last) {
+        event.preventDefault()
+        first?.focus()
+      } else if (event.shiftKey && active === first) {
+        event.preventDefault()
+        last?.focus()
+      }
     }
 
     document.addEventListener('keydown', onKeyDown)
@@ -74,7 +105,14 @@ export function BottomSheet({ openKey, label, onDismiss, initialFocusRef, childr
         onClick={onDismiss}
         type="button"
       />
-      <section aria-label={label} aria-modal="true" className="bottom-sheet" dir="rtl" role="dialog">
+      <section
+        aria-label={label}
+        aria-modal="true"
+        className="bottom-sheet"
+        dir="rtl"
+        ref={sheetRef}
+        role="dialog"
+      >
         {children}
       </section>
     </div>

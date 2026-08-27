@@ -75,6 +75,14 @@ export function RuleEditSheet({ draft, error, isSaving, onCancel, onChange, onSa
               onChange={(event) => onChange({ ...draft, topicId: event.target.value })}
               value={draft.topicId}
             >
+              {/* A rule filed under a retired topic, or one the extractor
+                  invented, is still a real rule. Without an option of its own
+                  the select silently displays the first entry instead, and a
+                  reviewer who only fixed a typo rewrote the subject too --
+                  updateRule always sends topic_id. */}
+              {RULE_TOPICS.some((topic) => topic.id === draft.topicId) ? null : (
+                <option value={draft.topicId}>{draft.topicId}</option>
+              )}
               {RULE_TOPICS.map((topic) => (
                 <option key={topic.id} value={topic.id}>{topic.title}</option>
               ))}

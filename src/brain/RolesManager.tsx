@@ -18,13 +18,19 @@ import type { Role } from './types'
  * a few times a year is a settings door, and a door opens over the page rather
  * than living in the middle of it.
  */
-export function RolesManager({ rolesApi, isOpen, onClose }: {
+export function RolesManager({ rolesApi, isOpen, onClose, roles, onRolesChanged }: {
   rolesApi: Pick<RolesApi, 'listRoles' | 'createRole' | 'deleteRole'>
   isOpen: boolean
   onClose: () => void
+  /**
+   * Owned by the caller, not by this sheet. Two independent copies drifted: a
+   * role added here did not reach the do/don't filter until a full reload, and
+   * one deleted here left the filter offering a dead id that matched nothing.
+   */
+  roles: readonly Role[]
+  onRolesChanged: (roles: Role[]) => void
 }) {
   const handleError = useApiErrorHandler()
-  const [roles, setRoles] = useState<Role[]>([])
   const [draftName, setDraftName] = useState('')
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState('')
@@ -34,7 +40,7 @@ export function RolesManager({ rolesApi, isOpen, onClose }: {
   const reload = useCallback(async () => {
     setIsLoading(true)
     try {
-      setRoles(await rolesApi.listRoles())
+      onRolesChanged(await rolesApi.listRoles())
       setError('')
     } catch (failure) {
       // The API phrases every failure it raises in Hebrew, including the
@@ -45,9 +51,9 @@ export function RolesManager({ rolesApi, isOpen, onClose }: {
     } finally {
       setIsLoading(false)
     }
-  }, [handleError, rolesApi])
+  }, [handleError, onRolesChanged, rolesApi])
 
-  useEffect(() => { void reload() }, [reload])
+  useEffect(() => { if (isOpen) void reload() }, [isOpen, reload])
 
   const run = async (id: string, work: () => Promise<unknown>) => {
     setBusyId(id)

@@ -34,10 +34,15 @@ export function KnowledgeRow({ rule, vote, isSaving, onVote, onClear }: {
           {/* An unrated rule shows nothing at all rather than a placeholder: the
               person reading it is the one being asked to rate it, and "טרם דורג"
               beside the buttons that would fix that is noise. */}
+          {/* role="img" because a bare span is `generic`, which per ARIA does
+              not support an accessible name -- so the score announced nothing
+              at all, the opposite of what the label was for. The visible text
+              stays aria-hidden and the label carries the long form. */}
           {rule.like_pct != null ? (
             <span
               aria-label={`${rule.like_pct} אחוז לייקים מתוך ${rule.vote_count} מצביעים`}
               className="knowledge-row__score"
+              role="img"
             >
               <span aria-hidden="true">{rule.like_pct}%</span>
             </span>

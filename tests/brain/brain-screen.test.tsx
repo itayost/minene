@@ -24,7 +24,9 @@ vi.mock('../../src/auth/require-brand', () => ({
 // Stubbed so this file is about the route, not the list it renders. The stub
 // reports the role it was handed, which is the one thing the page decides.
 vi.mock('../../app/[brandId]/tools/brain/book-client', () => ({
-  BookClient: ({ role: given }: { role: string }) => <div data-testid="book" data-role={given} />,
+  BookClient: ({ role: given, brandId }: { role: string; brandId: string }) => (
+    <div data-brand={brandId} data-role={given} data-testid="book" />
+  ),
 }))
 
 const { default: BrainPage } = await import('../../app/[brandId]/tools/brain/page')
@@ -50,6 +52,11 @@ describe('the מוח ארגוני front door', () => {
     // rules_select_member_approved admits the whole tenant. Gating this would
     // put the knowledge behind the role that least needs to read it.
     expect(screen.getByTestId('book')).toHaveAttribute('data-role', 'staff')
+  })
+
+  it('hands the brand down, since the book links out of itself', async () => {
+    await renderBrain('owner')
+    expect(screen.getByTestId('book')).toHaveAttribute('data-brand', mineneBrand.id)
   })
 
   it('tells the book which role it is rendering for', async () => {

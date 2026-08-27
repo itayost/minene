@@ -146,3 +146,77 @@ describe('choosing a file without the browser speaking English', () => {
     expect(screen.getByLabelText(/קובץ PDF/)).toBeInTheDocument()
   })
 })
+
+describe('when the role catalogue could not be loaded', () => {
+  it('does not wipe a rule’s roles just because a reviewer fixed a typo', async () => {
+    rolesApi.listRoles.mockRejectedValue(new Error('down'))
+    rolesApi.listRuleRoles.mockRejectedValue(new Error('down'))
+    const user = setup()
+
+    await user.click(await screen.findByRole('button', { name: 'עריכה: לחייך' }))
+    await user.click(screen.getByRole('button', { name: 'שמירה' }))
+
+    // setRuleRoles REPLACES. With the catalogue missing the sheet hides the
+    // fieldset and the draft carries an empty set, so saving an unrelated edit
+    // would delete every rule_roles row for that rule, silently and for good.
+    await waitFor(() => expect(rulesApi.updateRule).toHaveBeenCalled())
+    expect(rolesApi.setRuleRoles).not.toHaveBeenCalled()
+  })
+
+  it('still writes the roles when the catalogue is there', async () => {
+    rolesApi.listRoles.mockResolvedValue([{ id: 'role-1', name: 'מנהלת חנות', sortOrder: 10 }])
+    const user = setup()
+
+    await user.click(await screen.findByRole('button', { name: 'עריכה: לחייך' }))
+    await user.click(screen.getByRole('button', { name: 'שמירה' }))
+
+    await waitFor(() => expect(rolesApi.setRuleRoles).toHaveBeenCalled())
+  })
+})
+
+describe('a pending rule filed under a topic nobody recognises', () => {
+  it('does not silently re-file it when a reviewer edits the wording', async () => {
+    rulesApi.listPendingRules.mockResolvedValue({
+      rows: [makeRule({ text: 'לחייך', topic_id: 'retired-topic' })],
+      nextCursor: null,
+    })
+    const user = setup()
+
+    await user.click(await screen.findByRole('button', { name: 'עריכה: לחייך' }))
+    await user.click(screen.getByRole('button', { name: 'שמירה' }))
+
+    // updateRule always sends topic_id. Coercing an unknown topic to the first
+    // one in the catalogue meant a reviewer who only fixed a typo rewrote the
+    // rule's subject without ever seeing the change.
+    await waitFor(() => expect(rulesApi.updateRule)
+      .toHaveBeenCalledWith(expect.objectContaining({ topicId: 'retired-topic' })))
+  })
+
+  it('offers the unknown topic in the picker, so the reviewer can see it', async () => {
+    rulesApi.listPendingRules.mockResolvedValue({
+      rows: [makeRule({ text: 'לחייך', topic_id: 'retired-topic' })],
+      nextCursor: null,
+    })
+    const user = setup()
+    await user.click(await screen.findByRole('button', { name: 'עריכה: לחייך' }))
+
+    expect(screen.getByLabelText('נושא', { selector: '#rule-edit-topic' })).toHaveValue('retired-topic')
+  })
+})
+
+describe('a queue that could be very long', () => {
+  it('stops paging rather than issuing an unbounded run of requests', async () => {
+    rulesApi.listPendingRules.mockImplementation(async () => ({
+      rows: Array.from({ length: 50 }, (_, i) => makeRule({ id: `r${i}`, text: `חוק ${i}` })),
+      nextCursor: { created_at: 'T', id: 'x' },
+    }))
+    setup()
+
+    // It runs on mount and again after every upload, hunt and extraction. A
+    // tenant with 600 pending rules issued 13 sequential RPCs each time, and
+    // then fed every id into one in(...) filter, whose URL a proxy will refuse
+    // long before that -- landing straight in the role-wipe path above.
+    await waitFor(() => expect(rulesApi.listPendingRules).toHaveBeenCalled())
+    await waitFor(() => expect(rulesApi.listPendingRules.mock.calls.length).toBeLessThanOrEqual(4))
+  })
+})

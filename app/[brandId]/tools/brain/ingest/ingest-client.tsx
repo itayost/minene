@@ -51,23 +51,42 @@ const sourceLabel = (source: string) => (
           : 'נוצר אוטומטית'
 )
 
-const editableTopic = (topicId: string) => (getTopic(topicId) ? topicId : FIRST_TOPIC_ID)
+/**
+ * How many pages of the queue to pull before stopping.
+ *
+ * This is a drainable queue, not an archive. Unbounded, a tenant with 600
+ * pending rules issued thirteen sequential RPCs on mount and again after every
+ * upload -- and then fed every id into one in(...) filter, whose URL a proxy
+ * refuses long before that, which lands in the same failure path that used to
+ * wipe a rule's roles.
+ */
+const MAX_QUEUE_PAGES = 4
 
 const isPdf = (file: File) => file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
 
 /** Rounded to one decimal, because a PDF's size is a rough reassurance. */
 const readableSize = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)}MB`
 
-/** Pages list_pending_rules until exhausted: it is tenant-wide and oldest first. */
-export async function loadAllPending(rulesApi: RulesApi): Promise<Rule[]> {
+/**
+ * Pages list_pending_rules, oldest first and tenant-wide, up to a cap.
+ *
+ * `hasMore` is returned rather than swallowed: a cap that is not said out loud
+ * reads as "this is the whole queue", and an owner who cannot find a rule they
+ * know is pending would have no way to tell which it was.
+ */
+export async function loadAllPending(rulesApi: RulesApi): Promise<{ rows: Rule[]; hasMore: boolean }> {
   const rows: Rule[] = []
   let cursor = null
+  let pages = 0
+
   do {
     const page = await rulesApi.listPendingRules({ cursor })
     rows.push(...page.rows)
     cursor = page.nextCursor
-  } while (cursor)
-  return rows
+    pages += 1
+  } while (cursor && pages < MAX_QUEUE_PAGES)
+
+  return { rows, hasMore: Boolean(cursor) }
 }
 
 export function IngestClient({ tenantId }: { tenantId: string }) {
@@ -87,11 +106,19 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
 
   const [queue, setQueue] = useState<Rule[]>([])
   const [queueError, setQueueError] = useState('')
+  const [queueHasMore, setQueueHasMore] = useState(false)
   const [savingIds, setSavingIds] = useState<ReadonlySet<string>>(() => new Set())
   const [draft, setDraft] = useState<RuleDraft | null>(null)
   const [editError, setEditError] = useState('')
   const [roles, setRoles] = useState<Role[]>([])
   const [ruleRoles, setRuleRoles] = useState<ReadonlyMap<string, string[]>>(() => new Map())
+  /**
+   * Whether the role catalogue actually arrived. setRuleRoles REPLACES, so
+   * without this a failed roles request means every save writes an empty set
+   * and permanently deletes a rule's targeting -- while the sheet, which hides
+   * the fieldset when there are no roles, shows nothing to suggest it.
+   */
+  const [rolesLoaded, setRolesLoaded] = useState(false)
   const [kpiState, setKpiState] = useState<KpiState>({ status: 'loading' })
 
   const isBusy = outcome.phase === 'working' || outcome.phase === 'processing'
@@ -100,8 +127,9 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
 
   const loadQueue = useCallback(async () => {
     try {
-      const rows = await loadAllPending(rulesApi)
+      const { rows, hasMore } = await loadAllPending(rulesApi)
       setQueue(rows)
+      setQueueHasMore(hasMore)
       try {
         const [catalogue, assigned] = await Promise.all([
           rolesApi.listRoles(),
@@ -109,7 +137,9 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
         ])
         setRoles(catalogue)
         setRuleRoles(assigned)
+        setRolesLoaded(true)
       } catch (rolesFailure) {
+        setRolesLoaded(false)
         // A failed role list must not blank the queue. The sheet degrades to
         // editing every axis except who a rule addresses.
         handleError(rolesFailure)
@@ -248,8 +278,13 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
           polarity: draft.polarity || null,
           response: draft.kind === 'case' ? draft.response.trim() : null,
         })
-        await rolesApi.setRuleRoles({ ruleId: draft.ruleId, roleIds: draft.roleIds })
-        setRuleRoles((current) => new Map(current).set(draft.ruleId, [...draft.roleIds]))
+        // Only when the catalogue is known. Writing an empty set derived from a
+        // failed fetch is indistinguishable, at the database, from a reviewer
+        // deliberately clearing every role.
+        if (rolesLoaded) {
+          await rolesApi.setRuleRoles({ ruleId: draft.ruleId, roleIds: draft.roleIds })
+          setRuleRoles((current) => new Map(current).set(draft.ruleId, [...draft.roleIds]))
+        }
         setQueue((current) => current.map((row) => (row.id === saved.id ? saved : row)))
         setDraft(null)
       } catch (error) {
@@ -410,6 +445,13 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
         <p className="approval-lobby__count" role="status">{`${queue.length} חוקים ממתינים`}</p>
         {queueError ? <p className="approval-lobby__error" role="alert">{queueError}</p> : null}
         {queue.length === 0 ? <p className="approval-lobby__empty">אין כרגע חוקים הממתינים לאישור.</p> : null}
+        {/* Never a silent cap: an owner who cannot find a rule they know is
+            pending needs to be told the list stopped, not left to wonder. */}
+        {queueHasMore ? (
+          <p className="approval-lobby__intro">
+            {`מוצגים ${queue.length} הישנים ביותר. יש עוד ממתינים — אשרי או דחי כדי להגיע אליהם.`}
+          </p>
+        ) : null}
 
         <ol className="approval-lobby__list">
           {queue.map((rule) => {
@@ -443,7 +485,7 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
                         ruleId: rule.id,
                         text: rule.text,
                         kind: rule.kind,
-                        topicId: editableTopic(rule.topic_id),
+                        topicId: rule.topic_id,
                         subTopic: rule.sub_topic ?? '',
                         polarity: rule.polarity ?? '',
                         response: rule.response ?? '',

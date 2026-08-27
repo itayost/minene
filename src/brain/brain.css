@@ -1274,7 +1274,13 @@
   gap: 6px;
 }
 
+/* Anchor and button together: the link carries neither the global button reset
+   nor its own, so styling only `button` left הזנה as raw underlined blue text
+   between two pills. */
+.knowledge-owner-tools a,
 .knowledge-owner-tools button {
+  display: inline-flex;
+  align-items: center;
   min-height: 34px;
   padding: 0 11px;
   border: 1px solid var(--border);
@@ -1283,11 +1289,31 @@
   color: var(--primary-strong);
   font-size: 0.78rem;
   font-weight: 700;
+  text-decoration: none;
   cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+/* The one that leaves this screen is filled: it is the only way to reach the
+   ingest surfaces, and a third identical pill would hide that. */
+.knowledge-owner-tools a {
+  border-color: transparent;
+  background: var(--primary-strong);
+  color: #fff;
+}
+
+.knowledge-owner-tools a:hover {
+  background: var(--primary);
 }
 
 .knowledge-owner-tools button:hover {
   border-color: var(--primary-strong);
+  background: var(--surface-sunken);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .knowledge-owner-tools a,
+  .knowledge-owner-tools button { transition: none; }
 }
 
 .knowledge-filters {

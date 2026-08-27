@@ -28,5 +28,5 @@ export default async function BrainPage({ params }: BrainParams) {
   const { brandId } = await params
   const { session } = await requireBrand(brandId)
 
-  return <BookClient role={session.role} />
+  return <BookClient brandId={brandId} role={session.role} />
 }

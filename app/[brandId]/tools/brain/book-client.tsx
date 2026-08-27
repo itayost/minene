@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabase } from '../../../../src/auth/supabase-browser'
 import { KnowledgeRow } from '../../../../src/brain/KnowledgeRow'
@@ -42,7 +43,7 @@ const ALL_ROLES: Role = { id: '', name: 'כל התפקידים', sortOrder: -1 }
 
 type LoadState = { status: 'loading' | 'ready' } | { status: 'error'; message: string }
 
-export function BookClient({ role }: { role: 'owner' | 'staff' }) {
+export function BookClient({ brandId, role }: { brandId: string; role: 'owner' | 'staff' }) {
   const rulesApi = useMemo(() => createRulesApi(createBrowserSupabase() as unknown as RulesClient), [])
   const rolesApi = useMemo(() => createRolesApi(createBrowserSupabase() as unknown as RolesClient), [])
   const handleError = useApiErrorHandler()
@@ -184,13 +185,17 @@ export function BookClient({ role }: { role: 'owner' | 'staff' }) {
           <h2>ספר החוקים</h2>
           {isOwner ? (
             <div className="knowledge-owner-tools">
+              {/* The only route to PDF upload, the conversation paste, the web
+                  hunt, the approval queue and the documents list. The deleted
+                  hub used to be that route. */}
+              <Link href={`/${brandId}/tools/brain/ingest`}>הזנה</Link>
               <button onClick={() => setIsSearchOpen((open) => !open)} type="button">חיפוש וסינון</button>
               <button onClick={() => setIsRolesOpen(true)} type="button">תפקידים</button>
             </div>
           ) : null}
         </header>
 
-        {isOwner && isSearchOpen ? (
+        {isOwner && isSearchOpen && tab === 'rules' ? (
           <section className="knowledge-filters" aria-label="חיפוש וסינון חוקים">
             <label htmlFor="book-query">חיפוש בחוקים</label>
             <div className="knowledge-filters__row">
@@ -275,7 +280,13 @@ export function BookClient({ role }: { role: 'owner' | 'staff' }) {
       </section>
 
       {isOwner ? (
-        <RolesManager isOpen={isRolesOpen} onClose={() => setIsRolesOpen(false)} rolesApi={rolesApi} />
+        <RolesManager
+          isOpen={isRolesOpen}
+          onClose={() => setIsRolesOpen(false)}
+          onRolesChanged={setRoles}
+          roles={roles}
+          rolesApi={rolesApi}
+        />
       ) : null}
     </div>
   )

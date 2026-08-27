@@ -92,6 +92,21 @@ describe('the bottom sheet', () => {
     expect(trigger).toHaveFocus()
   })
 
+  it('keeps Tab inside itself, which is what aria-modal promises', async () => {
+    const user = userEvent.setup()
+    render(<Harness />)
+    await user.click(screen.getByRole('button', { name: 'פתיחה' }))
+
+    // Nothing makes the page behind a sheet inert, so without a trap a keyboard
+    // user tabs straight out of the "modal" into the list underneath while the
+    // backdrop still covers it -- and cannot see where their focus went.
+    await user.tab()
+    await user.tab()
+    await user.tab()
+
+    expect(screen.getByRole('dialog')).toContainElement(document.activeElement as HTMLElement)
+  })
+
   it('does not steal focus back while a second field is being typed in', async () => {
     const user = userEvent.setup()
     render(<Harness />)

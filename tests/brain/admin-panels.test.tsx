@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { RulesApiError } from '../../src/brain/rules-api'
 import type { Role } from '../../src/brain/types'
@@ -19,6 +20,24 @@ const ROLES: Role[] = [
 
 
 
+/**
+ * The catalogue is owned by the caller now, so the harness owns it too and
+ * re-renders when the sheet reports a change -- which is the behaviour that
+ * stops the sheet and the do/don't filter drifting apart.
+ */
+function Harness({ api }: { api: Record<string, unknown> }) {
+  const [roles, setRoles] = useState<Role[]>([])
+  return (
+    <RolesManager
+      isOpen
+      onClose={vi.fn()}
+      onRolesChanged={setRoles}
+      roles={roles}
+      rolesApi={api as never}
+    />
+  )
+}
+
 function roles(overrides: Partial<Record<string, unknown>> = {}) {
   const api = {
     listRoles: vi.fn(async () => ROLES),
@@ -27,7 +46,7 @@ function roles(overrides: Partial<Record<string, unknown>> = {}) {
     deleteRole: vi.fn(async () => undefined),
     ...overrides,
   }
-  render(<RolesManager isOpen onClose={vi.fn()} rolesApi={api as never} />)
+  render(<Harness api={api} />)
   return { api, user: userEvent.setup() }
 }
 
@@ -42,12 +61,12 @@ describe('the org chart, editable', () => {
   })
 
   it('states the consequence of deleting before the button is pressed', async () => {
-    const { user } = roles()
+    roles()
 
     // Deleting a role is not destructive here: the rules it addressed revert to
     // addressing everyone. But "delete" reads as though it might be, and someone
     // who believes it deletes rules will simply never fix a wrong role.
-    expect(screen.getByText(/אינה מוחקת חוקים/)).toBeVisible()
+    expect(await screen.findByText(/אינה מוחקת חוקים/)).toBeVisible()
   })
 
   it('names the role in the delete control, because the visible label repeats', async () => {
@@ -82,7 +101,7 @@ describe('the org chart, editable', () => {
   })
 
   it('says no role is defined yet rather than showing an empty list', async () => {
-    const { user } = roles({ listRoles: vi.fn(async () => []) })
+    roles({ listRoles: vi.fn(async () => []) })
 
     expect(await screen.findByText('עדיין לא הוגדרו תפקידים.')).toBeVisible()
   })
