@@ -29,9 +29,14 @@ export const config = {
   /**
    * Skips, in order: the login screen itself (or a signed-out visitor redirects
    * forever), the sign-out route (which must work even with a dead session),
-   * Next's build output and favicon, and /brands/* -- the page images stay
-   * public until sub-project 2b moves them into storage, and gating them here
-   * would break every page in the viewer the moment auth lands.
+   * every API route, Next's build output and favicon, and /brands/* -- the page
+   * images stay public until sub-project 2b moves them into storage, and gating
+   * them here would break every page in the viewer the moment auth lands.
+   *
+   * `api` is skipped because a redirect is not an answer a fetch can use: this
+   * matcher would turn an unauthenticated call into a 307 pointing at an HTML
+   * login page. Those routes verify their own caller before touching a model,
+   * and they answer 401, which a caller can act on.
    */
-  matcher: ['/((?!login|logout|_next/static|_next/image|favicon.ico|brands/).*)'],
+  matcher: ['/((?!login|logout|api/|_next/static|_next/image|favicon.ico|brands/).*)'],
 }
