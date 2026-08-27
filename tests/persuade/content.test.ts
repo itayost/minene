@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import { isAskPhotographable } from '../../src/persuade/engine/rules';
-import { getPersona, getPlan, loadPersonas, loadPlans } from '../../src/persuade/lib/content';
+import {
+  getPersona, getPlan, listPersonaOptions, loadPersonas, loadPlans,
+} from '../../src/persuade/lib/content';
 
 describe('content library', () => {
   test('every persona carries what the follow-up phase needs', async () => {
@@ -51,6 +53,29 @@ describe('plans stay independent of who is on the other side', () => {
       for (const name of names) {
         expect(standalone(name).test(blob)).toBe(false);
       }
+    }
+  });
+});
+
+describe('the persona list the picker gets', () => {
+  test('carries a name and a role, so an option can be read', async () => {
+    const options = await listPersonaOptions();
+    expect(options).toHaveLength((await loadPersonas()).length);
+    for (const option of options) {
+      expect(option.name.length).toBeGreaterThan(0);
+      expect(option.role.length).toBeGreaterThan(0);
+    }
+  });
+
+  test('leaves hiddenTruth behind', async () => {
+    // hiddenTruth is what the target knows and the persuader has to work out.
+    // The lab page is a server component, so anything it hands the client is
+    // serialised into the HTML -- shipping the whole persona would print the
+    // answer to every simulation into the page source.
+    const blob = JSON.stringify(await listPersonaOptions());
+    for (const persona of await loadPersonas()) {
+      expect(blob).not.toContain(persona.hiddenTruth);
+      expect(blob).not.toContain(persona.agreesWhen);
     }
   });
 });

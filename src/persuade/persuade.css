@@ -162,3 +162,95 @@
   gap: 6px;
 }
 
+
+/* The run control.
+   Four short fields on one row at desk width, because the choice they make
+   together is a single sentence -- this persona, in this industry, in this
+   role, about this. Stacking them would hide the last one below the fold on a
+   phone anyway, so the grid collapses rather than scrolls. */
+
+.run-control {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-sunken);
+}
+
+.run-control__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.run-control label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.run-control input,
+.run-control select {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  font: inherit;
+  color: var(--text);
+}
+
+.run-control > button {
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--primary-strong);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.18s ease;
+}
+
+.run-control > button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The conversation as it arrives. Capped and scrolled rather than allowed to
+   grow: ten turns would push the matrix this control sits above off the screen
+   for the length of the run. */
+
+.run-control__turns {
+  display: grid;
+  gap: 6px;
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.run-control__turn {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+/* The persuader is the side being judged, so it reads as the foreground voice
+   and the replies as the room answering it. */
+.run-control__turn[data-role='persuader'] {
+  border-inline-start: 3px solid var(--primary-strong);
+}
+
+.run-control__who {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+}

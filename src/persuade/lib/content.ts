@@ -40,3 +40,13 @@ export async function getPersona(id: string): Promise<TargetPersona> {
 export async function getPlan(id: string): Promise<PersuasionPlan> {
   return pick(await loadPlans(), id, 'תוכנית');
 }
+
+/**
+ * What the lab's persona picker gets: enough to read an option, and nothing
+ * else. `hiddenTruth` is what the target knows and the persuader has to work
+ * out, and the lab page is a server component -- handing the client a whole
+ * persona would print the answer to every simulation into the page source.
+ */
+export async function listPersonaOptions(): Promise<Pick<TargetPersona, 'id' | 'name' | 'role'>[]> {
+  return (await loadPersonas()).map(({ id, name, role }) => ({ id, name, role }));
+}

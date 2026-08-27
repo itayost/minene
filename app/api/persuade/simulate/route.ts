@@ -94,9 +94,24 @@ export async function POST(req: Request) {
               controller.enqueue(encoder.encode(`${JSON.stringify({ type: 'unscored' })}\n`));
             }
 
-            await createSimulationsStore(supabase())
-              .saveSimulation(scored, cell)
-              .catch(() => undefined);
+            /**
+             * Announced only once the row exists.
+             *
+             * `done` is yielded by the engine the moment the conversation ends,
+             * and both the scoring and the insert happen after it -- so a client
+             * that reloaded on `done` would re-query before the row was written
+             * and show a matrix missing the run it had just watched.
+             *
+             * A failed write is said out loud rather than swallowed: ten model
+             * calls were spent, and silence here looks exactly like a run whose
+             * row nobody can find afterwards.
+             */
+            try {
+              await createSimulationsStore(supabase()).saveSimulation(scored, cell);
+              controller.enqueue(encoder.encode(`${JSON.stringify({ type: 'saved', id: scored.id })}\n`));
+            } catch {
+              controller.enqueue(encoder.encode(`${JSON.stringify({ type: 'unsaved' })}\n`));
+            }
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : 'שגיאה בשיחה';

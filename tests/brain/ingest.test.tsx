@@ -50,6 +50,11 @@ beforeEach(() => {
   rulesApi.huntExternal.mockResolvedValue({ rules: [] })
   rulesApi.listPendingRules.mockResolvedValue({ rows: [makeRule({ text: 'לחייך' })], nextCursor: null })
   rulesApi.loadKpis.mockResolvedValue({ knowledgeItems: 135, qualityItems: 6, growthPercent: 13 })
+  // updateRule returns the saved rule, and the screen swaps it into the queue
+  // inside a state updater -- which runs outside the try/catch around the save.
+  // A mock resolving undefined therefore threw where nothing could catch it,
+  // and the suite reported unhandled errors on every run.
+  rulesApi.updateRule.mockResolvedValue(makeRule({ text: 'לחייך' }))
   rolesApi.listRoles.mockResolvedValue([])
   rolesApi.listRuleRoles.mockResolvedValue(new Map())
 })

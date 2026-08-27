@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { requireBrand } from '../../../../../src/auth/require-brand'
+import { listPersonaOptions, loadPlans } from '../../../../../src/persuade/lib/content'
 import { LabClient } from './lab-client'
 
 type LabParams = { params: Promise<{ brandId: string }> }
@@ -20,5 +21,10 @@ export default async function LabPage({ params }: LabParams) {
 
   if (session.role !== 'owner') notFound()
 
-  return <LabClient />
+  // Read here rather than through an endpoint: both are committed files under
+  // content/, so a route to list them would be a network hop to read the same
+  // JSON this render already has on disk.
+  const [personas, plans] = await Promise.all([listPersonaOptions(), loadPlans()])
+
+  return <LabClient personas={personas} plans={plans} />
 }

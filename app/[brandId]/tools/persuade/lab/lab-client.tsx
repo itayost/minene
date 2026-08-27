@@ -9,8 +9,15 @@ import { matrixFrom } from '../../../../../src/persuade/matrix-data'
 import { createRolesApi, type RolesClient } from '../../../../../src/brain/roles-api'
 import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
 import { createSimulationsApi } from '../../../../../src/persuade/simulations-api'
+import { RunControl, type PersonaOption } from '../../../../../src/persuade/RunControl'
 import type { StoredSimulation } from '../../../../../src/persuade/lib/simulations'
+import type { PersuasionPlan } from '../../../../../src/persuade/engine/types'
 import type { Role } from '../../../../../src/brain/types'
+
+interface LabClientProps {
+  personas: PersonaOption[]
+  plans: PersuasionPlan[]
+}
 
 /**
  * One screen, not three.
@@ -20,7 +27,7 @@ import type { Role } from '../../../../../src/brain/types'
  * screen and a matrix would have made three surfaces that each show a third of
  * the same fact -- which is the mistake the brain's five screens made.
  */
-export function LabClient() {
+export function LabClient({ personas, plans }: LabClientProps) {
   const simulationsApi = useMemo(
     () => createSimulationsApi(createBrowserSupabase() as never),
     [],
@@ -77,6 +84,12 @@ export function LabClient() {
         </header>
 
         {error ? <p className="knowledge-message" role="alert">{error}</p> : null}
+
+        {/* Outside the "are there runs" branch below, deliberately. The matrix
+            is built from runs, so it is empty until one exists -- and a control
+            inside that branch would make the first run the one thing this
+            screen could never do. */}
+        <RunControl onFinished={load} personas={personas} plans={plans} roles={roles} />
 
         {cells.length === 0 ? (
           <p className="knowledge-message">
