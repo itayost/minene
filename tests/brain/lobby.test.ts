@@ -1,18 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { loadAllPending } from '../../app/[brandId]/tools/brain/lobby/lobby-client'
 import type { RulesApi } from '../../src/brain/rules-api'
-import type { Rule } from '../../src/brain/types'
+import { makeRule } from '../fixtures/rule'
 
-const rule = (id: string): Rule => ({
-  id,
-  topic_id: 'store',
-  text: `חוק ${id}`,
-  is_starred: false,
-  created_at: '2026-08-20T10:00:00Z',
-  kind: 'tip',
-  status: 'pending',
-  source: 'pdf',
-})
+const rule = (id: string) => makeRule({ id, text: `חוק ${id}` })
 
 describe('loadAllPending', () => {
   it('pages until the cursor runs out, rather than stopping at the first page', async () => {

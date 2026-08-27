@@ -2,7 +2,17 @@ import type { BrainDocument } from './types'
 
 const BUCKET = 'documents'
 const RECENT_DOCUMENTS_LIMIT = 10
-const DOCUMENT_COLUMNS = 'id,filename,topic_id,status,error,created_at'
+const DOCUMENT_COLUMNS = 'id,filename,topic_id,status,error,created_at,source_type'
+
+/**
+ * Matches documents.raw_text's own check constraint. Checked here as well as
+ * there so an over-long paste is refused with a Hebrew sentence in front of the
+ * person, rather than as a constraint violation after a round trip.
+ */
+const MAX_CONVERSATION_CHARS = 200_000
+
+/** The name a paste gets when whoever pasted it did not bother to title one. */
+const UNTITLED_CONVERSATION = 'שיחה שהודבקה'
 
 const GENERIC_EXTRACTION_FAILURE_MESSAGE = 'אירעה שגיאה בעיבוד המסמך. נסי שוב מאוחר יותר.'
 
@@ -15,6 +25,8 @@ export type DocumentsApiCode =
   | 'SAVE_FAILED'
   | 'LOAD_FAILED'
   | 'EXTRACTION_FAILED'
+  | 'EMPTY_CONVERSATION'
+  | 'CONVERSATION_TOO_LONG'
 
 export class DocumentsApiError extends Error {
   readonly code: DocumentsApiCode
@@ -30,6 +42,11 @@ const unauthorized = () => new DocumentsApiError('UNAUTHORIZED', 'ההרשאה �
 const uploadFailed = () => new DocumentsApiError('UPLOAD_FAILED', 'העלאת הקובץ נכשלה. נסי שוב.')
 const saveFailed = () => new DocumentsApiError('SAVE_FAILED', 'שמירת המסמך נכשלה. נסי שוב.')
 const loadFailed = () => new DocumentsApiError('LOAD_FAILED', 'לא הצלחנו לטעון את רשימת המסמכים.')
+const emptyConversation = () => new DocumentsApiError('EMPTY_CONVERSATION', 'יש להדביק את תוכן השיחה.')
+const conversationTooLong = () => new DocumentsApiError(
+  'CONVERSATION_TOO_LONG',
+  `השיחה ארוכה מדי. הגבול הוא ${MAX_CONVERSATION_CHARS.toLocaleString('he-IL')} תווים.`,
+)
 
 type PostgrestError = { code?: string | null }
 
@@ -125,6 +142,61 @@ export function createDocumentsApi(client: DocumentsClient) {
       }
 
       return { documentId, storagePath }
+    },
+
+    /**
+     * A pasted chat thread, saved as a document so it goes through the same
+     * extraction the PDF pipeline already runs: same table, same
+     * processing/ready/failed lifecycle, same extract-rules, same approval
+     * lobby, same provenance link from every rule back to where it came from.
+     *
+     * The useful knowledge in this business is already sitting in threads
+     * nobody kept: someone worked out how to handle a return, or how to phrase
+     * an upsell, in a conversation that was never written down.
+     *
+     * No storage step at all, which is what makes this shorter than
+     * uploadDocument rather than a variant of it: there is no object, so there
+     * is no ordering hazard between an upload and a row, and no path convention
+     * to keep in step with the storage policy.
+     */
+    async saveConversation({ tenantId, topicId, title, text }: {
+      tenantId: string
+      topicId: string
+      title: string
+      text: string
+    }): Promise<{ documentId: string }> {
+      const trimmed = text.trim()
+      if (!trimmed) throw emptyConversation()
+      if (trimmed.length > MAX_CONVERSATION_CHARS) throw conversationTooLong()
+
+      const documentId = crypto.randomUUID()
+
+      // Read from the session for the same reason uploadDocument does: tenantId
+      // and topicId are deliberately client-known state, an identity claim is
+      // not.
+      const { data: userData, error: userError } = await client.auth.getUser()
+      if (userError || !userData?.user) throw saveFailed()
+
+      const { error: insertError, status: insertStatus } = await client.from('documents').insert({
+        id: documentId,
+        tenant_id: tenantId,
+        topic_id: topicId,
+        // filename is NOT NULL and is what the documents list renders, so a
+        // conversation needs a name too.
+        filename: title.trim() || UNTITLED_CONVERSATION,
+        source_type: 'conversation',
+        raw_text: trimmed,
+        // storage_path is omitted rather than sent as null: that is exactly what
+        // documents_source_shape requires of a conversation row, and omitting it
+        // keeps this insert from naming a path convention it has no part in.
+        uploaded_by: userData.user.id,
+      })
+
+      if (insertError) {
+        throw isAuthError(insertError, insertStatus) ? unauthorized() : saveFailed()
+      }
+
+      return { documentId }
     },
 
     /**

@@ -13,6 +13,7 @@ function client(outcomes: {
   const order: string[] = []
   const uploads: { path: string; contentType: string }[] = []
   const inserts: Record<string, unknown>[] = []
+  const columns: string[] = []
 
   const supabase = {
     auth: { getUser: async () => ({ data: { user: { id: 'user-1' } }, error: null }) },
@@ -30,7 +31,7 @@ function client(outcomes: {
     },
     from: () => {
       const query = {
-        select: () => query,
+        select: (selected: string) => { columns.push(selected); return query },
         eq: () => query,
         order: () => query,
         limit: async () => outcomes.list ?? { data: [], error: null },
@@ -45,7 +46,7 @@ function client(outcomes: {
     },
   } as unknown as DocumentsClient
 
-  return { api: createDocumentsApi(supabase), order, uploads, inserts }
+  return { api: createDocumentsApi(supabase), order, uploads, inserts, columns }
 }
 
 const file = () => new File(['x'], 'rules.pdf', { type: 'application/pdf' })
@@ -170,5 +171,100 @@ describe('listRecentDocuments', () => {
 
     expect(result.rows).toHaveLength(1)
     expect(result.hasMore).toBe(false)
+  })
+})
+
+const CONVERSATION = 'אני: איך מטפלים בהחזר בלי חשבונית?\nGPT: מציעים זיכוי.'
+
+describe('saveConversation', () => {
+  it('creates a row and touches storage not at all', async () => {
+    const { api, order } = client()
+    await api.saveConversation({ tenantId: TENANT, topicId: 'store', title: 'החזרות', text: CONVERSATION })
+
+    // There is no object, so there is no ordering hazard between an upload and a
+    // row, and no path convention to keep in step with the storage policy. This
+    // is what makes it shorter than uploadDocument rather than a variant of it.
+    expect(order).toEqual(['row'])
+  })
+
+  it('writes the transcript on the row, with no storage path beside it', async () => {
+    const { api, inserts } = client()
+    const { documentId } = await api.saveConversation({
+      tenantId: TENANT, topicId: 'store', title: 'החזרות', text: CONVERSATION,
+    })
+
+    // documents_source_shape requires exactly one of storage_path / raw_text.
+    // storage_path is omitted rather than sent as null, so this insert never
+    // names a path convention it has no part in.
+    expect(inserts[0]).toEqual({
+      id: documentId,
+      tenant_id: TENANT,
+      topic_id: 'store',
+      filename: 'החזרות',
+      source_type: 'conversation',
+      raw_text: CONVERSATION,
+      uploaded_by: 'user-1',
+    })
+  })
+
+  it('names an untitled paste rather than inserting a null filename', async () => {
+    const { api, inserts } = client()
+    await api.saveConversation({ tenantId: TENANT, topicId: 'store', title: '  ', text: CONVERSATION })
+
+    // filename is NOT NULL and is what the documents list renders.
+    expect(inserts[0]).toMatchObject({ filename: 'שיחה שהודבקה' })
+  })
+
+  it('refuses an empty paste in front of the person', async () => {
+    const { api, inserts } = client()
+
+    await expect(api.saveConversation({ tenantId: TENANT, topicId: 'store', title: '', text: '   ' }))
+      .rejects.toMatchObject({ code: 'EMPTY_CONVERSATION' })
+    expect(inserts).toHaveLength(0)
+  })
+
+  it('refuses a paste past the column’s own cap without spending the round trip', async () => {
+    const { api, inserts } = client()
+
+    // raw_text checks the same 200k bound. Checking here too turns a constraint
+    // violation nobody can act on into a sentence.
+    await expect(api.saveConversation({
+      tenantId: TENANT, topicId: 'store', title: '', text: 'א'.repeat(200_001),
+    })).rejects.toMatchObject({ code: 'CONVERSATION_TOO_LONG' })
+    expect(inserts).toHaveLength(0)
+  })
+
+  it('reads the author from the session, never from the caller', async () => {
+    const { api, inserts } = client()
+    await api.saveConversation({ tenantId: TENANT, topicId: 'store', title: '', text: CONVERSATION })
+
+    // tenantId and topicId are deliberately client-known state. An identity
+    // claim is not, and must never be spoofable from the browser.
+    expect(inserts[0]).toMatchObject({ uploaded_by: 'user-1' })
+  })
+
+  it('sends an expired session back to sign in', async () => {
+    const { api } = client({ insert: { error: { code: 'PGRST301' } } })
+
+    await expect(api.saveConversation({ tenantId: TENANT, topicId: 'store', title: '', text: CONVERSATION }))
+      .rejects.toMatchObject({ code: 'UNAUTHORIZED' })
+  })
+
+  it('reports a refused insert as a save failure the person can retry', async () => {
+    const { api } = client({ insert: { error: { code: '23502' }, status: 400 } })
+
+    await expect(api.saveConversation({ tenantId: TENANT, topicId: 'store', title: '', text: CONVERSATION }))
+      .rejects.toBeInstanceOf(DocumentsApiError)
+  })
+})
+
+describe('the columns a document is read with', () => {
+  it('selects the source type, so a paste is distinguishable from an upload', async () => {
+    const { api, columns } = client()
+    await api.listRecentDocuments()
+
+    // A field on BrainDocument that is missing here is not a type error
+    // anywhere: it is a property that is always undefined at runtime.
+    expect(columns[0]?.split(',')).toContain('source_type')
   })
 })
