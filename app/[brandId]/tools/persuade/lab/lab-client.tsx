@@ -1,7 +1,16 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createBrowserSupabase } from '../../../../../src/auth/supabase-browser'
+import { BLOCKER_LABELS, CATEGORY_LABELS } from '../../../../../src/persuade/labels'
 import { Matrix, type MatrixCell } from '../../../../../src/persuade/Matrix'
+import { blockersIn, buildBank } from '../../../../../src/persuade/bank'
+import { matrixFrom } from '../../../../../src/persuade/matrix-data'
+import { createRolesApi, type RolesClient } from '../../../../../src/brain/roles-api'
+import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
+import { createSimulationsApi } from '../../../../../src/persuade/simulations-api'
+import type { StoredSimulation } from '../../../../../src/persuade/lib/simulations'
+import type { Role } from '../../../../../src/brain/types'
 
 /**
  * One screen, not three.
@@ -12,12 +21,53 @@ import { Matrix, type MatrixCell } from '../../../../../src/persuade/Matrix'
  * the same fact -- which is the mistake the brain's five screens made.
  */
 export function LabClient() {
-  const [selected, setSelected] = useState<MatrixCell | null>(null)
+  const simulationsApi = useMemo(
+    () => createSimulationsApi(createBrowserSupabase() as never),
+    [],
+  )
+  const rolesApi = useMemo(
+    () => createRolesApi(createBrowserSupabase() as unknown as RolesClient),
+    [],
+  )
+  const handleError = useApiErrorHandler()
 
-  // Nothing has been run yet, and the screen says so rather than drawing an
-  // empty grid. The matrix is populated from public.simulations once the lab
-  // can run; until then an honest empty state beats an illustration.
-  const cells = useMemo<MatrixCell[]>(() => [], [])
+  const [selected, setSelected] = useState<MatrixCell | null>(null)
+  const [simulations, setSimulations] = useState<StoredSimulation[]>([])
+  const [roles, setRoles] = useState<Role[]>([])
+  const [error, setError] = useState('')
+
+  const load = useCallback(async () => {
+    try {
+      const [runs, catalogue] = await Promise.all([
+        simulationsApi.listSimulations(),
+        rolesApi.listRoles(),
+      ])
+      setSimulations(runs)
+      setRoles(catalogue)
+    } catch (failure) {
+      if (handleError(failure)) setError('לא הצלחנו לטעון את הריצות')
+    }
+  }, [handleError, rolesApi, simulationsApi])
+
+  useEffect(() => { void load() }, [load])
+
+  const cells = useMemo(
+    () => matrixFrom(simulations, roles.map((r) => ({ id: r.id, name: r.name }))),
+    [roles, simulations],
+  )
+
+  // The bank and the blockers are queries over the selected cell's runs, never
+  // a stored list -- so they cannot disagree with the evidence behind them.
+  const inCell = useMemo(
+    () => (selected
+      ? simulations.filter(
+        (s) => s.cell.industry === selected.industry && s.cell.jobRoleId === selected.jobRoleId,
+      )
+      : []),
+    [selected, simulations],
+  )
+  const bank = useMemo(() => buildBank(inCell.map((s) => s.run)), [inCell])
+  const blockers = useMemo(() => blockersIn(inCell.map((s) => s.run)), [inCell])
 
   return (
     <div className="brain-surface">
@@ -25,6 +75,8 @@ export function LabClient() {
         <header className="knowledge-header">
           <h2>מעבדת השכנוע</h2>
         </header>
+
+        {error ? <p className="knowledge-message" role="alert">{error}</p> : null}
 
         {cells.length === 0 ? (
           <p className="knowledge-message">
@@ -67,6 +119,28 @@ export function LabClient() {
                 ? 'אין ריצות בתא הזה, ולכן אין מה למדוד בו עדיין.'
                 : `${selected.runs} ריצות · ${selected.persuasionRate}% שכנוע`}
             </p>
+
+            {bank.length ? (
+              <ul className="bank">
+                {bank.map((entry) => (
+                  <li className="bank__row" key={entry.category}>
+                    <span className="bank__category">{CATEGORY_LABELS[entry.category]}</span>
+                    <span>{entry.examples[0] ?? '—'}</span>
+                    <span className="bank__won">{`ניצח ${entry.wonCount}×`}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : selected.runs > 0 ? (
+              // Runs but no bank means nothing was scored, which is a different
+              // fact from nothing having been run, and worth saying separately.
+              <p className="knowledge-message">אף ריצה בתא הזה לא נוקדה, ולכן אין עדיין טיעונים מנצחים.</p>
+            ) : null}
+
+            {blockers.length ? (
+              <p className="knowledge-message">
+                {`החסם השכיח כאן: ${BLOCKER_LABELS[blockers[0]!.blocker]} — נתקלו בו ${blockers[0]!.encountered} פעמים, נשבר ב-${blockers[0]!.overcome}.`}
+              </p>
+            ) : null}
           </section>
         ) : null}
       </section>
