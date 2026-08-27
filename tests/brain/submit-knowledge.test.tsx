@@ -109,13 +109,27 @@ describe('contributing knowledge from the floor', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('אחרי שהמנהל יאשר')
   })
 
-  it('clears the form and tells the page to reload after a submission', async () => {
+  it('closes on success, and tells the page to reload', async () => {
     const { onSubmitted, user } = setup()
     await open(user)
     await user.type(screen.getByLabelText('החוק'), 'לחייך')
     await user.click(screen.getByRole('button', { name: 'שליחה לאישור' }))
 
+    // The confirmation belongs beside the list the new rule will eventually
+    // join, not on top of it.
     expect(onSubmitted).toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('starts empty the next time it is opened', async () => {
+    const { user } = setup()
+    await open(user)
+    await user.type(screen.getByLabelText('החוק'), 'לחייך')
+    await user.click(screen.getByRole('button', { name: 'שליחה לאישור' }))
+    await open(user)
+
+    // Escape preserves the draft; a successful send clears it. The difference
+    // is whether the words already went somewhere.
     expect(screen.getByLabelText('החוק')).toHaveValue('')
   })
 
@@ -138,5 +152,35 @@ describe('contributing knowledge from the floor', () => {
     await user.click(screen.getByRole('button', { name: 'שליחה לאישור' }))
 
     expect(router.replace).toHaveBeenCalledWith('/login?next=%2Fminene%2Ftools%2Fbrain%2Fbook')
+  })
+})
+
+describe('contributing as a task, not as a form in the way', () => {
+  it('opens over the list rather than pushing it down', async () => {
+    const { user } = setup()
+    await open(user)
+
+    // Six inline fields pushed the list people came to read off the screen on
+    // every visit, including the large majority that are not submissions.
+    expect(screen.getByRole('dialog', { name: 'הוספת ידע' })).toBeVisible()
+  })
+
+  it('puts focus on the field a contributor came to fill', async () => {
+    const { user } = setup()
+    await open(user)
+
+    expect(screen.getByLabelText('החוק')).toHaveFocus()
+  })
+
+  it('closes on Escape without throwing away what was typed', async () => {
+    const { user } = setup()
+    await open(user)
+    await user.type(screen.getByLabelText('החוק'), 'לחייך')
+    await user.keyboard('{Escape}')
+    await open(user)
+
+    // Escape abandons the sheet, not the draft. Somebody who dismisses it by
+    // reflex and loses a paragraph does not type a second one.
+    expect(screen.getByLabelText('החוק')).toHaveValue('לחייך')
   })
 })

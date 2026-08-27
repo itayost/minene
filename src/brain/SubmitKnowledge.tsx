@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
+import { BottomSheet } from './BottomSheet'
 import { RULE_TOPICS } from './topics'
 import { useApiErrorHandler } from './use-api-error'
 import type { Rule, RuleKind, RulePolarity } from './types'
@@ -57,7 +58,10 @@ export function SubmitKnowledge({ rulesApi, onSubmitted }: {
 }) {
   const handleError = useApiErrorHandler()
   const [isOpen, setIsOpen] = useState(false)
+  // The draft lives out here rather than inside the sheet, so dismissing the
+  // sheet abandons the sheet and not the paragraph somebody just typed.
   const [draft, setDraft] = useState<Draft>(EMPTY)
+  const textRef = useRef<HTMLTextAreaElement>(null)
   const [state, setState] = useState<State>(IDLE)
 
   const isCase = draft.kind === 'case'
@@ -97,6 +101,7 @@ export function SubmitKnowledge({ rulesApi, onSubmitted }: {
       // vanishes into a review queue with no explanation reads as a bug the
       // first time someone checks the list and cannot find what they added.
       setState({ status: 'idle', message: 'נשלח לאישור. החוק יופיע ברשימה אחרי שהמנהל יאשר אותו.', isError: false })
+      setIsOpen(false)
       onSubmitted?.()
     } catch (error) {
       // null means the handler is already sending them to sign in, so there is
@@ -118,19 +123,20 @@ export function SubmitKnowledge({ rulesApi, onSubmitted }: {
     )
     : null
 
-  if (!isOpen) {
-    return (
-      <div className="knowledge-submit">
-        <button className="knowledge-submit__open" onClick={() => setIsOpen(true)} type="button">
-          הוספת ידע
-        </button>
-        {notice}
-      </div>
-    )
-  }
-
   return (
-    <form className="knowledge-submit knowledge-submit--open" onSubmit={(event) => void submit(event)}>
+    <div className="knowledge-submit">
+      <button className="knowledge-submit__open" onClick={() => setIsOpen(true)} type="button">
+        הוספת ידע
+      </button>
+      {isOpen ? null : notice}
+
+      <BottomSheet
+        initialFocusRef={textRef}
+        label="הוספת ידע"
+        onDismiss={() => setIsOpen(false)}
+        openKey={isOpen ? 'submit' : null}
+      >
+    <form className="knowledge-submit--open" onSubmit={(event) => void submit(event)}>
       <h3 className="knowledge-submit__title">הוספת ידע</h3>
 
       <label>
@@ -164,7 +170,7 @@ export function SubmitKnowledge({ rulesApi, onSubmitted }: {
             the situation rather than the rule. One field doing two jobs has to
             say which one it is doing. */}
         <span>{isCase ? 'המקרה' : 'החוק'}</span>
-        <textarea onChange={(event) => set('text')(event.target.value)} rows={3} value={draft.text} />
+        <textarea onChange={(event) => set('text')(event.target.value)} ref={textRef} rows={3} value={draft.text} />
       </label>
 
       {isCase ? (
@@ -185,5 +191,7 @@ export function SubmitKnowledge({ rulesApi, onSubmitted }: {
         </button>
       </div>
     </form>
+      </BottomSheet>
+    </div>
   )
 }

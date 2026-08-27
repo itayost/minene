@@ -823,11 +823,9 @@
    while it is open. */
 
 .knowledge-submit--open {
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  padding: 12px;
-  border-radius: 12px;
-  background: var(--surface-sunken);
 }
 
 .knowledge-submit__title {
