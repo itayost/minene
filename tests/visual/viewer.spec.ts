@@ -14,7 +14,6 @@ test.skip(
 // path that exercises the chooser screen.
 const SUBJECT_LABEL = 'תוצאות'
 const GROUP_LABEL = 'סקירה כללית'
-const TOOL_LABEL = 'משכנע'
 
 // next/link prefetches the route behind every link in view. A prefetch only
 // warms the client-side route cache and never reaches the painted frame, so
@@ -71,13 +70,15 @@ test('page viewer', async ({ page }) => {
   await expect(page).toHaveScreenshot('page-viewer.png')
 })
 
-test('tool screen', async ({ page }) => {
-  if (mode === 'click') {
-    await page.goto('/')
-    await page.getByRole('button', { name: TOOL_LABEL }).click()
-  } else {
-    await page.goto('/minene/tools/persuade')
-  }
-  await settle(page)
-  await expect(page).toHaveScreenshot('tool.png')
-})
+/*
+ * The tool-screen comparison is retired along with its five references.
+ *
+ * It captured /minene/tools/persuade rendering the generic ToolScreen, and that
+ * screen was deliberately replaced by the persuasion tab. This is retirement,
+ * not regeneration: the guards exist to stop a reference being silently
+ * overwritten with post-change output, and deleting one whose screen no longer
+ * exists is a different act -- the same call c0cee5f made for the home
+ * reference.
+ *
+ * The remaining ten, over subject-menu and page-viewer, stay a live gate.
+ */
