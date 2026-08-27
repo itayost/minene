@@ -1014,4 +1014,6 @@ Anything found here gets its own commit with the finding in the message, the way
 
 ## What this plan does not do
 
-Routing, the hub deletion, the three-screen split, the submit-as-sheet move, the merged ingest screen, the file input replacement and the queue hierarchy are **Plan 2**, written after this one is executed. Everything here leaves all five surfaces on their current routes, working, and repainted.
+Routing, the hub deletion, the two-screen merge, the submit-as-sheet move, the merged ingest screen, the file input replacement, the queue hierarchy and the star's removal are **Plan 2**, written after this one is executed. Everything here leaves all five surfaces on their current routes, working, and repainted.
+
+The spec was revised on 2026-08-27, after Task 7, from three screens to two: the book and נתוני המוח turned out to be the same query with different chrome, and the star turned out to be unused now that rules carry a real rating. Nothing in Plan 1 depends on that change.

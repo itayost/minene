@@ -73,25 +73,40 @@ owner screen — today's admin problem with two more jobs bolted on. One
 progressive screen means a very long scroll on a 402px shell, with the review
 queue buried under a reading list and no way to link to a task.
 
-**Three screens, one job each. The hub is deleted; `/tools/brain` becomes the
-first real screen.**
+**Two screens. The hub is deleted; `/tools/brain` becomes the first real
+screen.**
 
 | route | job | who |
 |---|---|---|
-| `/tools/brain` | **לקרוא** — read, filter, rate, contribute | every member |
-| `/tools/brain/ingest` | **להזין** — three sources, and the approval queue beneath them | owner |
-| `/tools/brain/measure` | **למדוד** — KPIs, rule history, settings | owner |
+| `/tools/brain` | **לקרוא** — read, filter, rate, contribute | every member, role-aware |
+| `/tools/brain/ingest` | **להזין** — three sources, the approval queue, and what the brain knows | owner |
 
-The middle row is the reason for this split. Extraction and the approval lobby
-are two halves of one pipeline that currently live on separate screens: an owner
+The second row is what decided the split. Extraction and the approval lobby are
+two halves of one pipeline that currently live on separate screens: an owner
 uploads a PDF, is told "6 חוקים חדשים ממתינים בלובי", and must navigate elsewhere
 to act on them. Together, the six appear in the queue directly below the form.
 
-`measure` keeps its own screen. Its history list does overlap the book's — the
-same rules with owner chrome, all statuses, the star and the search — and that
-overlap is accepted rather than resolved, because folding it into `ingest`
-recreates the six-jobs-on-one-screen shape that split-by-audience was rejected
-for.
+### Why not three
+
+This document originally proposed a third screen, `measure`, holding KPIs, the
+rule history and the settings, and recorded its overlap with the book as
+"accepted rather than resolved". That was wrong, and using the two screens
+side by side settled it: they are the same query with different chrome. Both
+call `list_rules`. The book adds four lenses, voting, a role filter and
+contribute; the history adds search, a status filter, the topic ribbon and
+paging. Neither set is a different thing — they are two audiences' options on
+one table, given two screens to live on.
+
+So the options merge into one list and the screen goes. An owner gets search
+and the status filter as controls on the book's list, collapsed behind the
+toggle that already exists, rather than as a second copy of the list.
+
+What is genuinely not a rules list moves rather than disappearing:
+
+- **The KPI strip goes to `ingest`.** "135 פריטי ידע, גידול שבועי" is feedback
+  on the act of feeding, and `ingest` is the screen you feed from.
+- **Roles and people become sheets**, opened from the book's owner header. They
+  are a settings door, edited a handful of times a year, not a destination.
 
 ## The foundation
 
@@ -147,11 +162,12 @@ object with different content.
 - Metadata drops to `label` size in `--muted`.
 - Numbers and scores are tabular and share a baseline, so a column scans.
 
-## The three screens
+## The two screens
 
 ### `/tools/brain` — לקרוא
 
-The bottom nav lands here, so it is the tool's front door.
+The bottom nav lands here, so it is the tool's front door, and it is the only
+screen a staff member ever sees.
 
 **Four views as a 2×2 grid of chips, not a scrolling strip.** Four Hebrew labels
 never fit on one line at 402px. The trailing-edge fade added in `d3db8a6` is a
@@ -189,10 +205,16 @@ screen.
 **The documents list collapses** to the foot, opened when the question is "what
 happened to my upload".
 
-### `/tools/brain/measure` — למדוד
+**The KPI strip sits at the top**, where feeding the brain and seeing how much
+it knows are the same visit.
 
-KPIs, then the rule history with its search and filters, then roles and people
-reached from the foot.
+### What an owner gets on top
+
+The same list, with three additions and no second copy: search, a status filter
+(so pending and rejected rows are reachable), and the two settings sheets from
+the header. All of it collapsed behind the existing חיפוש וסינון toggle, because
+the floor sees this screen far more often than an owner does and a busier list
+would tax the majority to serve the minority.
 
 ## Component behaviour
 
@@ -243,8 +265,9 @@ its fix intact, not re-derived.
 ## Routing and migration
 
 `/lobby`, `/extract` and `/admin` are on `main` and therefore in production, so
-they may be bookmarked. Each keeps a one-line redirect to its new home. `/book`
-is unmerged and simply moves.
+they may be bookmarked. Each keeps a one-line redirect: `/lobby` and `/extract`
+to `/ingest`, `/admin` to `/tools/brain` itself, since its list is now the
+book's. `/book` is unmerged and simply moves.
 
 ## Stylesheet
 
@@ -283,6 +306,29 @@ fallbacks never fire inside the shell.
 instrument here that sees layout, and it is how the one real bug so far was
 found.
 
+## The star is removed
+
+`rules.is_starred` is an owner's private marker on a rule. It now sits on the
+same row as a public rating built from real votes, doing the same job worse: one
+person's unexplained flag against a percentage with a denominator. Asked
+directly, the owner does not use it.
+
+So minene stops reading and writing it: the `Rule` type loses the field,
+`RULE_COLUMNS` stops selecting it, `setStar` goes, `listRules` loses
+`starredOnly`, and the star button and its filter leave the list. Twenty-three
+references across seven files.
+
+**The column itself stays.** Dropping it is a migration, migrations live in
+eran-task, and it holds real data — rule #136 is starred today. A column nothing
+reads costs nothing; a destructive migration run to tidy up costs whatever it
+turns out to have been holding. That decision belongs with the schema's owner,
+after this ships and nothing has read the column for a while.
+
+One thing to preserve while removing it: `setStar` is the call one test uses to
+prove that an RLS-filtered update returning `{ data: null, error: null }` throws
+rather than handing back a row with no fields. That behaviour must stay covered
+by `updateRule` and the approve/reject path, which share the same shape.
+
 ## Out of scope
 
 - **Batch approval.** With 32 pending rules, one-at-a-time is 32 taps, and
@@ -298,7 +344,6 @@ found.
   guard.
 - **Redirects are easy to forget to remove.** They are documented here as
   temporary; nothing in code will remind anyone.
-- **`measure`'s overlap with the book is unresolved by choice.** If the search
-  and the star go unused, that screen collapses to a KPI strip and a settings
-  door, and should then fold into `ingest`. Worth revisiting once it has been
-  used for a while.
+- **The merged list is busier for an owner than for a staff member.** The owner
+  controls have to stay collapsed; if they creep onto the page, the majority
+  audience pays for the minority's tools. This is the failure mode to watch.
