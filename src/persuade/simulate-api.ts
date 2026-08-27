@@ -1,4 +1,5 @@
 import { createBrowserSupabase } from '../auth/supabase-browser'
+import { RulesApiError } from '../brain/rules-api'
 import type { BotConfig } from './engine/config'
 import type { SimulationEvent } from './engine/simulation'
 
@@ -25,17 +26,23 @@ export interface SimulateRequest {
   cell: { industry: string; jobRoleId: string | null; need?: string | null }
 }
 
-export class SimulateError extends Error {
-  constructor(readonly status: number, message: string) {
-    super(message)
-    this.name = 'SimulateError'
-  }
-}
+/**
+ * The same error class every other API layer here throws, rather than one of
+ * this module's own.
+ *
+ * `useApiErrorHandler` branches on `code === 'UNAUTHORIZED'` to send the reader
+ * back to sign in, and it recognises this class and DocumentsApiError only. A
+ * private error class meant a 401 fell through to "show the message as text",
+ * which leaves the reader looking at "ההרשאה פגה" on a screen where nothing
+ * they can click will fix it.
+ */
+const unauthorized = () => new RulesApiError('UNAUTHORIZED', 401, 'ההרשאה פגה. נא להתחבר מחדש.')
 
-const MESSAGES: Record<number, string> = {
-  401: 'ההרשאה פגה. נא להתחבר מחדש.',
-  403: 'רק בעלים יכול להריץ סימולציה.',
-}
+const refused = (status: number) => new RulesApiError(
+  'REQUEST_FAILED',
+  status,
+  status === 403 ? 'רק בעלים יכול להריץ סימולציה.' : 'הרצת הסימולציה נכשלה.',
+)
 
 /**
  * Streams the run to `onEvent` line by line. Rejects before the first event when
@@ -48,7 +55,7 @@ export async function streamSimulation(
 ): Promise<void> {
   const { data } = await createBrowserSupabase().auth.getSession()
   const token = data.session?.access_token
-  if (!token) throw new SimulateError(401, MESSAGES[401]!)
+  if (!token) throw unauthorized()
 
   const response = await fetch('/api/persuade/simulate', {
     method: 'POST',
@@ -56,9 +63,8 @@ export async function streamSimulation(
     body: JSON.stringify(request),
   })
 
-  if (!response.ok || !response.body) {
-    throw new SimulateError(response.status, MESSAGES[response.status] ?? 'הרצת הסימולציה נכשלה.')
-  }
+  if (response.status === 401) throw unauthorized()
+  if (!response.ok || !response.body) throw refused(response.status)
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()

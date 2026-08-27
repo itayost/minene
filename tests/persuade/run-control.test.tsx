@@ -8,7 +8,9 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/minene/tools/persuade/lab',
 }))
 vi.mock('../../src/auth/supabase-browser', () => ({
-  createBrowserSupabase: () => ({ auth: { getSession: async () => ({ data: { session: { access_token: 't' } } }) } }),
+  createBrowserSupabase: vi.fn(() => ({
+    auth: { getSession: async () => ({ data: { session: { access_token: 't' } } }) },
+  })),
 }))
 
 const { RunControl } = await import('../../src/persuade/RunControl')
@@ -214,5 +216,39 @@ describe('starting a simulation', () => {
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/נכשלה|בעלים/)
+    // Not an expired session: signing in again changes nothing about not being
+    // the owner, so this one stays on the page and says so.
+    expect(router.replace).not.toHaveBeenCalled()
+  })
+
+  it('sends the reader to sign in when the session has expired', async () => {
+    // "ההרשאה פגה" as text leaves the reader on a screen whose every action now
+    // fails, with nothing on it that fixes the problem. Every other surface here
+    // routes a 401 through useApiErrorHandler, which navigates instead; this one
+    // reported it as an error message and stranded them.
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 401 })))
+    const { user } = setup()
+    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
+
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith(
+      '/login?next=%2Fminene%2Ftools%2Fpersuade%2Flab',
+    ))
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('treats a missing token the same as an expired one', async () => {
+    // No session in the browser is the same predicament as a rejected one, and
+    // it is the more common of the two: the tab was open across the expiry.
+    const supabase = await import('../../src/auth/supabase-browser')
+    vi.mocked(supabase.createBrowserSupabase).mockReturnValueOnce(
+      { auth: { getSession: async () => ({ data: { session: null } }) } } as never,
+    )
+    const { user } = setup()
+    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
+
+    await waitFor(() => expect(router.replace).toHaveBeenCalled())
+    expect(fetch).not.toHaveBeenCalled()
   })
 })

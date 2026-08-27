@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { DEFAULT_RULES } from './engine/rules'
 import type { PersuasionPlan, TargetPersona, Turn } from './engine/types'
 import type { Role } from '../brain/types'
-import { SimulateError, streamSimulation } from './simulate-api'
+import { streamSimulation } from './simulate-api'
+import { useApiErrorHandler } from '../brain/use-api-error'
 
 /**
  * The lab could read runs long before it could start one, which made the matrix
@@ -31,6 +32,11 @@ interface RunControlProps {
 const ROLE_LABEL: Record<Turn['role'], string> = { persuader: 'המשכנע', target: 'הצד השני' }
 
 export function RunControl({ onFinished, personas, plans, roles }: RunControlProps) {
+  // Shared with every other surface here, and the reason is the 401: an expired
+  // session becomes a trip to sign in rather than a message on a screen where
+  // nothing left works.
+  const handleError = useApiErrorHandler()
+
   const [industry, setIndustry] = useState('')
   /**
    * Empty means "whatever the first role is", resolved on every render rather
@@ -95,7 +101,8 @@ export function RunControl({ onFinished, personas, plans, roles }: RunControlPro
         },
       )
     } catch (failure) {
-      setError(failure instanceof SimulateError ? failure.message : 'הרצת הסימולציה נכשלה.')
+      const message = handleError(failure)
+      if (message) setError(message)
     } finally {
       setRunning(false)
     }
