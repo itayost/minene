@@ -1415,3 +1415,45 @@
 @media (prefers-reduced-motion: reduce) {
   .file-drop { transition: none; }
 }
+
+/* The persuasion conversation. Shares the sheet and the card, so this is only
+   the thread itself. */
+.conversation__state {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.conversation__thread {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 40dvh;
+  overflow-y: auto;
+}
+
+.conversation__msg {
+  max-width: 82%;
+  margin: 0;
+  padding: 7px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* The two sides are told apart by side and shape, not by colour alone: the
+   speaker is structural information, and colour is reserved for meaning here. */
+.conversation__msg[data-from='persuader'] {
+  align-self: flex-start;
+  border-end-end-radius: 4px;
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+
+.conversation__msg[data-from='target'] {
+  align-self: flex-end;
+  border-end-start-radius: 4px;
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+  color: var(--text);
+}

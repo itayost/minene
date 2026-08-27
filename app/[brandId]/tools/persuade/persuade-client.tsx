@@ -10,6 +10,8 @@ import { getTopic } from '../../../../src/brain/topics'
 import {
   createAssignmentsApi, type Assignment, type AssignmentsClient,
 } from '../../../../src/persuade/assignments-api'
+import { Conversation } from '../../../../src/persuade/Conversation'
+import { createPersuaderApi } from '../../../../src/persuade/persuader-api'
 
 type LoadState = { status: 'loading' | 'ready' } | { status: 'error'; message: string }
 
@@ -22,6 +24,8 @@ export function PersuadeClient({ brandId, role }: { brandId: string; role: 'owne
 
   const [rows, setRows] = useState<Assignment[]>([])
   const [state, setState] = useState<LoadState>({ status: 'loading' })
+  const persuaderApi = useMemo(() => createPersuaderApi(), [])
+  const [talkingAbout, setTalkingAbout] = useState<Assignment | null>(null)
   const [reporting, setReporting] = useState<Assignment | null>(null)
   const [actionError, setActionError] = useState('')
   const [savingId, setSavingId] = useState('')
@@ -89,7 +93,12 @@ export function PersuadeClient({ brandId, role }: { brandId: string; role: 'owne
               as="li"
               actions={(
                 <>
-                  <button data-weight="primary" disabled={savingId === row.id} type="button">
+                  <button
+                    data-weight="primary"
+                    disabled={savingId === row.id || !row.rule}
+                    onClick={() => setTalkingAbout(row)}
+                    type="button"
+                  >
                     לפתוח שיחה
                   </button>
                   <button
@@ -118,6 +127,17 @@ export function PersuadeClient({ brandId, role }: { brandId: string; role: 'owne
           ))}
         </ul>
       </section>
+
+      {/* The engine refuses to start without a photographable ask, so a row
+          whose rule failed to join cannot open one -- the button is disabled
+          rather than opening a sheet that would fail. */}
+      {talkingAbout ? (
+        <Conversation
+          assignment={talkingAbout}
+          onClose={() => { setTalkingAbout(null); void load() }}
+          persuaderApi={persuaderApi}
+        />
+      ) : null}
 
       <BottomSheet
         label="דיווח ביצוע"
