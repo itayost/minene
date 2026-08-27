@@ -8,7 +8,10 @@ import { MemoryStorage } from './fixtures/memory-storage'
 // jsdom environment shares that global, it shadows the storage jsdom provides.
 // Anything reading window.localStorage would therefore see undefined here and
 // nowhere else, so browser-like storage is restored when it is missing.
-if (window.localStorage === undefined) {
+// `typeof window` rather than a bare reference: a test that reads a file rather
+// than rendering runs under the node environment, where there is no window at
+// all and this setup would throw before any test was collected.
+if (typeof window !== 'undefined' && window.localStorage === undefined) {
   Object.defineProperty(window, 'localStorage', {
     value: new MemoryStorage(),
     configurable: true,
@@ -19,7 +22,7 @@ if (window.localStorage === undefined) {
 afterEach(() => {
   cleanup()
   try {
-    window.localStorage.clear()
+    if (typeof window !== 'undefined') window.localStorage.clear()
   } catch {
     // Tests exercise unavailable browser storage; cleanup must tolerate it too.
   }
