@@ -8,6 +8,8 @@ import type { ConversationState, Run, Turn } from '../../../../src/persuade/engi
 import { assertModelAccessConfigured } from '../../../../src/persuade/lib/model';
 import { recordAsked } from '../../../../src/persuade/lib/assignments';
 import { resolveAccess } from '../../../../src/persuade/lib/access';
+import { loadAmmunition } from '../../../../src/persuade/engine/ammunition';
+import { preparePlan } from '../../../../src/persuade/engine/prepare';
 import { isStorageConfigured, supabase } from '../../../../src/persuade/lib/supabase';
 import { saveRun } from '../../../../src/persuade/lib/store';
 
@@ -47,21 +49,73 @@ interface ChatRequest {
   assignmentId?: string;
 }
 
+/**
+ * Builds the plan for one assignment from the knowledge the business approved.
+ *
+ * Returns null rather than throwing when there is nothing to build from: an
+ * assignment whose rule was since rejected, or one in another tenant, are both
+ * "no plan" from here and the caller should not be able to tell them apart.
+ */
+async function planForAssignment(assignmentId: string, tenantId: string) {
+  const ammunition = await loadAmmunition(supabase(), assignmentId, tenantId);
+  if (!ammunition) return null;
+
+  return preparePlan({
+    id: assignmentId,
+    topic: ammunition.ask.topicId,
+    // The job, not the person's name. The engine is told who it is speaking to
+    // in role terms; naming them here would put a person's name into a prompt
+    // the plan is cached under.
+    targetDescription: ammunition.assignee.jobRoleName ?? 'עובדת בצוות',
+    onBehalfOf: null,
+    goal: ammunition.ask.text,
+    ammunition,
+  });
+}
+
 /** A person sits in the counterpart's seat and the bot plays the persuader. */
 export async function POST(req: Request) {
   try {
-    assertModelAccessConfigured();
     const { config: rawConfig, turns, state: rawState, reply, finish, assignmentId } =
       (await req.json()) as ChatRequest;
-    const config: BotConfig = { ...rawConfig, rules: rawConfig.rules ?? DEFAULT_RULES };
-    const state = rawState ?? initialState();
 
     // Before the model is touched: a refused caller must not be able to spend
-    // tokens finding out they were refused.
+    // tokens finding out they were refused. Before parsing the body's shape,
+    // too -- an unauthenticated caller should not be able to tell a malformed
+    // request from a refused one.
     const access = await resolveAccess(req.headers.get('authorization') ?? '', assignmentId);
     if (!access.ok) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
+
+    assertModelAccessConfigured();
+
+    /**
+     * The plan comes from the assignment, not from the caller.
+     *
+     * A conversation about an assignment is grounded in that business's own
+     * approved knowledge -- that is the whole seam between this engine and the
+     * organisational brain. Before this, the route required the client to send
+     * a plan, and the persuade tab had no way to produce one: it posted only
+     * an assignmentId, so `rawConfig.rules` threw before any check ran.
+     *
+     * A client-supplied plan would also be a client choosing which arguments
+     * the bot may make, which is not a decision that belongs on that side.
+     */
+    let config: BotConfig;
+    if (rawConfig?.plan) {
+      config = { ...rawConfig, rules: rawConfig.rules ?? DEFAULT_RULES };
+    } else if (assignmentId) {
+      const plan = await planForAssignment(assignmentId, access.context.tenantId);
+      if (!plan) {
+        return NextResponse.json({ error: 'לא הצלחנו לבנות תוכנית לשיחה הזאת.' }, { status: 422 });
+      }
+      config = { plan, rules: DEFAULT_RULES } as BotConfig;
+    } else {
+      return NextResponse.json({ error: 'חסרה תוכנית או משימה.' }, { status: 400 });
+    }
+
+    const state = rawState ?? initialState();
 
     const problems = validateConfig(config);
     if (problems.length > 0) {

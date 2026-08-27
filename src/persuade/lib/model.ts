@@ -16,7 +16,15 @@ export type Provider = 'openai' | 'anthropic' | 'gateway';
  * persuader — every turn. Needs to hold the 15-word rule and return valid structure.
  * target   — the counterpart persona.
  */
-const DEFAULTS: Record<Provider, Record<ModelRole, string>> = {
+/**
+ * Read at call time, not at module scope.
+ *
+ * supabase.ts already documents why and this file contradicted it: a
+ * module-scope read is evaluated at import, which in a test run happens before
+ * any test can set the variables -- so anything overriding PERSUADER_*_MODEL
+ * afterwards silently got the stale default.
+ */
+const defaults = (): Record<Provider, Record<ModelRole, string>> => ({
   openai: {
     planner: process.env.PERSUADER_PLANNER_MODEL ?? 'gpt-5.5',
     persuader: process.env.PERSUADER_MODEL ?? 'gpt-5.5',
@@ -32,7 +40,7 @@ const DEFAULTS: Record<Provider, Record<ModelRole, string>> = {
     persuader: process.env.PERSUADER_MODEL ?? 'anthropic/claude-sonnet-5',
     target: process.env.PERSUADER_TARGET_MODEL ?? 'anthropic/claude-sonnet-5',
   },
-};
+});
 
 let overrides: Partial<Record<ModelRole, LanguageModel>> = {};
 
@@ -50,7 +58,7 @@ export function activeProvider(): Provider {
 }
 
 export function modelId(role: ModelRole): string {
-  return DEFAULTS[activeProvider()][role];
+  return defaults()[activeProvider()][role];
 }
 
 export function model(role: ModelRole): LanguageModel {

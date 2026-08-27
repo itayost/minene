@@ -9,6 +9,7 @@ import {
   isAskPhotographable,
   longSentences,
   nextRung,
+  containsRequest,
   shouldStop,
 } from '../../src/persuade/engine/rules';
 import type { PersuasionPlan, Rung, Turn } from '../../src/persuade/engine/types';
@@ -250,3 +251,20 @@ describe('fatigue is measured only under persuasion', () => {
     expect(withGreeting).toBeLessThan(0.3);
   });
 });
+
+describe('the ask-before-questions check, when the ask has no long words', () => {
+  test('does not silently pass a message that never states the ask', () => {
+    // keywords is built from words longer than three characters. An ask like
+    // an ask of only short words yields none, hits is 0, and 0 >= Math.min(2, 0)
+    // so containsRequest returned true unconditionally and the critical
+    // enforceAskBeforeQuestions check never fired for exactly the asks most
+    // likely to be vague.
+    const plan = { ask: { what: 'תן לי יד' } } as never
+    expect(containsRequest('משהו אחר לגמרי', plan)).toBe(false)
+  })
+
+  test('still finds the ask when it is stated', () => {
+    const plan = { ask: { what: 'לקיים תדריך יומי לצוות' } } as never
+    expect(containsRequest('בואי נקיים תדריך יומי לצוות בפתיחה', plan)).toBe(true)
+  })
+})

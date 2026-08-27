@@ -25,6 +25,24 @@ const persuaderApi = {
   finish: vi.fn(),
 }
 
+/**
+ * The engine's real shapes, not invented ones.
+ *
+ * The first version of this file mocked `{ speaker, text }` turns and a
+ * singular `blocker`, and every test passed while the real screen rendered
+ * unstyled messages and no blocker at all -- because the mock and the component
+ * shared a misunderstanding the route never agreed to. These helpers exist so
+ * the mock cannot drift from `Turn` and `ConversationState` again.
+ */
+const turn = (role: 'persuader' | 'target', text: string, interaction = 1) =>
+  ({ role, text, interaction })
+
+const state = (over: Record<string, unknown> = {}) => ({
+  interaction: 1, rung: 1, blockers: [], signals: {}, fatigue: 0,
+  outcome: 'open', askStated: true, identityStated: true,
+  startTimeSet: false, followUpAnnounced: false, ...over,
+})
+
 const setup = () => {
   render(
     <Conversation assignment={ASSIGNMENT} onClose={vi.fn()} persuaderApi={persuaderApi as never} />,
@@ -35,16 +53,16 @@ const setup = () => {
 beforeEach(() => {
   vi.clearAllMocks()
   persuaderApi.openConversation.mockResolvedValue({
-    turns: [{ speaker: 'persuader', text: 'רותי, רוצה לבקש ממך דבר אחד.' }],
-    state: { rung: 1, blocker: 'none', outcome: 'open' },
+    turns: [turn('persuader', 'רותי, רוצה לבקש ממך דבר אחד.')],
+    state: state(),
   })
   persuaderApi.reply.mockResolvedValue({
     turns: [
-      { speaker: 'persuader', text: 'רותי, רוצה לבקש ממך דבר אחד.' },
-      { speaker: 'target', text: 'אין לי זמן לזה בבוקר.' },
-      { speaker: 'persuader', text: 'ארבע דקות ביום הן עשרים בשבוע.' },
+      turn('persuader', 'רותי, רוצה לבקש ממך דבר אחד.'),
+      turn('target', 'אין לי זמן לזה בבוקר.', 2),
+      turn('persuader', 'ארבע דקות ביום הן עשרים בשבוע.', 2),
     ],
-    state: { rung: 2, blocker: 'overloaded', outcome: 'open' },
+    state: state({ rung: 2, blockers: ['overloaded'], interaction: 2 }),
   })
 })
 
@@ -70,7 +88,10 @@ describe('the conversation', () => {
   })
 
   it('never settles the assignment when the conversation ends', async () => {
-    persuaderApi.finish.mockResolvedValue({ outcome: 'agreed' })
+    persuaderApi.finish.mockResolvedValue({
+      turns: [turn('persuader', 'רותי, רוצה לבקש ממך דבר אחד.')],
+      state: state({ outcome: 'agreed' }),
+    })
     const user = setup()
     await screen.findByText('רותי, רוצה לבקש ממך דבר אחד.')
     await user.click(screen.getByRole('button', { name: 'סיום' }))
@@ -80,6 +101,21 @@ describe('the conversation', () => {
     // not execution.
     await waitFor(() => expect(persuaderApi.finish).toHaveBeenCalled())
     expect(await screen.findByText(/לא נסגרה/)).toBeVisible()
+  })
+
+  it('tells the two sides apart in the markup, not by colour alone', async () => {
+    const user = setup()
+    await screen.findByText('רותי, רוצה לבקש ממך דבר אחד.')
+    await user.type(screen.getByLabelText('התשובה שלה'), 'אין לי זמן')
+    await user.click(screen.getByRole('button', { name: 'שליחה' }))
+
+    // data-from is what the stylesheet keys the two sides off. It read
+    // turn.speaker, which the engine has never had, so every message rendered
+    // identically aligned and coloured -- the exact distinction the CSS comment
+    // claims is structural.
+    const said = await screen.findByText('אין לי זמן לזה בבוקר.')
+    expect(said).toHaveAttribute('data-from', 'target')
+    expect(screen.getByText('ארבע דקות ביום הן עשרים בשבוע.')).toHaveAttribute('data-from', 'persuader')
   })
 
   it('says the engine failed rather than looking like it is still thinking', async () => {

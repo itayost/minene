@@ -249,11 +249,18 @@ export function checkTurn(text: string, ctx: CheckContext): RuleViolation[] {
 }
 
 /** Loose check that the concrete ask actually appears in the message. */
-function containsRequest(text: string, plan: PersuasionPlan): boolean {
+export function containsRequest(text: string, plan: PersuasionPlan): boolean {
   const keywords = plan.ask.what
     .split(/\s+/)
     .filter((w) => w.length > 3)
     .slice(0, 6);
+
+  // No keywords means nothing to look for, and `0 >= Math.min(2, 0)` is true --
+  // so this used to answer "yes, the ask is stated" for every message whenever
+  // the ask had no word longer than three characters, silently disabling the
+  // critical enforceAskBeforeQuestions check for exactly the vaguest asks.
+  if (keywords.length === 0) return false;
+
   const hits = keywords.filter((k) => text.includes(k)).length;
   return hits >= Math.min(2, keywords.length);
 }

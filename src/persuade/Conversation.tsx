@@ -4,7 +4,14 @@ import { useEffect, useRef, useState } from 'react'
 import { BottomSheet } from '../brain/BottomSheet'
 import { useApiErrorHandler } from '../brain/use-api-error'
 import type { Assignment } from './assignments-api'
-import type { PersuaderApi, ConversationTurn, ConversationSnapshot } from './persuader-api'
+import type { ConversationState, Turn } from './engine/types'
+import type { PersuaderApi } from './persuader-api'
+
+/** The blocker that explains the most recent reply, or none. */
+const lastBlocker = (state: ConversationState): string | null => {
+  const real = state.blockers.filter((b) => b !== 'none')
+  return real.length ? real[real.length - 1] ?? null : null
+}
 
 type Phase =
   | { kind: 'opening' }
@@ -26,8 +33,8 @@ export function Conversation({ assignment, persuaderApi, onClose }: {
   onClose: () => void
 }) {
   const handleError = useApiErrorHandler()
-  const [turns, setTurns] = useState<ConversationTurn[]>([])
-  const [snapshot, setSnapshot] = useState<ConversationSnapshot | null>(null)
+  const [turns, setTurns] = useState<Turn[]>([])
+  const [snapshot, setSnapshot] = useState<ConversationState | null>(null)
   const [phase, setPhase] = useState<Phase>({ kind: 'opening' })
   const [reply, setReply] = useState('')
   const replyRef = useRef<HTMLTextAreaElement>(null)
@@ -78,7 +85,8 @@ export function Conversation({ assignment, persuaderApi, onClose }: {
     setPhase({ kind: 'thinking' })
     try {
       const result = await persuaderApi.finish({ assignmentId: assignment.id, turns })
-      setPhase({ kind: 'finished', outcome: result.outcome })
+      setTurns(result.turns)
+      setPhase({ kind: 'finished', outcome: result.state.outcome })
     } catch (error) {
       if (handleError(error)) setPhase({ kind: 'failed', message: 'לא הצלחנו לסגור את השיחה. נסי שוב.' })
     }
@@ -98,13 +106,17 @@ export function Conversation({ assignment, persuaderApi, onClose }: {
         // chose the next argument, so without it the reply reads as arbitrary.
         <p className="conversation__state">
           {`שלב ${snapshot.rung}`}
-          {snapshot.blocker && snapshot.blocker !== 'none' ? ` · ${snapshot.blocker}` : ''}
+          {/* blockers is a list, not a field: the state accumulates every one
+              detected, and the one that explains the reply just given is the
+              last. An earlier version read a singular `blocker` that the engine
+              has never had, so this line rendered nothing at all. */}
+          {lastBlocker(snapshot) ? ` · ${lastBlocker(snapshot)}` : ''}
         </p>
       ) : null}
 
       <div className="conversation__thread">
         {turns.map((turn, index) => (
-          <p className="conversation__msg" data-from={turn.speaker} key={`${turn.speaker}-${index}`}>
+          <p className="conversation__msg" data-from={turn.role} key={`${turn.role}-${index}`}>
             {turn.text}
           </p>
         ))}

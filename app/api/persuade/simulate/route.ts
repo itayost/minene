@@ -1,6 +1,7 @@
 import type { BotConfig } from '../../../../src/persuade/engine/config';
 import { validateConfig } from '../../../../src/persuade/engine/config';
 import { runSimulation } from '../../../../src/persuade/engine/simulation';
+import { resolveAccess } from '../../../../src/persuade/lib/access';
 import { getPersona } from '../../../../src/persuade/lib/content';
 import { assertModelAccessConfigured } from '../../../../src/persuade/lib/model';
 import { saveRun } from '../../../../src/persuade/lib/store';
@@ -15,6 +16,28 @@ interface SimulateRequest {
 /** Bot to bot. Streams NDJSON so the conversation can be watched message by message. */
 export async function POST(req: Request) {
   try {
+    // Before anything, and before the model is touched.
+    //
+    // This route had no gate at all while the middleware was widened to skip
+    // /api on the grounds that "those routes verify their own caller" -- true
+    // of chat and generate, and false here. Anyone could POST a config and run
+    // ten model calls against this account, repeatedly, at maxDuration 800.
+    //
+    // No assignmentId: a simulation is an invented scenario with no assignee,
+    // which resolveAccess already treats as its own case.
+    const access = await resolveAccess(req.headers.get('authorization') ?? '', undefined);
+    if (!access.ok) {
+      return Response.json({ error: access.error }, { status: access.status });
+    }
+
+    // Owner only, and this is a spend control rather than a privacy one: the
+    // simulations table is deliberately readable by every member of any tenant,
+    // because that is what makes a cross-industry matrix possible. What costs
+    // money is producing a row, not reading one.
+    if (access.caller?.role !== 'owner') {
+      return Response.json({ error: 'רק בעלים יכול להריץ סימולציה.' }, { status: 403 });
+    }
+
     assertModelAccessConfigured();
     const { config, personaId } = (await req.json()) as SimulateRequest;
 
@@ -35,7 +58,7 @@ export async function POST(req: Request) {
             rules: config.rules,
           })) {
             controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
-            if (event.type === 'done') await saveRun(event.run).catch(() => undefined);
+            if (event.type === 'done') await saveRun(event.run, access.context).catch(() => undefined);
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : 'שגיאה בשיחה';
