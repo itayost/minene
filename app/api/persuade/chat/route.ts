@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import type { BotConfig } from '../../../../src/persuade/engine/config';
 import { validateConfig } from '../../../../src/persuade/engine/config';
-import { DEFAULT_RULES, initialState } from '../../../../src/persuade/engine/rules';
+import { DEFAULT_RULES, detectOutcome, initialState } from '../../../../src/persuade/engine/rules';
 import { applyTargetReply, persuaderTurn } from '../../../../src/persuade/engine/turn';
 import type { ConversationState, Run, Turn } from '../../../../src/persuade/engine/types';
 import { assertModelAccessConfigured } from '../../../../src/persuade/lib/model';
@@ -134,6 +134,26 @@ export async function POST(req: Request) {
     }
 
     if (finish) {
+      /**
+       * The outcome is re-derived here, never taken from the body.
+       *
+       * `state` arrives from the caller, and writing it verbatim meant a client
+       * could POST {finish: true, state: {outcome: 'agreed'}} and record an
+       * agreement that never happened, attributed to the assignee -- in the one
+       * system whose whole purpose is measuring persuasion honestly.
+       *
+       * The turns are the evidence. The outcome is a reading of them, and this
+       * side does the reading.
+       */
+      // Read from what the counterpart actually said last, which is the only
+      // evidence there is. An exchange with no reply from them at all cannot
+      // have produced an agreement, so it stays open.
+      const lastFromTarget = [...workingTurns].reverse().find((t) => t.role === 'target');
+      workingState = {
+        ...workingState,
+        outcome: lastFromTarget ? detectOutcome(lastFromTarget.text) : 'open',
+      };
+
       const run: Run = {
         id: randomUUID(),
         createdAt: new Date().toISOString(),
