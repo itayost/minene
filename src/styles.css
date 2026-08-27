@@ -30,7 +30,7 @@ button {
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  background: var(--background, #e9e9ee);
+  background: var(--background);
   color: var(--text);
   font-family: var(--font-family);
 }
@@ -772,7 +772,7 @@ button {
 
 button:focus-visible,
 a:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--primary, #245fae) 64%, white);
+  outline: 3px solid color-mix(in srgb, var(--primary) 64%, white);
   outline-offset: 2px;
 }
 
@@ -785,7 +785,7 @@ a:focus-visible {
 @keyframes screen-enter {
   from {
     opacity: 0;
-    transform: translateX(var(--screen-enter-x, -8%));
+    transform: translateX(var(--screen-enter-x));
   }
   to {
     opacity: 1;
@@ -985,13 +985,13 @@ a:focus-visible {
 
 .kpi-card dt {
   font-size: 0.75rem;
-  color: var(--muted, #aea9b4);
+  color: var(--muted);
 }
 
 .kpi-card dd {
   margin: 0;
   font-weight: 700;
-  color: var(--primary-strong, #c51f73);
+  color: var(--primary-strong);
 }
 
 /* Brain cockpit. New class names only. */
@@ -1039,7 +1039,7 @@ a:focus-visible {
   padding: 13px;
   border: 0;
   border-radius: 19px;
-  background: var(--card-color, #f3f0fd);
+  background: var(--card-color);
   text-decoration: none;
   color: inherit;
 }
@@ -1054,7 +1054,7 @@ a:focus-visible {
   font-size: 17px;
   font-weight: 800;
   line-height: 1.15;
-  color: var(--card-accent, #5b3fd6);
+  color: var(--card-accent);
   text-align: start;
 }
 
@@ -1062,7 +1062,7 @@ a:focus-visible {
   font-size: 15px;
   font-weight: 800;
   line-height: 1.2;
-  color: var(--text, #1d2645);
+  color: var(--text);
   text-align: start;
 }
 
@@ -1091,7 +1091,7 @@ a:focus-visible {
   display: grid;
   justify-items: center;
   padding-block-start: 8px;
-  background: linear-gradient(to top, var(--surface, #fffdfc) 78%, transparent);
+  background: linear-gradient(to top, var(--surface) 78%, transparent);
 }
 
 .mentor__bar {
@@ -1151,7 +1151,7 @@ a:focus-visible {
 .mentor__notice {
   margin: 6px 0 0;
   font-size: 11.5px;
-  color: var(--muted, #7d7885);
+  color: var(--muted);
   text-align: center;
 }
 
@@ -1163,7 +1163,7 @@ a:focus-visible {
   grid-template-rows: auto auto minmax(64px, 1fr);
   padding: 22px 20px 26px;
   gap: 24px;
-  background: var(--surface, #fffdfc);
+  background: var(--surface);
   scrollbar-width: none;
 }
 
@@ -1195,7 +1195,7 @@ a:focus-visible {
   display: flex;
   align-items: center;
   gap: 5px;
-  color: var(--primary-strong, #c51f73);
+  color: var(--primary-strong);
   font-size: 12px;
   font-weight: 700;
 }
@@ -1210,7 +1210,7 @@ a:focus-visible {
 
 .cockpit-feature__copy h1 {
   margin: 15px 0 0;
-  color: var(--text, #1d2645);
+  color: var(--text);
   font-size: 21px;
   font-weight: 800;
   line-height: 1.16;
@@ -1229,7 +1229,7 @@ a:focus-visible {
 .cockpit-feature__notice {
   /* Empty until a control is pressed, so it must not reserve space. */
   margin: 0;
-  color: var(--primary-strong, #8f4859);
+  color: var(--primary-strong);
   font-size: 12.5px;
   font-weight: 650;
   line-height: 1.35;
@@ -1247,7 +1247,7 @@ a:focus-visible {
 }
 
 .cockpit-feature__action:focus-visible {
-  outline: 2px solid var(--primary-strong, #8f4859);
+  outline: 2px solid var(--primary-strong);
   outline-offset: 3px;
   border-radius: 6px;
 }
@@ -1277,7 +1277,7 @@ a:focus-visible {
   appearance: none;
   text-align: start;
   transition: gap 140ms cubic-bezier(0.16, 1, 0.3, 1);
-  color: var(--primary-strong, #c51f73);
+  color: var(--primary-strong);
   font-size: 15px;
   font-weight: 750;
 }
@@ -1321,7 +1321,7 @@ a:focus-visible {
 
 .cockpit-tools > h2 {
   margin: 0;
-  color: var(--text, #1d2645);
+  color: var(--text);
   font-size: 22px;
   font-weight: 800;
   line-height: 1.25;
@@ -1382,7 +1382,7 @@ a:focus-visible {
 }
 
 .cockpit-tool:focus-visible {
-  outline: 2px solid var(--primary-strong, #8f4859);
+  outline: 2px solid var(--primary-strong);
   outline-offset: 3px;
 }
 
@@ -1418,7 +1418,7 @@ a:focus-visible {
 .cockpit-tool__title {
   align-self: end;
   margin: 0;
-  color: var(--text, #1d2645);
+  color: var(--text);
   font-size: 13.5px;
   font-weight: 800;
   line-height: 1.2;
@@ -1483,9 +1483,9 @@ a:focus-visible {
    summaries while the current decision gets the visual room it needs. */
 
 .wizard {
-  --wizard-navy: var(--text, #1d2645);
-  --wizard-pink: var(--primary, #e8368f);
-  --wizard-pink-strong: var(--primary-strong, #c51f73);
+  --wizard-navy: var(--text);
+  --wizard-pink: var(--primary);
+  --wizard-pink-strong: var(--primary-strong);
   gap: 12px;
   align-content: start;
   padding: 16px 14px max(18px, env(safe-area-inset-bottom));
@@ -1533,7 +1533,7 @@ a:focus-visible {
   font-size: clamp(19px, 5vw, 22px);
   font-weight: 850;
   line-height: 1.2;
-  color: var(--text, #1d2645);
+  color: var(--text);
 }
 
 .wizard__tagline {
@@ -1547,7 +1547,7 @@ a:focus-visible {
   margin: 7px 0 0;
   font-size: 12.5px;
   font-weight: 750;
-  color: var(--text, #1d2645);
+  color: var(--text);
 }
 
 .wizard-progress {
@@ -1644,7 +1644,7 @@ a:focus-visible {
   padding: 9px 11px;
   border: 0;
   background: transparent;
-  color: var(--text, #1d2645);
+  color: var(--text);
   font: inherit;
   text-align: start;
   cursor: pointer;
@@ -1752,7 +1752,7 @@ a:focus-visible {
   border: 1px solid #ded9e2;
   border-radius: 12px;
   background: #fff;
-  color: var(--text, #1d2645);
+  color: var(--text);
   font: inherit;
   font-size: 12.5px;
   font-weight: 650;
@@ -1844,7 +1844,7 @@ a:focus-visible {
 }
 
 .wizard-summary p {
-  color: var(--text, #1d2645);
+  color: var(--text);
   font-size: 13px;
 }
 
@@ -1871,7 +1871,7 @@ a:focus-visible {
   border: 1px solid #e2ddea;
   border-radius: 12px;
   background: #faf8fc;
-  color: var(--text, #1d2645);
+  color: var(--text);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.35;
@@ -1900,7 +1900,7 @@ a:focus-visible {
 }
 
 .wizard-submit:disabled {
-  background: var(--muted, #aea9b4);
+  background: var(--muted);
   cursor: default;
 }
 

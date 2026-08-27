@@ -2,21 +2,15 @@
 name: Minene Cockpit
 description: A warm Hebrew management workspace that prepares one useful next step and keeps practical tools close at hand.
 colors:
-  minene-pink: "#E8368F"
-  minene-pink-strong: "#C51F73"
-  minene-pink-tint: "#F7A9CE"
-  cockpit-navy: "#1D2645"
-  supporting-navy: "#39405A"
-  muted-copy: "#555B70"
-  quiet-copy: "#AEA9B4"
-  warm-surface: "#FFFDFC"
-  feature-surface: "#FCFAF9"
-  tool-surface: "#FBF8F7"
-  field-surface: "#F7F6F8"
-  shell-ground: "#E9E9EE"
-  mist-border: "#E7E3E9"
-  feature-border: "#E5DFDF"
-  live-red: "#E5322B"
+  minene-rose: "#B76578"
+  minene-rose-strong: "#8F4859"
+  warm-text: "#3F3532"
+  muted-copy: "#887C77"
+  warm-surface: "#FFFCF8"
+  surface-sunken: "#F7F2EC"
+  positive: "#0F6F66"
+  shell-ground: "#EEEAE7"
+  mist-border: "#DED5CD"
   white: "#FFFFFF"
 typography:
   display:
@@ -258,3 +252,17 @@ Motion is brief and subordinate: the home enters over 260ms with an eased horizo
 - **Don't** use pink as ambient decoration or let Live Red become a second brand accent.
 - **Don't** invent routes, recommendations, profile data, or working AI behavior to make a visual state appear complete.
 - **Don't** let pale text, thin icons, or compact labels fall below accessible contrast or touch-size requirements.
+
+## Where these values come from
+
+The source of truth is `src/brands/minene.ts`, which is what `BrandShell`
+actually emits as custom properties. This file drifted from it once already: it
+documented a hot pink and navy palette (`#E8368F`, `#1D2645`, and cool greys)
+for weeks after the brand moved to warm rose, and the מוח ארגוני surfaces were
+built against the stale version. Nothing failed, because a `var()` fallback
+never fires inside the shell -- the brain simply rendered cool blue-grey on a
+warm cream ground until somebody put the two screens side by side.
+
+`surface-sunken` and `positive` are the two tokens that redesign added. Both are
+required by `src/core/validate-brand.ts`, so a brand that omits one fails the
+build rather than falling through to a hardcoded colour.
