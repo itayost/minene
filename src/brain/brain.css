@@ -1032,6 +1032,16 @@
 /* The denominator is deliberately quieter than the percentage, not hidden: it
    qualifies the number rather than competing with it. */
 
+/* The separator is not decoration. Without it the pair renders as "100% 1",
+   which reads as a typo rather than as a percentage and its sample size. It is
+   generated content because the accessible name on the parent already says the
+   fact in full -- this is the sighted shorthand for it, and the middot is what
+   every other meta line in the brain already uses. */
+.admin-like__count::before {
+  content: '·';
+  margin-inline-end: 3px;
+}
+
 .admin-like__count {
   font-size: 0.68rem;
   opacity: 0.75;
