@@ -149,6 +149,17 @@ const rulesApi = vi.hoisted(() => ({
   updateRule: vi.fn(),
   approveRule: vi.fn(),
   rejectRule: vi.fn(),
+  loadKpis: vi.fn(),
+  huntExternal: vi.fn(),
+}))
+const documentsApi = vi.hoisted(() => ({
+  uploadDocument: vi.fn(),
+  saveConversation: vi.fn(),
+  extractRules: vi.fn(),
+  listRecentDocuments: vi.fn(async () => ({ rows: [], hasMore: false })),
+}))
+vi.mock('../../src/brain/documents-api', async (o) => ({
+  ...(await o<Record<string, unknown>>()), createDocumentsApi: () => documentsApi,
 }))
 const rolesApi = vi.hoisted(() => ({ listRoles: vi.fn(), listRuleRoles: vi.fn(), setRuleRoles: vi.fn() }))
 
@@ -161,12 +172,13 @@ vi.mock('../../src/brain/roles-api', async (importOriginal) => ({
   createRolesApi: () => rolesApi,
 }))
 
-const { LobbyClient } = await import('../../app/[brandId]/tools/brain/lobby/lobby-client')
+const { IngestClient } = await import('../../app/[brandId]/tools/brain/ingest/ingest-client')
 
-describe('saving a correction from the lobby', () => {
+describe('saving a correction from the queue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     rulesApi.listPendingRules.mockResolvedValue({ rows: [makeRule({ text: 'לחייך' })], nextCursor: null })
+    rulesApi.loadKpis.mockResolvedValue({ knowledgeItems: 0, qualityItems: 0, growthPercent: null })
     rulesApi.updateRule.mockResolvedValue(makeRule({ text: 'לחייך' }))
     rolesApi.listRoles.mockResolvedValue(ROLES)
     rolesApi.listRuleRoles.mockResolvedValue(new Map([['rule-1', ['role-2']]]))
@@ -174,7 +186,7 @@ describe('saving a correction from the lobby', () => {
   })
 
   it('writes every axis the reviewer can see', async () => {
-    render(<LobbyClient />)
+    render(<IngestClient tenantId="t-1" />)
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'עריכה: לחייך' }))
     await user.selectOptions(screen.getByLabelText('עשה / אל תעשה'), 'do')
@@ -186,7 +198,7 @@ describe('saving a correction from the lobby', () => {
   })
 
   it('writes the role assignment alongside the rule itself', async () => {
-    render(<LobbyClient />)
+    render(<IngestClient tenantId="t-1" />)
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'עריכה: לחייך' }))
     await user.click(screen.getByRole('button', { name: 'שמירה' }))
@@ -197,7 +209,7 @@ describe('saving a correction from the lobby', () => {
   })
 
   it('clears a sub-topic to nothing rather than to an empty string', async () => {
-    render(<LobbyClient />)
+    render(<IngestClient tenantId="t-1" />)
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'עריכה: לחייך' }))
     await user.clear(screen.getByLabelText('תת־נושא'))

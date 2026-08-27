@@ -1,0 +1,113 @@
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { makeRule } from '../fixtures/rule'
+
+const router = { replace: vi.fn() }
+vi.mock('next/navigation', () => ({
+  useRouter: () => router,
+  usePathname: () => '/minene/tools/brain/ingest',
+}))
+vi.mock('../../src/auth/supabase-browser', () => ({ createBrowserSupabase: () => ({}) }))
+
+const documentsApi = vi.hoisted(() => ({
+  uploadDocument: vi.fn(),
+  saveConversation: vi.fn(),
+  extractRules: vi.fn(),
+  listRecentDocuments: vi.fn(),
+}))
+const rulesApi = vi.hoisted(() => ({
+  huntExternal: vi.fn(),
+  listPendingRules: vi.fn(),
+  approveRule: vi.fn(),
+  rejectRule: vi.fn(),
+  updateRule: vi.fn(),
+  loadKpis: vi.fn(),
+}))
+const rolesApi = vi.hoisted(() => ({ listRoles: vi.fn(), listRuleRoles: vi.fn(), setRuleRoles: vi.fn() }))
+
+vi.mock('../../src/brain/documents-api', async (o) => ({
+  ...(await o<Record<string, unknown>>()), createDocumentsApi: () => documentsApi,
+}))
+vi.mock('../../src/brain/rules-api', async (o) => ({
+  ...(await o<Record<string, unknown>>()), createRulesApi: () => rulesApi,
+}))
+vi.mock('../../src/brain/roles-api', async (o) => ({
+  ...(await o<Record<string, unknown>>()), createRolesApi: () => rolesApi,
+}))
+
+const { IngestClient } = await import('../../app/[brandId]/tools/brain/ingest/ingest-client')
+
+const TENANT = '11111111-1111-4111-8111-111111111111'
+const pdf = (name = 'נהלי פתיחה.pdf') => new File(['x'], name, { type: 'application/pdf' })
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  documentsApi.uploadDocument.mockResolvedValue({ documentId: 'doc-1', storagePath: 'p' })
+  documentsApi.saveConversation.mockResolvedValue({ documentId: 'doc-2' })
+  documentsApi.extractRules.mockResolvedValue({ rules: [{}, {}] })
+  documentsApi.listRecentDocuments.mockResolvedValue({ rows: [], hasMore: false })
+  rulesApi.huntExternal.mockResolvedValue({ rules: [] })
+  rulesApi.listPendingRules.mockResolvedValue({ rows: [makeRule({ text: 'לחייך' })], nextCursor: null })
+  rulesApi.loadKpis.mockResolvedValue({ knowledgeItems: 135, qualityItems: 6, growthPercent: 13 })
+  rolesApi.listRoles.mockResolvedValue([])
+  rolesApi.listRuleRoles.mockResolvedValue(new Map())
+})
+
+const setup = () => {
+  render(<IngestClient tenantId={TENANT} />)
+  return userEvent.setup()
+}
+
+describe('one screen for feeding the brain', () => {
+  it('offers all three sources against a single topic picker', async () => {
+    setup()
+    await screen.findByRole('tab', { name: 'קובץ PDF' })
+
+    // The hunt used to be its own section with its own duplicate topic select.
+    expect(screen.getAllByRole('tab')).toHaveLength(3)
+    expect(screen.getAllByLabelText('נושא')).toHaveLength(1)
+  })
+
+  it('shows what an upload produced without navigating anywhere', async () => {
+    const user = setup()
+    await user.upload(screen.getByLabelText(/קובץ PDF/), pdf())
+    await user.click(screen.getByRole('button', { name: 'העלאה וחילוץ' }))
+
+    // The reason these two screens merged: an owner used to be told "6 חוקים
+    // ממתינים בלובי" and then had to go elsewhere to act on them.
+    await waitFor(() => expect(rulesApi.listPendingRules).toHaveBeenCalledTimes(2))
+  })
+
+  it('gives the queue one filled action and two quiet ones', async () => {
+    setup()
+    const row = (await screen.findAllByRole('listitem'))[0] as HTMLElement
+
+    // Thirty-two rows of three identical outlined buttons is why draining this
+    // queue is tiring, and why discarding work looked like keeping it.
+    expect(within(row).getByRole('button', { name: /אישור/ })).toHaveAttribute('data-weight', 'primary')
+    expect(within(row).getByRole('button', { name: /דחייה/ })).toHaveAttribute('data-weight', 'quiet')
+    expect(within(row).getByRole('button', { name: /עריכה/ })).toHaveAttribute('data-weight', 'quiet')
+  })
+
+  it('says how much the brain knows, on the screen you teach it from', async () => {
+    setup()
+    expect(await screen.findByText('135')).toBeVisible()
+  })
+
+  it('approves from the queue without leaving the form', async () => {
+    const user = setup()
+    await user.click(await screen.findByRole('button', { name: 'אישור: לחייך' }))
+
+    await waitFor(() => expect(rulesApi.approveRule).toHaveBeenCalledWith('rule-1'))
+  })
+
+  it('hunts the web as a third mode, not a section below', async () => {
+    const user = setup()
+    await user.click(screen.getByRole('tab', { name: 'חיפוש ברשת' }))
+    await user.click(screen.getByRole('button', { name: 'חיפוש ברשת' }))
+
+    await waitFor(() => expect(rulesApi.huntExternal)
+      .toHaveBeenCalledWith(expect.objectContaining({ topicId: 'live' })))
+  })
+})

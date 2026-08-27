@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { loadAllPending } from '../../app/[brandId]/tools/brain/lobby/lobby-client'
+import { loadAllPending } from '../../app/[brandId]/tools/brain/ingest/ingest-client'
 import type { RulesApi } from '../../src/brain/rules-api'
 import { makeRule } from '../fixtures/rule'
 
