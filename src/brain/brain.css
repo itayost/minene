@@ -708,40 +708,13 @@
   gap: 10px;
 }
 
-.knowledge-row {
-  display: grid;
-  gap: 6px;
-  padding: 12px;
-  border-radius: 12px;
-  background: var(--surface-sunken);
-}
-
-.knowledge-row__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-}
-
 /* Tabular figures so a column of numbers lines up rather than jittering by
    glyph width, and a latin font because the sequence is latin digits inside an
    RTL paragraph. */
 
-.knowledge-row__number {
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-}
-
-.knowledge-row__topic,
 .knowledge-row__sub-topic {
   padding: 2px 8px;
   border-radius: 999px;
-  background: #fff;
-  color: var(--muted);
-}
-
-.knowledge-row__sub-topic {
   background: var(--surface-sunken);
   color: var(--primary-strong);
 }
@@ -755,12 +728,6 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--positive);
-}
-
-.knowledge-row__text {
-  margin: 0;
-  font-weight: 700;
-  color: var(--text);
 }
 
 .knowledge-row__response {
@@ -1256,4 +1223,42 @@
   border-radius: 16px 16px 0 0;
   background: var(--surface);
   text-align: right;
+}
+
+/* The one card. Four treatments, three of them introduced in a single week,
+   collapse to this. */
+.brain-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface-sunken);
+}
+
+.brain-card__head,
+.brain-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  /* Every number that appears on a card appears here: the rule number, the
+     score, the vote count. Tabular so a column of them scans instead of
+     jittering by glyph width. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* DESIGN.md's `title`: 15px / 800 / 1.2. */
+.brain-card__body {
+  font-size: 0.9375rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.brain-card__actions {
+  display: flex;
+  gap: 8px;
 }

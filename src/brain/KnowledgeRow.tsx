@@ -1,5 +1,6 @@
 'use client'
 
+import { BrainCard } from './BrainCard'
 import { RuleVote } from './RuleVote'
 import { getTopic } from './topics'
 import type { Rule } from './types'
@@ -19,28 +20,32 @@ export function KnowledgeRow({ rule, vote, isSaving, onVote, onClear }: {
   onClear: (ruleId: string) => void
 }) {
   return (
-    <li className="knowledge-row">
-      <div className="knowledge-row__head">
-        <span className="knowledge-row__number">#{rule.rule_number}</span>
-        {/* A row whose topic was retired is still a real row with a real
-            subject, and a blank badge reads as a bug rather than as an
-            unknown topic. */}
-        <span className="knowledge-row__topic">{getTopic(rule.topic_id)?.title ?? rule.topic_id}</span>
-        {rule.sub_topic ? <span className="knowledge-row__sub-topic">{rule.sub_topic}</span> : null}
-        {/* An unrated rule shows nothing at all rather than a placeholder: the
-            person reading it is the one being asked to rate it, and "טרם דורג"
-            beside the buttons that would fix that is noise. */}
-        {rule.like_pct != null ? (
-          <span
-            aria-label={`${rule.like_pct} אחוז לייקים מתוך ${rule.vote_count} מצביעים`}
-            className="knowledge-row__score"
-          >
-            <span aria-hidden="true">{rule.like_pct}%</span>
-          </span>
-        ) : null}
-      </div>
-
-      <p className="knowledge-row__text">{rule.text}</p>
+    <BrainCard
+      actions={<RuleVote isSaving={isSaving} onClear={onClear} onVote={onVote} ruleId={rule.id} vote={vote} />}
+      as="li"
+      head={(
+        <>
+          <span>{`#${rule.rule_number}`}</span>
+          {/* A row whose topic was retired is still a real row with a real
+              subject, and a blank badge reads as a bug rather than as an
+              unknown topic. */}
+          <span>{getTopic(rule.topic_id)?.title ?? rule.topic_id}</span>
+          {rule.sub_topic ? <span className="knowledge-row__sub-topic">{rule.sub_topic}</span> : null}
+          {/* An unrated rule shows nothing at all rather than a placeholder: the
+              person reading it is the one being asked to rate it, and "טרם דורג"
+              beside the buttons that would fix that is noise. */}
+          {rule.like_pct != null ? (
+            <span
+              aria-label={`${rule.like_pct} אחוז לייקים מתוך ${rule.vote_count} מצביעים`}
+              className="knowledge-row__score"
+            >
+              <span aria-hidden="true">{rule.like_pct}%</span>
+            </span>
+          ) : null}
+        </>
+      )}
+    >
+      {rule.text}
 
       {/* A case is a situation plus what to do about it. Rendering only the
           situation prints the incident and withholds the answer. */}
@@ -58,8 +63,6 @@ export function KnowledgeRow({ rule, vote, isSaving, onVote, onClear }: {
           מקור חיצוני
         </a>
       ) : null}
-
-      <RuleVote isSaving={isSaving} onClear={onClear} onVote={onVote} ruleId={rule.id} vote={vote} />
-    </li>
+    </BrainCard>
   )
 }
