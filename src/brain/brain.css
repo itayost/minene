@@ -1259,3 +1259,71 @@
   display: flex;
   gap: 8px;
 }
+
+/* The owner's controls, on the list rather than beside a copy of it. */
+.knowledge-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.knowledge-owner-tools {
+  display: flex;
+  gap: 6px;
+}
+
+.knowledge-owner-tools button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--primary-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.knowledge-owner-tools button:hover {
+  border-color: var(--primary-strong);
+}
+
+.knowledge-filters {
+  display: grid;
+  gap: 6px;
+  padding: 11px;
+  border-radius: 12px;
+  background: var(--surface-sunken);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.knowledge-filters__row {
+  display: flex;
+  gap: 6px;
+}
+
+.knowledge-filters input,
+.knowledge-filters select {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  font: inherit;
+  color: var(--text);
+}
+
+.knowledge-filters__row button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--primary-strong);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}

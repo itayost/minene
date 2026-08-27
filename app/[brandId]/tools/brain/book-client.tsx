@@ -4,10 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabase } from '../../../../src/auth/supabase-browser'
 import { KnowledgeRow } from '../../../../src/brain/KnowledgeRow'
 import { createRolesApi, type RolesClient } from '../../../../src/brain/roles-api'
+import { RolesManager } from '../../../../src/brain/RolesManager'
 import { createRulesApi, type RulesClient } from '../../../../src/brain/rules-api'
 import { SubmitKnowledge } from '../../../../src/brain/SubmitKnowledge'
 import { useApiErrorHandler } from '../../../../src/brain/use-api-error'
-import type { Role, Rule } from '../../../../src/brain/types'
+import type { Role, Rule, RuleStatus } from '../../../../src/brain/types'
 
 /**
  * The four ways the floor reads the knowledge base, and one of them is not like
@@ -56,6 +57,16 @@ export function BookClient({ role }: { role: 'owner' | 'staff' }) {
   const [actionError, setActionError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
 
+  // Owner-only state. These are options on this one list, deliberately not a
+  // second copy of it: נתוני המוח was a whole screen holding exactly these
+  // three controls over exactly this query.
+  const isOwner = role === 'owner'
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isRolesOpen, setIsRolesOpen] = useState(false)
+  const [draftQuery, setDraftQuery] = useState('')
+  const [query, setQuery] = useState('')
+  const [status, setStatus] = useState<RuleStatus>('approved')
+
   useEffect(() => {
     let cancelled = false
     rolesApi.listRoles()
@@ -85,7 +96,11 @@ export function BookClient({ role }: { role: 'owner' | 'staff' }) {
         ])
         return [...dos.rows, ...donts.rows]
       }
-      return (await rulesApi.listRules({ topicId: null })).rows
+      return (await rulesApi.listRules({
+        topicId: null,
+        ...(query ? { query } : {}),
+        ...(status === 'approved' ? {} : { status }),
+      })).rows
     }
 
     Promise.all([load(), rulesApi.listMyVotes()])
@@ -101,7 +116,7 @@ export function BookClient({ role }: { role: 'owner' | 'staff' }) {
       })
 
     return () => { cancelled = true }
-  }, [handleError, reloadKey, roleId, rulesApi, tab])
+  }, [handleError, query, reloadKey, roleId, rulesApi, status, tab])
 
   const withSaving = useCallback(async (ruleId: string, work: () => Promise<unknown>) => {
     setSavingIds((current) => new Set(current).add(ruleId))
@@ -165,7 +180,47 @@ export function BookClient({ role }: { role: 'owner' | 'staff' }) {
   return (
     <div className="brain-surface">
       <section aria-label="ספר החוקים" className="knowledge-shell" dir="rtl">
-        <h2>ספר החוקים</h2>
+        <header className="knowledge-header">
+          <h2>ספר החוקים</h2>
+          {isOwner ? (
+            <div className="knowledge-owner-tools">
+              <button onClick={() => setIsSearchOpen((open) => !open)} type="button">חיפוש וסינון</button>
+              <button onClick={() => setIsRolesOpen(true)} type="button">תפקידים</button>
+            </div>
+          ) : null}
+        </header>
+
+        {isOwner && isSearchOpen ? (
+          <section className="knowledge-filters" aria-label="חיפוש וסינון חוקים">
+            <label htmlFor="book-query">חיפוש בחוקים</label>
+            <div className="knowledge-filters__row">
+              <input
+                autoCapitalize="off"
+                autoComplete="off"
+                autoCorrect="off"
+                enterKeyHint="search"
+                id="book-query"
+                onChange={(event) => setDraftQuery(event.target.value)}
+                type="search"
+                value={draftQuery}
+              />
+              <button onClick={() => setQuery(draftQuery)} type="button">חיפוש</button>
+            </div>
+
+            <label htmlFor="book-status">סטטוס</label>
+            {/* The one control that reaches rows the book never showed. It is a
+                filter, not a destination, which is why the second screen went. */}
+            <select
+              id="book-status"
+              onChange={(event) => setStatus(event.target.value as RuleStatus)}
+              value={status}
+            >
+              <option value="approved">מאושרים</option>
+              <option value="pending">ממתינים</option>
+              <option value="rejected">נדחו</option>
+            </select>
+          </section>
+        ) : null}
 
         <div aria-label="תצוגות הידע" className="knowledge-tabs knowledge-tabs--grid" role="tablist">
           {TABS.map((item) => (
@@ -218,6 +273,10 @@ export function BookClient({ role }: { role: 'owner' | 'staff' }) {
           list(rows)
         )}
       </section>
+
+      {isOwner ? (
+        <RolesManager isOpen={isRolesOpen} onClose={() => setIsRolesOpen(false)} rolesApi={rolesApi} />
+      ) : null}
     </div>
   )
 }

@@ -231,3 +231,54 @@ describe('when there is nothing to show', () => {
     expect(await screen.findByText(/דירוגים/)).toBeVisible()
   })
 })
+
+describe('what an owner gets on the same list', () => {
+  it('offers search, which a staff member never sees', async () => {
+    render(<BookClient role="owner" />)
+    expect(await screen.findByRole('button', { name: 'חיפוש וסינון' })).toBeVisible()
+  })
+
+  it('shows a staff member no owner controls at all', async () => {
+    render(<BookClient role="staff" />)
+    await screen.findByRole('tab', { name: 'כל החוקים' })
+
+    // The floor sees this screen far more often than an owner does. A busier
+    // list would tax the majority to serve the minority.
+    expect(screen.queryByRole('button', { name: 'חיפוש וסינון' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'תפקידים' })).toBeNull()
+  })
+
+  it('reaches pending and rejected rules, which the book never showed', async () => {
+    const user = userEvent.setup()
+    render(<BookClient role="owner" />)
+    await user.click(await screen.findByRole('button', { name: 'חיפוש וסינון' }))
+    await user.selectOptions(screen.getByLabelText('סטטוס'), 'pending')
+
+    // The whole reason נתוני המוח existed as a second screen. It is a filter,
+    // not a destination.
+    await waitFor(() => expect(rulesApi.listRules)
+      .toHaveBeenCalledWith(expect.objectContaining({ status: 'pending' })))
+  })
+
+  it('searches the list rather than opening a second copy of it', async () => {
+    const user = userEvent.setup()
+    render(<BookClient role="owner" />)
+    await user.click(await screen.findByRole('button', { name: 'חיפוש וסינון' }))
+    await user.type(screen.getByLabelText('חיפוש בחוקים'), 'קופה')
+    await user.click(screen.getByRole('button', { name: 'חיפוש' }))
+
+    await waitFor(() => expect(rulesApi.listRules)
+      .toHaveBeenCalledWith(expect.objectContaining({ query: 'קופה' })))
+  })
+
+  it('opens the role catalogue as a sheet, not as furniture in the list', async () => {
+    const user = userEvent.setup()
+    render(<BookClient role="owner" />)
+    await user.click(await screen.findByRole('button', { name: 'תפקידים' }))
+
+    // Two collapsed <details> bars sat between the KPI strip and the ribbon
+    // with nothing saying what they were. A settings door edited a few times a
+    // year is not furniture in the middle of a data screen.
+    expect(await screen.findByRole('dialog', { name: 'תפקידים' })).toBeVisible()
+  })
+})

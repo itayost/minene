@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { BottomSheet } from './BottomSheet'
 import type { RolesApi } from './roles-api'
 import { useApiErrorHandler } from './use-api-error'
 import type { Role } from './types'
@@ -11,18 +12,24 @@ import type { Role } from './types'
  * one business asked for, and the next one has assistant managers and stockroom
  * staff.
  *
- * Collapsed by default, and behind <details> rather than a state toggle: this is
- * a settings panel on a page whose job is reviewing rules, it is opened rarely,
- * and <details> gives keyboard and screen-reader behaviour for free that a
- * button-plus-state would have to reimplement.
+ * A sheet, not a panel. It used to be a collapsed <details> bar sitting between
+ * the KPI strip and the topic ribbon with nothing saying what it was -- which is
+ * exactly how the owner of the product came to ask what it did. Something edited
+ * a few times a year is a settings door, and a door opens over the page rather
+ * than living in the middle of it.
  */
-export function RolesManager({ rolesApi }: { rolesApi: Pick<RolesApi, 'listRoles' | 'createRole' | 'deleteRole'> }) {
+export function RolesManager({ rolesApi, isOpen, onClose }: {
+  rolesApi: Pick<RolesApi, 'listRoles' | 'createRole' | 'deleteRole'>
+  isOpen: boolean
+  onClose: () => void
+}) {
   const handleError = useApiErrorHandler()
   const [roles, setRoles] = useState<Role[]>([])
   const [draftName, setDraftName] = useState('')
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const nameRef = useRef<HTMLInputElement>(null)
 
   const reload = useCallback(async () => {
     setIsLoading(true)
@@ -67,8 +74,9 @@ export function RolesManager({ rolesApi }: { rolesApi: Pick<RolesApi, 'listRoles
   }
 
   return (
-    <details className="roles-manager">
-      <summary>ניהול תפקידים</summary>
+    <BottomSheet initialFocusRef={nameRef} label="תפקידים" onDismiss={onClose} openKey={isOpen ? 'roles' : null}>
+      <div className="roles-manager">
+      <h2 className="rule-edit-sheet__title">תפקידים</h2>
 
       {/* States the consequence before the button is pressed. Deleting a role is
           not destructive here -- the rules it addressed revert to addressing
@@ -107,11 +115,13 @@ export function RolesManager({ rolesApi }: { rolesApi: Pick<RolesApi, 'listRoles
           id="new-role-name"
           maxLength={40}
           onChange={(event) => setDraftName(event.target.value)}
+          ref={nameRef}
           type="text"
           value={draftName}
         />
         <button disabled={busyId === 'new'} type="submit">הוספה</button>
       </form>
-    </details>
+      </div>
+    </BottomSheet>
   )
 }
