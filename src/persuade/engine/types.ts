@@ -193,6 +193,8 @@ export interface RunScore {
   whatFailed: string | null;
   grade: number;
   notes: string;
+  /** How many interactions it took. Cheap to record, and the rates use it. */
+  interactionsUsed: number;
 }
 
 /** What actually happened afterwards. A partial is recorded, never rounded up. */

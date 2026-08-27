@@ -4,13 +4,21 @@ import { runSimulation } from '../../../../src/persuade/engine/simulation';
 import { resolveAccess } from '../../../../src/persuade/lib/access';
 import { getPersona } from '../../../../src/persuade/lib/content';
 import { assertModelAccessConfigured } from '../../../../src/persuade/lib/model';
-import { saveRun } from '../../../../src/persuade/lib/store';
+import { scoreRun } from '../../../../src/persuade/engine/score';
+import { createSimulationsStore } from '../../../../src/persuade/lib/simulations';
+import { supabase } from '../../../../src/persuade/lib/supabase';
 
 export const maxDuration = 800;
 
 interface SimulateRequest {
   config: BotConfig;
   personaId: string;
+  /**
+   * Where this run belongs in the matrix. Required: a run with no cell is a
+   * run nothing can ever read, since the matrix and the bank are both queries
+   * by cell.
+   */
+  cell: { industry: string; jobRoleId: string | null; need?: string | null };
 }
 
 /** Bot to bot. Streams NDJSON so the conversation can be watched message by message. */
@@ -39,7 +47,11 @@ export async function POST(req: Request) {
     }
 
     assertModelAccessConfigured();
-    const { config, personaId } = (await req.json()) as SimulateRequest;
+    const { config, personaId, cell } = (await req.json()) as SimulateRequest;
+
+    if (!cell?.industry?.trim()) {
+      return Response.json({ error: 'חסר ענף לסימולציה.' }, { status: 400 });
+    }
 
     const problems = validateConfig(config);
     if (problems.length > 0) {
@@ -58,7 +70,33 @@ export async function POST(req: Request) {
             rules: config.rules,
           })) {
             controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
-            if (event.type === 'done') await saveRun(event.run, access.context).catch(() => undefined);
+            if (event.type !== 'done') continue;
+
+            /**
+             * Scored before it is stored, and stored to `simulations` rather
+             * than to `conversations`.
+             *
+             * The bank is built from `score.winningCategory`, so a run saved
+             * unscored is a run the bank can never see -- and the conversations
+             * table has no score column at all, which is why this has its own.
+             *
+             * A scoring failure is not a failed simulation: the conversation
+             * happened, and losing it because the judge was unavailable would
+             * throw away the expensive half to protect the cheap one.
+             */
+            let scored = event.run;
+            try {
+              const score = await scoreRun(
+                event.run.plan, event.run.turns, event.run.state, event.run.violations,
+              );
+              scored = { ...event.run, score };
+            } catch {
+              controller.enqueue(encoder.encode(`${JSON.stringify({ type: 'unscored' })}\n`));
+            }
+
+            await createSimulationsStore(supabase())
+              .saveSimulation(scored, cell)
+              .catch(() => undefined);
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : 'שגיאה בשיחה';

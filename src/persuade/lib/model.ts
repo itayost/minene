@@ -8,7 +8,7 @@ import type { LanguageModel } from 'ai';
  * env change rather than a code change.
  */
 
-export type ModelRole = 'planner' | 'persuader' | 'target';
+export type ModelRole = 'planner' | 'persuader' | 'target' | 'judge';
 export type Provider = 'openai' | 'anthropic' | 'gateway';
 
 /**
@@ -27,16 +27,19 @@ export type Provider = 'openai' | 'anthropic' | 'gateway';
 const defaults = (): Record<Provider, Record<ModelRole, string>> => ({
   openai: {
     planner: process.env.PERSUADER_PLANNER_MODEL ?? 'gpt-5.5',
+    judge: process.env.PERSUADER_JUDGE_MODEL ?? 'gpt-5.5',
     persuader: process.env.PERSUADER_MODEL ?? 'gpt-5.5',
     target: process.env.PERSUADER_TARGET_MODEL ?? 'gpt-5.4-mini',
   },
   anthropic: {
     planner: process.env.PERSUADER_PLANNER_MODEL ?? 'claude-opus-5',
+    judge: process.env.PERSUADER_JUDGE_MODEL ?? 'claude-opus-5',
     persuader: process.env.PERSUADER_MODEL ?? 'claude-sonnet-5',
     target: process.env.PERSUADER_TARGET_MODEL ?? 'claude-sonnet-5',
   },
   gateway: {
     planner: process.env.PERSUADER_PLANNER_MODEL ?? 'anthropic/claude-opus-5',
+    judge: process.env.PERSUADER_JUDGE_MODEL ?? 'anthropic/claude-opus-5',
     persuader: process.env.PERSUADER_MODEL ?? 'anthropic/claude-sonnet-5',
     target: process.env.PERSUADER_TARGET_MODEL ?? 'anthropic/claude-sonnet-5',
   },
