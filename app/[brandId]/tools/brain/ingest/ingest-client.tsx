@@ -345,6 +345,12 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
                   itself, so it is still what a screen reader announces. */}
               <label className="file-drop" htmlFor="ingest-file">
                 <span className="file-drop__action">בחרי קובץ PDF</span>
+                {/* A real space, not styling. The two spans are separate visual
+                    lines, so the gap looked right while textContent -- which is
+                    what the accessible name is computed from -- concatenated
+                    them into "PDFלא". Whitespace-only text does not become a
+                    grid item, so nothing moves. */}
+                {' '}
                 <span className="file-drop__state">
                   {file ? `${file.name} · ${readableSize(file.size)}` : 'לא נבחר קובץ'}
                 </span>

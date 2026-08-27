@@ -128,6 +128,16 @@ describe('choosing a file without the browser speaking English', () => {
     expect(screen.getByText('לא נבחר קובץ')).toBeVisible()
   })
 
+  it('does not run the action and the state together in its accessible name', () => {
+    setup()
+
+    // The two spans are separate visual lines, so nothing looked wrong -- but
+    // textContent concatenated them into "בחרי קובץ PDFלא נבחר קובץ", and a
+    // screen reader reads "PDFלא" as one token.
+    const input = screen.getByLabelText(/קובץ PDF/) as HTMLInputElement
+    expect(input.labels?.[0]?.textContent).toMatch(/PDF\s/)
+  })
+
   it('keeps the input reachable by keyboard', () => {
     setup()
 
