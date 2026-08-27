@@ -1,95 +1,32 @@
-import Link from 'next/link'
-import type { CSSProperties } from 'react'
-import { notFound } from 'next/navigation'
 import { requireBrand } from '../../../../src/auth/require-brand'
-import { ToolScreen } from '../../../../src/components/ToolScreen'
+import { BookClient } from './book-client'
 
 type BrainParams = { params: Promise<{ brandId: string }> }
 
-const BRAIN_TOOL_ID = 'brain'
+export const metadata = { title: 'ספר החוקים' }
 
 /**
- * A static segment, so Next resolves it before the sibling [toolId] route -- the
- * same rule that makes `tools` beat `[subjectId]`. משכנע and קמפיינר keep being
- * served by [toolId] entirely unchanged, ToolScreen is not modified, and there
- * is no conditional on a tool id anywhere.
+ * The tool's front door, and the only screen a staff member ever sees.
  *
- * Unlike its sibling routes this uses notFound() rather than assertDefined:
- * those call resolveScreen first, which has already proved the tool exists, so a
- * miss there would be a bug. Nothing has validated it here, so a brand whose
- * manifest has no brain tool is a legitimate 404.
+ * This used to be a hub: four cards routing to four screens, above a list of
+ * marketing copy from the brand manifest. The bottom nav already reaches this
+ * tool, so that hub cost two taps before any task began and spent its largest
+ * element on text that was never content.
+ *
+ * No role gate. rules_select_member_approved admits every member of the tenant
+ * to the approved rules -- the first widening of that boundary since accounts
+ * replaced the shared access code -- and gating here would put the knowledge
+ * behind the role that least needs to read it. The role is handed down instead,
+ * because an owner's extra controls are options on this one list rather than a
+ * second copy of it.
+ *
+ * Nothing leaks past RLS either: pending rows, documents and the role catalogue
+ * are all owner-only in the database, so this page can only render what the
+ * policies already agreed to hand over.
  */
 export default async function BrainPage({ params }: BrainParams) {
   const { brandId } = await params
-  const { brand, session } = await requireBrand(brandId)
+  const { session } = await requireBrand(brandId)
 
-  const tool = brand.tools.find((candidate) => candidate.id === BRAIN_TOOL_ID)
-  if (!tool) notFound()
-
-  const base = `/${brand.id}/tools/${BRAIN_TOOL_ID}`
-
-  // The book leads, and it is the only one every member reaches:
-  // rules_select_member_approved admits the whole tenant to the approved rules.
-  //
-  // The other three are owner-only, matching the routes they point at, which in
-  // turn match what the database allows: every policy behind them requires the
-  // owner role. Showing a staff member a link to a page that will 404 for them
-  // reads as a broken app rather than as a permission boundary.
-  const book = {
-    href: `${base}/book`,
-    label: 'ספר החוקים',
-    note: 'הידע המאושר, ודירוג שלו',
-    icon: '/brands/minene/icons/brain.png',
-    cardColor: '#f4f7fb',
-  }
-
-  const entries = session.role === 'owner'
-    ? [
-        book,
-        {
-          href: `${base}/lobby`,
-          label: 'לובי אושר',
-          note: 'חוקים הממתינים לאישור',
-          icon: '/brands/minene/icons/tasks.png',
-          cardColor: '#fef2f6',
-        },
-        {
-          href: `${base}/extract`,
-          label: 'חילוץ חוקים',
-          note: 'העלאת PDF וחילוץ חוקים',
-          icon: '/brands/minene/icons/training.png',
-          cardColor: '#f8f6fc',
-        },
-        {
-          href: `${base}/admin`,
-          label: 'נתוני המוח',
-          note: 'היסטוריית החוקים',
-          icon: '/brands/minene/icons/results.png',
-          cardColor: '#f9f9fc',
-        },
-      ]
-    : [book]
-
-  return (
-    <div className="brain-screen">
-      <nav className="brain-entries" aria-label="כלי מוח ארגוני">
-        {entries.map((entry) => (
-          <Link
-            className="brain-entry"
-            href={entry.href}
-            key={entry.href}
-            style={{ '--card-color': entry.cardColor } as CSSProperties & { '--card-color': string }}
-          >
-            <span className="brain-entry__text">
-              <span className="brain-entry__label">{entry.label}</span>
-              <span className="brain-entry__note">{entry.note}</span>
-            </span>
-            <img className="brain-entry__icon" src={entry.icon} alt="" />
-          </Link>
-        ))}
-      </nav>
-
-      <ToolScreen tool={tool} />
-    </div>
-  )
+  return <BookClient role={session.role} />
 }

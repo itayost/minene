@@ -26,7 +26,7 @@ vi.mock('../../src/brain/rules-api', async (importOriginal) => ({
 }))
 vi.mock('../../src/brain/roles-api', () => ({ createRolesApi: () => rolesApi }))
 
-const { BookClient } = await import('../../app/[brandId]/tools/brain/book/book-client')
+const { BookClient } = await import('../../app/[brandId]/tools/brain/book-client')
 
 const page = (rows: ReturnType<typeof makeRule>[]) => ({ rows, nextCursor: null })
 
@@ -46,14 +46,14 @@ const openTab = async (user: ReturnType<typeof userEvent.setup>, name: string) =
 
 describe('the four ways the floor reads the knowledge base', () => {
   it('opens on every approved rule, filtered by nothing', async () => {
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
 
     await waitFor(() => expect(rulesApi.listRules).toHaveBeenCalledWith({ topicId: null }))
   })
 
   it('asks for cases by kind rather than by scanning a general page', async () => {
     const user = userEvent.setup()
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
     await openTab(user, 'מקרים ותגובות')
 
     await waitFor(() => expect(rulesApi.listRules).toHaveBeenCalledWith({ topicId: null, kind: 'case' }))
@@ -61,7 +61,7 @@ describe('the four ways the floor reads the knowledge base', () => {
 
   it('asks for do and don’t as two calls, not one page filtered afterwards', async () => {
     const user = userEvent.setup()
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
     await openTab(user, 'עשה ואל תעשה')
 
     // A single unfiltered page would spend its fifty-row budget mostly on rules
@@ -75,7 +75,7 @@ describe('the four ways the floor reads the knowledge base', () => {
 
   it('ranks proven processes through the call that orders by rating', async () => {
     const user = userEvent.setup()
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
     await openTab(user, 'תהליכים מוכחים')
 
     await waitFor(() => expect(rulesApi.listProvenProcesses).toHaveBeenCalled())
@@ -90,7 +90,7 @@ describe('what the do and don’t lists show', () => {
         : page([makeRule({ id: 'dont-1', text: 'לא לעזוב את הקופה', polarity: 'dont' })])
     ))
     const user = userEvent.setup()
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
     await openTab(user, 'עשה ואל תעשה')
 
     // "What to do" and "what never to do" are read as separate checklists.
@@ -103,7 +103,7 @@ describe('what the do and don’t lists show', () => {
 
   it('narrows both lists to one job when a role is chosen', async () => {
     const user = userEvent.setup()
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
     await openTab(user, 'עשה ואל תעשה')
     await user.selectOptions(await screen.findByLabelText('תפקיד'), 'role-1')
 
@@ -115,7 +115,7 @@ describe('what the do and don’t lists show', () => {
   it('still reads as every role when the role list fails to load', async () => {
     rolesApi.listRoles.mockRejectedValue(new Error('down'))
     const user = userEvent.setup()
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
     await openTab(user, 'עשה ואל תעשה')
 
     // Every role is a superset, so nothing is hidden. Failing the whole page
@@ -127,7 +127,7 @@ describe('what the do and don’t lists show', () => {
 describe('a rule as the floor sees it', () => {
   it('shows no score at all before anyone has voted', async () => {
     rulesApi.listRules.mockResolvedValue(page([makeRule({ like_pct: null, vote_count: 0 })]))
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
 
     // The person reading it is the one being asked to rate it, so a "טרם דורג"
     // placeholder beside the buttons that would fix that is noise.
@@ -136,7 +136,7 @@ describe('a rule as the floor sees it', () => {
   })
 
   it('carries the denominator alongside the percentage', async () => {
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
 
     // 72% off four votes and 72% off forty are different claims.
     expect(await screen.findByLabelText('75 אחוז לייקים מתוך 4 מצביעים')).toBeVisible()
@@ -146,7 +146,7 @@ describe('a rule as the floor sees it', () => {
     rulesApi.listRules.mockResolvedValue(page([
       makeRule({ kind: 'case', text: 'לקוחה מבקשת החזר בלי חשבונית', response: 'להציע זיכוי' }),
     ]))
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
 
     expect(await screen.findByText(/להציע זיכוי/)).toBeVisible()
   })
@@ -155,7 +155,7 @@ describe('a rule as the floor sees it', () => {
     rulesApi.listRules.mockResolvedValue(page([
       makeRule({ source: 'external', source_url: 'https://example.com/retail' }),
     ]))
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
 
     const link = await screen.findByRole('link', { name: 'מקור חיצוני' })
     expect(link).toHaveAttribute('href', 'https://example.com/retail')
@@ -168,7 +168,7 @@ describe('a rule as the floor sees it', () => {
 describe('rating a rule', () => {
   it('echoes this person’s own vote back immediately', async () => {
     const user = userEvent.setup()
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
     await user.click(await screen.findByRole('button', { name: 'הוסיפי לייק' }))
 
     await waitFor(() => expect(rulesApi.setRuleVote).toHaveBeenCalledWith({ ruleId: 'rule-1', isLike: true }))
@@ -177,7 +177,7 @@ describe('rating a rule', () => {
 
   it('never guesses the new percentage', async () => {
     const user = userEvent.setup()
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
     await user.click(await screen.findByRole('button', { name: 'הוסיפי לייק' }))
     await waitFor(() => expect(rulesApi.setRuleVote).toHaveBeenCalled())
 
@@ -189,7 +189,7 @@ describe('rating a rule', () => {
   it('withdraws a vote when the same side is pressed again', async () => {
     rulesApi.listMyVotes.mockResolvedValue(new Map([['rule-1', true]]))
     const user = userEvent.setup()
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
     await user.click(await screen.findByRole('button', { name: 'ביטול הלייק' }))
 
     // Withdrawing is not switching sides: a cleared vote leaves the denominator,
@@ -201,7 +201,7 @@ describe('rating a rule', () => {
   it('says the rating did not save rather than leaving the row looking voted', async () => {
     rulesApi.setRuleVote.mockRejectedValue(new Error('down'))
     const user = userEvent.setup()
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
     await user.click(await screen.findByRole('button', { name: 'הוסיפי לייק' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('הדירוג לא נשמר')
@@ -212,7 +212,7 @@ describe('rating a rule', () => {
 describe('when there is nothing to show', () => {
   it('says why the proven list is empty, not that the business has no good processes', async () => {
     const user = userEvent.setup()
-    render(<BookClient />)
+    render(<BookClient role="staff" />)
     await openTab(user, 'תהליכים מוכחים')
 
     // Almost always the cause is that nobody has voted yet: a different problem

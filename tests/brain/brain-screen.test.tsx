@@ -8,9 +8,7 @@ const nav = vi.hoisted(() => {
 })
 
 vi.mock('next/navigation', () => ({
-  notFound: () => {
-    throw new nav.NotFoundSignal('not found')
-  },
+  notFound: () => { throw new nav.NotFoundSignal('not found') },
 }))
 
 const role = vi.hoisted(() => ({ current: 'owner' as 'owner' | 'staff' }))
@@ -23,6 +21,12 @@ vi.mock('../../src/auth/require-brand', () => ({
   })),
 }))
 
+// Stubbed so this file is about the route, not the list it renders. The stub
+// reports the role it was handed, which is the one thing the page decides.
+vi.mock('../../app/[brandId]/tools/brain/book-client', () => ({
+  BookClient: ({ role: given }: { role: string }) => <div data-testid="book" data-role={given} />,
+}))
+
 const { default: BrainPage } = await import('../../app/[brandId]/tools/brain/page')
 
 async function renderBrain(as: 'owner' | 'staff') {
@@ -30,50 +34,29 @@ async function renderBrain(as: 'owner' | 'staff') {
   render(await BrainPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
 }
 
-describe('the מוח ארגוני screen', () => {
-  it('offers an owner every entry point', async () => {
-    await renderBrain('owner')
-
-    expect(screen.getByRole('link', { name: /ספר החוקים/ })).toBeVisible()
-    expect(screen.getByRole('link', { name: /לובי אושר/ })).toBeVisible()
-    expect(screen.getByRole('link', { name: /חילוץ חוקים/ })).toBeVisible()
-    expect(screen.getByRole('link', { name: /נתוני המוח/ })).toBeVisible()
-  })
-
-  it('points each entry at its route beneath the tool', async () => {
-    await renderBrain('owner')
-
-    const base = `/${mineneBrand.id}/tools/brain`
-    expect(screen.getByRole('link', { name: /ספר החוקים/ })).toHaveAttribute('href', `${base}/book`)
-    expect(screen.getByRole('link', { name: /לובי אושר/ })).toHaveAttribute('href', `${base}/lobby`)
-    expect(screen.getByRole('link', { name: /חילוץ חוקים/ })).toHaveAttribute('href', `${base}/extract`)
-    expect(screen.getByRole('link', { name: /נתוני המוח/ })).toHaveAttribute('href', `${base}/admin`)
-  })
-
-  it('offers a staff member the knowledge book, and only that', async () => {
+describe('the מוח ארגוני front door', () => {
+  it('is the knowledge book itself, not a menu in front of it', async () => {
     await renderBrain('staff')
 
-    // rules_select_member_approved admits every member to the approved rules, so
-    // the book is real for a staff member. The other three sit behind owner-only
-    // policies and would 404, and a link to a page that refuses you reads as a
-    // broken app rather than as a permission boundary.
-    expect(screen.getByRole('link', { name: /ספר החוקים/ })).toBeVisible()
-    expect(screen.queryAllByRole('link')).toHaveLength(1)
+    // The bottom nav already reaches this tool. Four cards in front of four
+    // screens cost two taps before any task began, and the largest element on
+    // that page was a list of marketing copy from the brand manifest.
+    expect(screen.getByTestId('book')).toBeVisible()
   })
 
-  it('still shows a staff member the preview list', async () => {
+  it('lets every member in, because the approved rules are theirs to read', async () => {
     await renderBrain('staff')
 
-    // The tool itself is not owner-only, only its three surfaces are.
-    expect(screen.getByText('גיוס ידע בקרב 1500 סניפים')).toBeVisible()
+    // rules_select_member_approved admits the whole tenant. Gating this would
+    // put the knowledge behind the role that least needs to read it.
+    expect(screen.getByTestId('book')).toHaveAttribute('data-role', 'staff')
   })
 
-  it('keeps the existing preview list beneath the entries', async () => {
+  it('tells the book which role it is rendering for', async () => {
     await renderBrain('owner')
 
-    // The list is the tool's manifest items, unchanged. Its note marks it as a
-    // preview, which is why the entry points sit above it.
-    expect(screen.getByText('גיוס ידע בקרב 1500 סניפים')).toBeVisible()
-    expect(screen.getByText('מקרים ותגובות')).toBeVisible()
+    // The owner's extra controls are options on this one list, not a second
+    // copy of it, so the page hands the role down rather than branching here.
+    expect(screen.getByTestId('book')).toHaveAttribute('data-role', 'owner')
   })
 })

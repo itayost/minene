@@ -1,13 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { createBrowserSupabase } from '../../../../../src/auth/supabase-browser'
-import { KnowledgeRow } from '../../../../../src/brain/KnowledgeRow'
-import { createRolesApi, type RolesClient } from '../../../../../src/brain/roles-api'
-import { createRulesApi, type RulesClient } from '../../../../../src/brain/rules-api'
-import { SubmitKnowledge } from '../../../../../src/brain/SubmitKnowledge'
-import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
-import type { Role, Rule } from '../../../../../src/brain/types'
+import { createBrowserSupabase } from '../../../../src/auth/supabase-browser'
+import { KnowledgeRow } from '../../../../src/brain/KnowledgeRow'
+import { createRolesApi, type RolesClient } from '../../../../src/brain/roles-api'
+import { createRulesApi, type RulesClient } from '../../../../src/brain/rules-api'
+import { SubmitKnowledge } from '../../../../src/brain/SubmitKnowledge'
+import { useApiErrorHandler } from '../../../../src/brain/use-api-error'
+import type { Role, Rule } from '../../../../src/brain/types'
 
 /**
  * The four ways the floor reads the knowledge base, and one of them is not like
@@ -41,7 +41,7 @@ const ALL_ROLES: Role = { id: '', name: 'כל התפקידים', sortOrder: -1 }
 
 type LoadState = { status: 'loading' | 'ready' } | { status: 'error'; message: string }
 
-export function BookClient() {
+export function BookClient({ role }: { role: 'owner' | 'staff' }) {
   const rulesApi = useMemo(() => createRulesApi(createBrowserSupabase() as unknown as RulesClient), [])
   const rolesApi = useMemo(() => createRolesApi(createBrowserSupabase() as unknown as RolesClient), [])
   const handleError = useApiErrorHandler()
