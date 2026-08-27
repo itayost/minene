@@ -1,0 +1,1252 @@
+/* The מוח ארגוני surfaces.
+ *
+ * Split out of styles.css, which had reached 3172 lines against this project's
+ * own 800-line ceiling. Every selector here is brain-only -- checked with grep
+ * against src and app before the move -- with one deliberate exception left
+ * behind: .brain-screen and .brain-surface stay in styles.css, because
+ * video-wizard.tsx uses .brain-surface for its screen role.
+ *
+ * tests/brain/palette.test.ts polices the colours in this file.
+ */
+
+/* Mirrors .subject-card: these are the same kind of thing a reader taps on the
+   home grid, so they should not look like a different species of control. Same
+   pastel fill, radius, label weight and icon size; the only addition is a note
+   line, because unlike a subject these need to say what they do. */
+
+.brain-entries {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.brain-entry {
+  appearance: none;
+  /* An anchor carries neither of the resets the global button rule supplied. */
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+  min-height: 126px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  padding: 13px;
+  border: 0;
+  border-radius: 19px;
+  background: var(--card-color, #fef2f6);
+  cursor: pointer;
+}
+
+/* An odd last card spans the row rather than leaving a gap beside it. With
+   three entries that is the third; the rule keeps the composition tidy at any
+   count. */
+
+.brain-entry:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.brain-entry__text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.brain-entry__label {
+  color: var(--text, #1d2645);
+  font-size: 16.5px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: start;
+}
+
+.brain-entry__note {
+  color: var(--muted, #aea9b4);
+  font-size: 12.5px;
+  line-height: 1.3;
+  text-align: start;
+}
+
+.brain-entry__icon {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+}
+
+/* Rule extraction and the recent-documents list. New class names only. */
+
+.upload-page,
+.external-hunt,
+.documents-list {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--surface, #fffdfc);
+  text-align: right;
+}
+
+.upload-page h2,
+.external-hunt h2,
+.documents-list h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--primary-strong, #c51f73);
+}
+
+.upload-page__intro,
+.documents-list__empty,
+.documents-list__more {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted, #aea9b4);
+}
+
+.upload-page__form {
+  display: grid;
+  gap: 8px;
+}
+
+.upload-page__form label {
+  font-size: 0.85rem;
+  color: var(--text, #1d2645);
+}
+
+.upload-page__form select,
+.upload-page__form input,
+.upload-page__form textarea {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 12px;
+  font: inherit;
+}
+
+.upload-page__form button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--primary, #e8368f);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.upload-page__form button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.upload-page__status,
+.documents-list__status {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text, #1d2645);
+}
+
+.upload-page__error,
+.documents-list__error,
+.documents-list__row-error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--primary-strong, #c51f73);
+}
+
+.documents-list__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.documents-list__row {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fef2f6;
+}
+
+.documents-list__filename {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text, #1d2645);
+}
+
+.documents-list__meta {
+  margin: 0;
+  display: flex;
+  gap: 16px;
+  font-size: 0.8rem;
+}
+
+.documents-list__meta div {
+  display: flex;
+  gap: 4px;
+}
+
+.documents-list__meta dt {
+  color: var(--muted, #aea9b4);
+}
+
+.documents-list__meta dd {
+  margin: 0;
+  color: var(--text, #1d2645);
+}
+
+/* Approval lobby and its edit sheet. New class names only. */
+
+.approval-lobby {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--surface, #fffdfc);
+  text-align: right;
+}
+
+.approval-lobby h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--primary-strong, #c51f73);
+}
+
+.approval-lobby__intro,
+.approval-lobby__empty,
+.approval-lobby__meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted, #aea9b4);
+}
+
+.approval-lobby__count {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text, #1d2645);
+}
+
+.approval-lobby__error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--primary-strong, #c51f73);
+}
+
+.approval-lobby__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.approval-lobby__row {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fef2f6;
+}
+
+.approval-lobby__text {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text, #1d2645);
+}
+
+.approval-lobby__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.approval-lobby__actions button {
+  min-height: 44px;
+  flex: 1;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 12px;
+  background: var(--surface, #fffdfc);
+  font: inherit;
+  cursor: pointer;
+}
+
+.approval-lobby__actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.rule-edit-sheet {
+  position: relative;
+  width: min(420px, 100%);
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px 16px 0 0;
+  background: var(--surface, #fffdfc);
+  text-align: right;
+}
+
+.rule-edit-sheet__title {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--primary-strong, #c51f73);
+}
+
+.rule-edit-sheet__field {
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.rule-edit-sheet__row {
+  display: flex;
+  gap: 10px;
+}
+
+.rule-edit-sheet__row .rule-edit-sheet__field {
+  flex: 1;
+}
+
+.rule-edit-sheet__textarea,
+.rule-edit-sheet__select {
+  padding: 10px 12px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 12px;
+  font: inherit;
+}
+
+.rule-edit-sheet__error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--primary-strong, #c51f73);
+}
+
+.rule-edit-sheet__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.rule-edit-sheet__actions button {
+  min-height: 44px;
+  flex: 1;
+  border-radius: 12px;
+  border: 1px solid var(--border, #e7e3e9);
+  font: inherit;
+  cursor: pointer;
+}
+
+.rule-edit-sheet__save {
+  border: 0;
+  background: var(--primary, #e8368f);
+  color: #fff;
+}
+
+/* Rules history. New class names only. */
+
+.admin-screen {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--surface, #fffdfc);
+  text-align: right;
+}
+
+.admin-screen h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--primary-strong, #c51f73);
+}
+
+.kpi-cards {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+}
+
+.kpi-cards__error,
+.admin-error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--primary-strong, #c51f73);
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.admin-tab {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 999px;
+  background: var(--surface, #fffdfc);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.admin-tab[aria-current="true"] {
+  background: var(--primary, #e8368f);
+  border-color: var(--primary, #e8368f);
+  color: #fff;
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-search-toggle {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 12px;
+  background: var(--surface, #fffdfc);
+  color: var(--primary, #e8368f);
+  cursor: pointer;
+}
+
+.admin-search-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Counts only what is hidden behind the toggle. An applied search term keeps its
+   own chip below, which stays visible while the panel is shut. */
+
+.admin-search-toggle__count {
+  position: absolute;
+  inset-block-start: -4px;
+  inset-inline-start: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--primary, #e8368f);
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.admin-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fef2f6;
+}
+
+.admin-panel[hidden] {
+  display: none;
+}
+
+.admin-search {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.admin-search__row {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.admin-chip {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #fef2f6;
+  font-size: 0.85rem;
+  color: var(--text, #1d2645);
+}
+
+.admin-chip button {
+  border: 0;
+  background: transparent;
+  color: var(--primary-strong, #c51f73);
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-search input,
+.admin-filters select {
+  flex: 1;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 10px;
+  font: inherit;
+}
+
+.admin-search button,
+.admin-paging button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 10px;
+  background: var(--surface, #fffdfc);
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-paging button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.admin-count,
+.admin-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted, #aea9b4);
+}
+
+.admin-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.admin-row {
+  display: grid;
+  /* minmax(0, …) rather than 1fr: a long unbroken rule text would otherwise
+     force the column past the shell width and push the star off screen. */
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fef2f6;
+}
+
+.admin-row > :not(.admin-row__star) {
+  grid-column: 1;
+}
+
+.admin-row__text {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text, #1d2645);
+}
+
+.admin-row__meta {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted, #aea9b4);
+}
+
+.admin-row__star {
+  grid-column: 2;
+  /* All rows, not two: the row grew a head and a conditional response line, and
+     a fixed span silently left the star floating beside the wrong one. */
+  grid-row: 1 / -1;
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font-size: 1.2rem;
+  color: var(--primary, #e8368f);
+  cursor: pointer;
+}
+
+.admin-paging {
+  display: flex;
+  gap: 8px;
+}
+
+/* The edit sheet's layer and backdrop. Ported alongside RuleEditSheet, which
+   references both: without them the layer is an unstyled div in normal flow and
+   the backdrop is a bare button, so the sheet is not a sheet. */
+
+.action-sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  padding: 18px;
+}
+
+.action-sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: rgb(34 28 39 / 42%);
+  border: 0;
+  cursor: pointer;
+}
+
+/* Knowledge book. New class names only, so nothing above is affected. */
+
+.knowledge-shell {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--surface, #fffdfc);
+  text-align: right;
+}
+
+.knowledge-shell h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--primary-strong, #c51f73);
+}
+
+/* Four Hebrew labels do not fit across a 402px shell, and wrapping them into
+   two rows makes a tab strip read as a menu. It scrolls instead, with the
+   scrollbar hidden.
+   
+   "Discoverable by dragging" turned out not to be true: at this width the
+   fourth tab falls entirely outside the strip with nothing peeking, so the
+   control looks like it has three. The mask fades the trailing edge, which is
+   what says there is more. It is unconditional because these four labels never
+   fit -- there is no width at which the fade would be lying. */
+
+.knowledge-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+  mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent 100%);
+}
+
+.knowledge-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.knowledge-tab {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 999px;
+  background: var(--surface, #fffdfc);
+  color: var(--muted, #8b8592);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.knowledge-tab:hover {
+  border-color: var(--primary-strong, #c51f73);
+  color: var(--text, #1d2645);
+}
+
+.knowledge-tab[aria-selected='true'] {
+  border-color: transparent;
+  background: var(--primary-strong, #c51f73);
+  color: #fff;
+  font-weight: 700;
+}
+
+.knowledge-role-filter {
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--muted, #8b8592);
+}
+
+.knowledge-role-filter select {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 12px;
+  background: var(--surface, #fffdfc);
+  font: inherit;
+  color: var(--text, #1d2645);
+}
+
+/* The two headings carry the whole distinction between the lists beneath them,
+   so they are the one place in this surface that uses colour semantically
+   rather than decoratively. */
+
+.knowledge-heading {
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+  padding-inline-start: 10px;
+  border-inline-start: 3px solid currentcolor;
+}
+
+.knowledge-heading[data-polarity='do'] {
+  color: #1f8a5f;
+}
+
+.knowledge-heading[data-polarity='dont'] {
+  color: var(--primary-strong, #c51f73);
+}
+
+.knowledge-message {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted, #8b8592);
+}
+
+.knowledge-message[role='alert'] {
+  color: var(--primary-strong, #c51f73);
+}
+
+.knowledge-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.knowledge-row {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f6f7fb;
+}
+
+.knowledge-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+}
+
+/* Tabular figures so a column of numbers lines up rather than jittering by
+   glyph width, and a latin font because the sequence is latin digits inside an
+   RTL paragraph. */
+
+.knowledge-row__number {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted, #8b8592);
+}
+
+.knowledge-row__topic,
+.knowledge-row__sub-topic {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted, #8b8592);
+}
+
+.knowledge-row__sub-topic {
+  background: #fef2f6;
+  color: var(--primary-strong, #c51f73);
+}
+
+/* Pushed to the far edge of the head row: it is the one value a reader scans
+   down the list for, and it should sit in a column rather than land wherever
+   the sub-topic before it happened to end. */
+
+.knowledge-row__score {
+  margin-inline-start: auto;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #1f8a5f;
+}
+
+.knowledge-row__text {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text, #1d2645);
+}
+
+.knowledge-row__response {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.85rem;
+  color: var(--text, #1d2645);
+}
+
+.knowledge-row__response-label {
+  font-weight: 700;
+  color: var(--primary-strong, #c51f73);
+}
+
+.knowledge-row__source {
+  justify-self: start;
+  font-size: 0.78rem;
+  color: var(--muted, #8b8592);
+  text-underline-offset: 3px;
+}
+
+.knowledge-row__source:hover {
+  color: var(--primary-strong, #c51f73);
+}
+
+.rule-vote {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.rule-vote__button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--muted, #8b8592);
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.rule-vote__button svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* One icon, turned over for the second button, so the pair cannot drift apart
+   visually the way two hand-drawn thumbs would. */
+
+.rule-vote__button[data-direction='down'] svg {
+  transform: rotate(180deg);
+}
+
+.rule-vote__button:hover:not(:disabled) {
+  border-color: var(--primary-strong, #c51f73);
+  color: var(--text, #1d2645);
+}
+
+.rule-vote__button[aria-pressed='true'][data-direction='up'] {
+  border-color: transparent;
+  background: #e4f5ed;
+  color: #1f8a5f;
+}
+
+.rule-vote__button[aria-pressed='true'][data-direction='down'] {
+  border-color: transparent;
+  background: #fef2f6;
+  color: var(--primary-strong, #c51f73);
+}
+
+.rule-vote__button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.knowledge-submit {
+  display: grid;
+  gap: 8px;
+}
+
+.knowledge-submit__open {
+  min-height: 44px;
+  border: 1px dashed var(--border, #e7e3e9);
+  border-radius: 12px;
+  background: var(--surface, #fffdfc);
+  color: var(--primary-strong, #c51f73);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.knowledge-submit__open:hover {
+  border-color: var(--primary-strong, #c51f73);
+  background: #fef2f6;
+}
+
+/* Two columns for the four short fields, one for the two long ones. A six-field
+   single column would push the list this form sits above off the screen even
+   while it is open. */
+
+.knowledge-submit--open {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fef2f6;
+}
+
+.knowledge-submit__title {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--primary-strong, #c51f73);
+}
+
+.knowledge-submit--open label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--muted, #8b8592);
+}
+
+.knowledge-submit__wide,
+.knowledge-submit--open .knowledge-message,
+.knowledge-submit__actions {
+  grid-column: 1 / -1;
+}
+
+.knowledge-submit--open input,
+.knowledge-submit--open select,
+.knowledge-submit--open textarea {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 10px;
+  background: var(--surface, #fffdfc);
+  font: inherit;
+  color: var(--text, #1d2645);
+}
+
+.knowledge-submit--open textarea {
+  resize: vertical;
+}
+
+.knowledge-submit__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.knowledge-submit__actions button {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 12px;
+  background: var(--surface, #fffdfc);
+  cursor: pointer;
+}
+
+.knowledge-submit__actions button[type='submit'] {
+  border-color: transparent;
+  background: var(--primary-strong, #c51f73);
+  color: #fff;
+  font-weight: 700;
+}
+
+.knowledge-submit__actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The two ingestion modes. A segmented pair rather than a select, because the
+   choice changes which fields exist below it: a closed control would hide the
+   consequence of the very thing it is choosing. */
+
+.upload-page__modes {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f6f7fb;
+}
+
+.upload-page__mode {
+  flex: 1;
+  min-height: 38px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted, #8b8592);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.upload-page__mode[aria-selected='true'] {
+  background: var(--surface, #fffdfc);
+  color: var(--text, #1d2645);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgb(29 38 69 / 12%);
+}
+
+.upload-page__mode:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* A pasted thread is long. Left at the shared 44px minimum it would be a slot
+   the size of a single-line field holding a whole conversation. */
+
+.upload-page__form textarea {
+  min-height: 160px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+/* The axes a rule gained. All new class names except .admin-row itself, whose
+   column and row spans had to follow the row growing extra lines. */
+
+.admin-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted, #aea9b4);
+}
+
+.admin-row__number {
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-row__topic,
+.admin-row__sub-topic {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff;
+}
+
+.admin-row__response {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.85rem;
+  color: var(--text, #1d2645);
+}
+
+.admin-row__response-label {
+  font-weight: 700;
+  color: var(--primary-strong, #c51f73);
+}
+
+.admin-kind-badge,
+.admin-polarity-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.75rem;
+}
+
+.admin-kind-badge[data-kind='case'] {
+  background: #fde9f2;
+  color: var(--primary-strong, #c51f73);
+}
+
+.admin-polarity-badge {
+  margin-inline-start: 6px;
+}
+
+.admin-polarity-badge[data-polarity='do'] {
+  background: #e4f5ed;
+  color: #1f8a5f;
+}
+
+.admin-polarity-badge[data-polarity='dont'] {
+  background: #fde9f2;
+  color: var(--primary-strong, #c51f73);
+}
+
+/* Pushed to the trailing edge of the head line: the score is the one value read
+   down a column rather than along a row. */
+
+.admin-like {
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-like__pct {
+  font-weight: 700;
+}
+
+/* The denominator is deliberately quieter than the percentage, not hidden: it
+   qualifies the number rather than competing with it. */
+
+.admin-like__count {
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+
+.admin-like[data-tone='high'] { color: #1f8a5f; }
+
+.admin-like[data-tone='mid'] { color: #a4761f; }
+
+.admin-like[data-tone='low'] { color: var(--primary-strong, #c51f73); }
+
+.admin-like--unrated {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* Two settings panels on a page about reviewing rules. One line each until
+   opened, which is why they are <details> rather than sections. */
+
+.roles-manager,
+.people-manager {
+  padding: 10px 12px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 12px;
+  background: var(--surface, #fffdfc);
+  text-align: right;
+}
+
+.roles-manager > summary,
+.people-manager > summary {
+  font-weight: 700;
+  color: var(--primary-strong, #c51f73);
+  cursor: pointer;
+}
+
+.roles-manager__note {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: var(--muted, #aea9b4);
+}
+
+.roles-manager__list,
+.people-manager__list {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.roles-manager__list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f6f7fb;
+}
+
+.roles-manager__list button,
+.people-manager__row button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 10px;
+  background: var(--surface, #fffdfc);
+  cursor: pointer;
+}
+
+.roles-manager__add {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 0.82rem;
+}
+
+.roles-manager__add input {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 10px;
+  font: inherit;
+}
+
+.roles-manager__add button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--primary, #e8368f);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.people-manager__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f6f7fb;
+  font-size: 0.8rem;
+}
+
+.people-manager__name {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-weight: 700;
+  color: var(--text, #1d2645);
+}
+
+.people-manager__owner {
+  margin-inline-start: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #fde9f2;
+  color: var(--primary-strong, #c51f73);
+  font-size: 0.7rem;
+  font-weight: 400;
+}
+
+.people-manager__row label {
+  display: grid;
+  gap: 3px;
+  color: var(--muted, #aea9b4);
+}
+
+.people-manager__row input,
+.people-manager__row select {
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 9px;
+  background: var(--surface, #fffdfc);
+  font: inherit;
+  color: var(--text, #1d2645);
+}
+
+.people-manager__row button {
+  grid-column: 1 / -1;
+}
+
+.rule-edit-sheet__roles {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border, #e7e3e9);
+  border-radius: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.rule-edit-sheet__roles legend {
+  padding: 0 4px;
+  font-size: 0.82rem;
+  color: var(--muted, #aea9b4);
+}
+
+.rule-edit-sheet__roles label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 0.85rem;
+}
+
+.rule-edit-sheet__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted, #aea9b4);
+}
