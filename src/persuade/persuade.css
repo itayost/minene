@@ -101,11 +101,19 @@
   gap: 2px;
 }
 
-.matrix-legend__ramp i {
+/* These borrow .cell only for its heat backgrounds, so every piece of the
+   cell's GEOMETRY has to be undone -- min-width in particular, which beats
+   width and made five swatches claim 370px inside a 402px shell, pushing the
+   100% label off the screen entirely. */
+.matrix-legend__ramp i,
+.matrix-legend__none i {
   display: block;
   width: 22px;
+  min-width: 0;
   height: 11px;
+  padding: 0;
   border-radius: 2px;
+  cursor: default;
 }
 
 /* The bank. A cell's own findings, derived from its runs rather than stored. */
@@ -143,3 +151,14 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* Each end of the ramp is labelled where it sits. An arrow beside the strip
+   makes the reader work out which end it means, and in RTL that is ambiguous
+   enough to be worth four extra elements. */
+.matrix-legend__scale,
+.matrix-legend__none {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+

@@ -34,17 +34,27 @@ export function LabClient() {
           <>
             <Matrix cells={cells} onSelect={setSelected} selected={selected} />
 
+            {/* Each end is labelled where it sits rather than described by an
+                arrow beside the ramp. "0% ← 100%" as one string forces the
+                reader to work out which end the arrow means, and in RTL that is
+                genuinely ambiguous. */}
             <div className="matrix-legend">
               <span>שיעור שכנוע</span>
-              <span aria-hidden="true" className="matrix-legend__ramp">
-                <i className="cell" data-heat="1" />
-                <i className="cell" data-heat="2" />
-                <i className="cell" data-heat="3" />
-                <i className="cell" data-heat="4" />
-                <i className="cell" data-heat="5" />
+              <span className="matrix-legend__scale">
+                <span>0%</span>
+                <span aria-hidden="true" className="matrix-legend__ramp">
+                  <i className="cell" data-heat="1" />
+                  <i className="cell" data-heat="2" />
+                  <i className="cell" data-heat="3" />
+                  <i className="cell" data-heat="4" />
+                  <i className="cell" data-heat="5" />
+                </span>
+                <span>100%</span>
               </span>
-              <span>0% ← 100%</span>
-              <span>תא בלי ריצות אינו אפס אחוז</span>
+              <span className="matrix-legend__none">
+                <i aria-hidden="true" className="cell" data-heat="none" />
+                אין ריצות — לא אפס אחוז
+              </span>
             </div>
           </>
         )}
