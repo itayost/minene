@@ -2,15 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabase } from '../../../../../src/auth/supabase-browser'
+import { createRolesApi, type RolesClient } from '../../../../../src/brain/roles-api'
 import { RuleEditSheet, type RuleDraft } from '../../../../../src/brain/RuleEditSheet'
 import { createRulesApi, type RulesApi, type RulesClient } from '../../../../../src/brain/rules-api'
 import { getTopic, RULE_TOPICS } from '../../../../../src/brain/topics'
 import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
-import type { Rule, RuleKind } from '../../../../../src/brain/types'
+import type { Role, Rule, RuleKind } from '../../../../../src/brain/types'
 
 const FIRST_TOPIC_ID = RULE_TOPICS[0]?.id ?? 'live'
 
-const kindLabel = (kind: RuleKind) => (kind === 'process' ? 'תהליך' : 'טיפ')
+const KIND_LABELS: Record<RuleKind, string> = { tip: 'טיפ', process: 'תהליך', case: 'מקרה' }
+const kindLabel = (kind: RuleKind) => KIND_LABELS[kind] ?? 'טיפ'
 const sourceLabel = (source: string) => (source === 'pdf' ? 'מתוך מסמך שהועלה' : 'נוצר אוטומטית')
 
 /** A row whose topic is no longer in the catalogue still has to be editable. */
@@ -42,6 +44,10 @@ export function LobbyClient() {
     () => createRulesApi(createBrowserSupabase() as unknown as RulesClient),
     [],
   )
+  const rolesApi = useMemo(
+    () => createRolesApi(createBrowserSupabase() as unknown as RolesClient),
+    [],
+  )
   const handleError = useApiErrorHandler()
 
   const [requestState, setRequestState] = useState<RequestState>({ status: 'loading' })
@@ -50,19 +56,36 @@ export function LobbyClient() {
   const [actionError, setActionError] = useState('')
   const [draft, setDraft] = useState<RuleDraft | null>(null)
   const [editError, setEditError] = useState('')
+  const [roles, setRoles] = useState<Role[]>([])
+  const [ruleRoles, setRuleRoles] = useState<ReadonlyMap<string, string[]>>(() => new Map())
 
   const load = useCallback(async () => {
     setRequestState({ status: 'loading' })
     setActionError('')
     try {
-      setRows(await loadAllPending(rulesApi))
+      const pending = await loadAllPending(rulesApi)
+      setRows(pending)
       setRequestState({ status: 'ready' })
+
+      // After the queue, not alongside it. A failed role list must not blank the
+      // queue: the sheet degrades to editing every axis except who a rule
+      // addresses, which is a smaller loss than seeing no rules at all.
+      try {
+        const [catalogue, assigned] = await Promise.all([
+          rolesApi.listRoles(),
+          rolesApi.listRuleRoles({ ruleIds: pending.map((rule) => rule.id) }),
+        ])
+        setRoles(catalogue)
+        setRuleRoles(assigned)
+      } catch (rolesFailure) {
+        handleError(rolesFailure)
+      }
     } catch (error) {
       if (handleError(error)) {
         setRequestState({ status: 'error', message: 'לא הצלחנו לטעון את החוקים הממתינים לאישור' })
       }
     }
-  }, [handleError, rulesApi])
+  }, [handleError, rolesApi, rulesApi])
 
   useEffect(() => { void load() }, [load])
 
@@ -87,6 +110,14 @@ export function LobbyClient() {
     }
     setEditError('')
 
+    // rules_response_matches_kind refuses a case with no response at the database
+    // level. Saying which field is missing here beats a constraint name nobody
+    // can act on.
+    if (draft.kind === 'case' && !draft.response.trim()) {
+      setEditError('למקרה צריך גם תגובה: מה עושים כשזה קורה.')
+      return
+    }
+
     await withSaving(draft.ruleId, async () => {
       try {
         const saved = await rulesApi.updateRule({
@@ -94,7 +125,17 @@ export function LobbyClient() {
           text: draft.text,
           kind: draft.kind,
           topicId: draft.topicId,
+          // Empty back to null on all three. The columns are nullable, and '' is
+          // a sub-topic named the empty string: it sorts and filters as a real
+          // value, which is how a cleared field becomes a permanent one.
+          subTopic: draft.subTopic.trim() || null,
+          polarity: draft.polarity || null,
+          response: draft.kind === 'case' ? draft.response.trim() : null,
         })
+        // rule_roles is a separate table, so it takes a separate call. Both
+        // belong to the one correction the reviewer just made.
+        await rolesApi.setRuleRoles({ ruleId: draft.ruleId, roleIds: draft.roleIds })
+        setRuleRoles((current) => new Map(current).set(draft.ruleId, [...draft.roleIds]))
         setRows((current) => current.map((row) => (row.id === saved.id ? saved : row)))
         setDraft(null)
       } catch (error) {
@@ -184,6 +225,10 @@ export function LobbyClient() {
                       text: rule.text,
                       kind: rule.kind,
                       topicId: editableTopic(rule.topic_id),
+                      subTopic: rule.sub_topic ?? '',
+                      polarity: rule.polarity ?? '',
+                      response: rule.response ?? '',
+                      roleIds: ruleRoles.get(rule.id) ?? [],
                     })
                   }}
                   type="button"
@@ -213,6 +258,7 @@ export function LobbyClient() {
           onCancel={() => { setEditError(''); setDraft(null) }}
           onChange={setDraft}
           onSave={() => void saveDraft()}
+          roles={roles}
         />
       ) : null}
     </section>

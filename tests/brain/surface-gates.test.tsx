@@ -24,9 +24,11 @@ vi.mock('../../src/auth/require-brand', () => ({
 
 vi.mock('../../app/[brandId]/tools/brain/lobby/lobby-client', () => ({ LobbyClient: () => null }))
 vi.mock('../../app/[brandId]/tools/brain/extract/extract-client', () => ({ ExtractClient: () => null }))
+vi.mock('../../app/[brandId]/tools/brain/book/book-client', () => ({ BookClient: () => null }))
 
 const { default: LobbyPage } = await import('../../app/[brandId]/tools/brain/lobby/page')
 const { default: ExtractPage } = await import('../../app/[brandId]/tools/brain/extract/page')
+const { default: BookPage } = await import('../../app/[brandId]/tools/brain/book/page')
 
 const params = { params: Promise.resolve({ brandId: mineneBrand.id }) }
 
@@ -46,6 +48,14 @@ describe('the lobby and extract gates', () => {
     // Otherwise they reach the form and get an upload failure with no
     // explanation: an endlessly retryable dead end.
     await expect(ExtractPage(params)).rejects.toBeInstanceOf(nav.NotFoundSignal)
+  })
+
+  it('lets a staff member into the knowledge book', async () => {
+    role.current = 'staff'
+
+    // The one surface that is not owner-only. Gating it would put the approved
+    // knowledge behind the role that least needs to read it.
+    await expect(BookPage(params)).resolves.toBeDefined()
   })
 
   it('lets an owner into both', async () => {

@@ -3,12 +3,22 @@
 import { useEffect, useState } from 'react'
 import type { DocumentsApi } from './documents-api'
 import { getTopic } from './topics'
-import type { BrainDocument, DocumentStatus } from './types'
+import type { BrainDocument, DocumentSourceType, DocumentStatus } from './types'
 
 const STATUS_LABEL: Record<DocumentStatus, string> = {
   processing: 'בעיבוד',
   ready: 'מוכן',
   failed: 'נכשל',
+}
+
+/**
+ * Before conversations existed every row here was a PDF and this column would
+ * have been noise. Now the list holds two kinds of thing, and a titled paste is
+ * indistinguishable from an uploaded file by its name alone.
+ */
+const SOURCE_LABEL: Record<DocumentSourceType, string> = {
+  pdf: 'קובץ',
+  conversation: 'שיחה',
 }
 
 type ListState =
@@ -71,6 +81,10 @@ export function DocumentsList({ documentsApi, onError, reloadToken }: {
               <div>
                 <dt>נושא</dt>
                 <dd>{getTopic(doc.topic_id)?.title ?? doc.topic_id}</dd>
+              </div>
+              <div>
+                <dt>מקור</dt>
+                <dd>{SOURCE_LABEL[doc.source_type] ?? doc.source_type}</dd>
               </div>
               <div>
                 <dt>סטטוס</dt>

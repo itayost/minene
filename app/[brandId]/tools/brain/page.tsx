@@ -28,12 +28,24 @@ export default async function BrainPage({ params }: BrainParams) {
 
   const base = `/${brand.id}/tools/${BRAIN_TOOL_ID}`
 
-  // All three are owner-only, matching the routes they point at, which in turn
-  // match what the database allows: every rules and documents policy behind them
-  // requires the owner role. Showing a staff member a link to a page that will
-  // 404 for them reads as a broken app rather than as a permission boundary.
+  // The book leads, and it is the only one every member reaches:
+  // rules_select_member_approved admits the whole tenant to the approved rules.
+  //
+  // The other three are owner-only, matching the routes they point at, which in
+  // turn match what the database allows: every policy behind them requires the
+  // owner role. Showing a staff member a link to a page that will 404 for them
+  // reads as a broken app rather than as a permission boundary.
+  const book = {
+    href: `${base}/book`,
+    label: 'ספר החוקים',
+    note: 'הידע המאושר, ודירוג שלו',
+    icon: '/brands/minene/icons/brain.png',
+    cardColor: '#f4f7fb',
+  }
+
   const entries = session.role === 'owner'
     ? [
+        book,
         {
           href: `${base}/lobby`,
           label: 'לובי אושר',
@@ -56,7 +68,7 @@ export default async function BrainPage({ params }: BrainParams) {
           cardColor: '#f9f9fc',
         },
       ]
-    : []
+    : [book]
 
   return (
     <div className="brain-screen">

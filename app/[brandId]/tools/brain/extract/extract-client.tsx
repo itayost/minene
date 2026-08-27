@@ -4,6 +4,8 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { createBrowserSupabase } from '../../../../../src/auth/supabase-browser'
 import { DocumentsList } from '../../../../../src/brain/DocumentsList'
 import { createDocumentsApi, type DocumentsClient } from '../../../../../src/brain/documents-api'
+import { ExternalHunt } from '../../../../../src/brain/ExternalHunt'
+import { createRulesApi, type RulesClient } from '../../../../../src/brain/rules-api'
 import { RULE_TOPICS } from '../../../../../src/brain/topics'
 import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
 
@@ -36,6 +38,22 @@ type Outcome =
 
 const FIRST_TOPIC_ID = RULE_TOPICS[0]?.id ?? 'live'
 
+/**
+ * Two ways in, one pipeline. A pasted thread and an uploaded PDF differ only in
+ * where the text comes from: both become a documents row, both go through
+ * extract-rules, both land in the same approval lobby.
+ *
+ * So this is a mode switch inside one form rather than a second page. A second
+ * page would have duplicated the topic picker, the five status messages, the
+ * auth handling and the list refresh, and the copies would have drifted.
+ */
+const MODES = [
+  { id: 'pdf', label: 'קובץ PDF' },
+  { id: 'conversation', label: 'שיחה' },
+] as const
+
+type Mode = (typeof MODES)[number]['id']
+
 export function ExtractClient({ tenantId }: { tenantId: string }) {
   const documentsApi = useMemo(
     () => createDocumentsApi(createBrowserSupabase() as unknown as DocumentsClient),
@@ -43,7 +61,14 @@ export function ExtractClient({ tenantId }: { tenantId: string }) {
   )
   const handleError = useApiErrorHandler()
 
+  const rulesApi = useMemo(
+    () => createRulesApi(createBrowserSupabase() as unknown as RulesClient),
+    [],
+  )
+
   const [topicId, setTopicId] = useState(FIRST_TOPIC_ID)
+  const [mode, setMode] = useState<Mode>('pdf')
+  const [conversation, setConversation] = useState({ title: '', text: '' })
   const [file, setFile] = useState<File | null>(null)
   const [validationError, setValidationError] = useState('')
   const [outcome, setOutcome] = useState<Outcome>({ phase: 'idle' })
@@ -53,16 +78,33 @@ export function ExtractClient({ tenantId }: { tenantId: string }) {
   const [documentsVersion, setDocumentsVersion] = useState(0)
 
   const isBusy = outcome.phase === 'uploading' || outcome.phase === 'processing'
+  const isConversation = mode === 'conversation'
+
+  const switchMode = (next: Mode) => {
+    setMode(next)
+    // Both sources are cleared on a switch, not only the one being left. A
+    // half-filled form from the other mode is invisible once its input is
+    // unmounted, and submitting it would use a source nobody can still see.
+    setFile(null)
+    setConversation({ title: '', text: '' })
+    setValidationError('')
+    setOutcome({ phase: 'idle' })
+  }
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const invalid = validateFile(file)
-    if (invalid || !file) {
+    const invalid = isConversation
+      ? (conversation.text.trim() ? '' : 'יש להדביק את תוכן השיחה.')
+      : validateFile(file)
+    if (invalid || (!isConversation && !file)) {
       setValidationError(invalid)
       return
     }
     setValidationError('')
+    // "uploading" for a paste too. There is no transfer, but the phase means
+    // "creating the document" to everything downstream, and the message it
+    // drives says so in words rather than naming one.
     setOutcome({ phase: 'uploading' })
 
     let documentId: string
@@ -70,9 +112,13 @@ export function ExtractClient({ tenantId }: { tenantId: string }) {
       // Step order is deliberate: upload to storage, then insert the row, then
       // invoke extraction. uploadDocument enforces upload-before-insert; this
       // component owns the next link, never calling extractRules unless the
-      // upload actually succeeded.
-      const uploaded = await documentsApi.uploadDocument({ file, tenantId, topicId })
-      documentId = uploaded.documentId
+      // upload actually succeeded. A paste has no first step to fail.
+      const saved = isConversation
+        ? await documentsApi.saveConversation({
+          tenantId, topicId, title: conversation.title, text: conversation.text,
+        })
+        : await documentsApi.uploadDocument({ file: file as File, tenantId, topicId })
+      documentId = saved.documentId
     } catch (uploadFailure) {
       // No row was created either way, so there is nothing new for the list.
       const message = handleError(uploadFailure)
@@ -104,10 +150,26 @@ export function ExtractClient({ tenantId }: { tenantId: string }) {
       <section className="upload-page" aria-label="העלאת מסמך לחילוץ חוקים" dir="rtl">
         <h2>העלאת מסמך</h2>
         <p className="upload-page__intro">
-          בחרי נושא וקובץ PDF כדי לחלץ ממנו חוקים לבדיקה בלובי האישור.
+          בחרי נושא, והעלי קובץ PDF או הדביקי שיחה, כדי לחלץ מהם חוקים לבדיקה בלובי האישור.
         </p>
 
-        <form className="upload-page__form" onSubmit={submit}>
+        <div aria-label="מקור החילוץ" className="upload-page__modes" role="tablist">
+          {MODES.map((item) => (
+            <button
+              aria-selected={mode === item.id}
+              className="upload-page__mode"
+              disabled={isBusy}
+              key={item.id}
+              onClick={() => switchMode(item.id)}
+              role="tab"
+              type="button"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <form className="upload-page__form" onSubmit={(event) => void submit(event)}>
           <label htmlFor="upload-topic">נושא המסמך</label>
           <select
             disabled={isBusy}
@@ -120,18 +182,51 @@ export function ExtractClient({ tenantId }: { tenantId: string }) {
             ))}
           </select>
 
-          <label htmlFor="upload-file">קובץ PDF</label>
-          <input
-            accept="application/pdf"
-            disabled={isBusy}
-            id="upload-file"
-            onChange={(event) => {
-              setFile(event.target.files?.[0] ?? null)
-              setValidationError('')
-              setOutcome({ phase: 'idle' })
-            }}
-            type="file"
-          />
+          {isConversation ? (
+            <>
+              <label htmlFor="conversation-title">כותרת (לא חובה)</label>
+              <input
+                disabled={isBusy}
+                id="conversation-title"
+                maxLength={80}
+                onChange={(event) => {
+                  setConversation((current) => ({ ...current, title: event.target.value }))
+                  setValidationError('')
+                }}
+                placeholder="לדוגמה: החזרות בלי חשבונית"
+                type="text"
+                value={conversation.title}
+              />
+
+              <label htmlFor="conversation-text">תוכן השיחה</label>
+              <textarea
+                disabled={isBusy}
+                id="conversation-text"
+                onChange={(event) => {
+                  setConversation((current) => ({ ...current, text: event.target.value }))
+                  setValidationError('')
+                  setOutcome({ phase: 'idle' })
+                }}
+                rows={8}
+                value={conversation.text}
+              />
+            </>
+          ) : (
+            <>
+              <label htmlFor="upload-file">קובץ PDF</label>
+              <input
+                accept="application/pdf"
+                disabled={isBusy}
+                id="upload-file"
+                onChange={(event) => {
+                  setFile(event.target.files?.[0] ?? null)
+                  setValidationError('')
+                  setOutcome({ phase: 'idle' })
+                }}
+                type="file"
+              />
+            </>
+          )}
 
           {validationError ? <p className="upload-page__error" role="alert">{validationError}</p> : null}
 
@@ -139,7 +234,9 @@ export function ExtractClient({ tenantId }: { tenantId: string }) {
         </form>
 
         {outcome.phase === 'uploading' ? (
-          <p className="upload-page__status" role="status">מעלה את הקובץ…</p>
+          <p className="upload-page__status" role="status">
+            {isConversation ? 'שומרת את השיחה…' : 'מעלה את הקובץ…'}
+          </p>
         ) : null}
         {outcome.phase === 'processing' ? (
           <p className="upload-page__status" role="status">מעבד את המסמך ומחלץ ממנו חוקים…</p>
@@ -151,13 +248,21 @@ export function ExtractClient({ tenantId }: { tenantId: string }) {
         ) : null}
         {outcome.phase === 'readyEmpty' ? (
           <p className="upload-page__status" role="status">
-            המסמך עובד בהצלחה, אך לא נמצאו בו חוקים. אפשר לנסות מסמך אחר.
+            {isConversation
+              ? 'השיחה עובדה בהצלחה, אך לא נמצאו בה חוקים. אפשר לנסות שיחה אחרת.'
+              : 'המסמך עובד בהצלחה, אך לא נמצאו בו חוקים. אפשר לנסות מסמך אחר.'}
           </p>
         ) : null}
         {outcome.phase === 'failed' ? (
           <p className="upload-page__error" role="alert">{outcome.message}</p>
         ) : null}
       </section>
+
+      {/* Its own section rather than a third mode on the form above, which is
+          entirely about creating a document. This path creates none: there is
+          nothing to name, nothing to store, and nothing to appear in the list
+          below. It keeps its own topic for the same reason. */}
+      <ExternalHunt rulesApi={rulesApi} />
 
       {/* A sibling section, not nested inside .upload-page: it keeps the two
           landmarks flat and keeps each one's role="status" and role="alert"

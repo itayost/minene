@@ -3,10 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createBrowserSupabase } from '../../../../../src/auth/supabase-browser'
 import { KpiCards, type KpiState } from '../../../../../src/brain/KpiCards'
+import { createPeopleApi, type PeopleClient } from '../../../../../src/brain/people-api'
+import { PeopleManager } from '../../../../../src/brain/PeopleManager'
+import { createRolesApi, type RolesClient } from '../../../../../src/brain/roles-api'
+import { RolesManager } from '../../../../../src/brain/RolesManager'
 import { createRulesApi, type RulesClient } from '../../../../../src/brain/rules-api'
 import { getTopic, RULE_TOPICS } from '../../../../../src/brain/topics'
 import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
-import type { Rule, RuleCursor, RuleKind } from '../../../../../src/brain/types'
+import type { Rule, RuleCursor, RuleKind, RulePolarity } from '../../../../../src/brain/types'
 
 type Filters = { query: string; starredOnly: boolean; kind: RuleKind | null }
 
@@ -18,7 +22,47 @@ const TABS: readonly { id: string | null; title: string }[] = [
   ...RULE_TOPICS.map((topic) => ({ id: topic.id, title: topic.title })),
 ]
 
-const kindLabel = (kind: RuleKind) => (kind === 'process' ? 'תהליך' : 'טיפ')
+/**
+ * `kind` has no database default and was nullable until a rule was classified,
+ * so an unclassified row must not render as a blank badge: that reads as a bug
+ * rather than as "not yet classified". `tip` is the historical default, since
+ * every rule was outcome-framed advice before this classification existed.
+ *
+ * `case` is deliberately NOT part of that fallback. A case is the only kind
+ * carrying a `response`, so mistaking an unclassified row for one would render
+ * an answer under a situation that has none. Only an explicit 'case' reads as a
+ * case.
+ */
+const KIND_LABELS: Record<RuleKind, string> = { tip: 'טיפ', process: 'תהליך', case: 'מקרה' }
+const normalizeKind = (kind: RuleKind): RuleKind => (KIND_LABELS[kind] ? kind : 'tip')
+
+const POLARITY_LABELS: Record<RulePolarity, string> = { do: 'עשה', dont: 'אל תעשה' }
+
+/**
+ * like_pct is null until somebody votes, and null is not 0: rendering an unrated
+ * rule as "0%" would claim every reader disliked it, which is the opposite of
+ * what no data means. The two render differently and the accessible name says
+ * which one this is.
+ *
+ * The denominator sits beside the percentage rather than inside a tooltip. "80%"
+ * off five votes and "80%" off fifty support very different decisions, and the
+ * whole point of measuring this was to stop guessing.
+ */
+function LikeCell({ likePct, voteCount }: { likePct: number | null; voteCount: number }) {
+  if (likePct == null) return <span className="admin-like admin-like--unrated">טרם דורג</span>
+
+  const tone = likePct >= 70 ? 'high' : likePct >= 40 ? 'mid' : 'low'
+  return (
+    <span
+      aria-label={`${likePct} אחוז לייקים מתוך ${voteCount} מצביעים`}
+      className="admin-like"
+      data-tone={tone}
+    >
+      <span aria-hidden="true" className="admin-like__pct">{likePct}%</span>
+      <span aria-hidden="true" className="admin-like__count">{voteCount}</span>
+    </span>
+  )
+}
 
 const SEARCH_PANEL_ID = 'admin-search-panel'
 
@@ -36,6 +80,14 @@ type RequestState = { status: 'loading' | 'ready' } | { status: 'error'; message
 export function AdminClient() {
   const rulesApi = useMemo(
     () => createRulesApi(createBrowserSupabase() as unknown as RulesClient),
+    [],
+  )
+  const rolesApi = useMemo(
+    () => createRolesApi(createBrowserSupabase() as unknown as RolesClient),
+    [],
+  )
+  const peopleApi = useMemo(
+    () => createPeopleApi(createBrowserSupabase() as unknown as PeopleClient),
     [],
   )
   const handleError = useApiErrorHandler()
@@ -148,6 +200,13 @@ export function AdminClient() {
 
       <KpiCards state={kpiState} />
 
+      {/* Above the ribbon rather than below the list: the role catalogue is what
+          the rules beneath it are classified against, and the people list is
+          what makes that classification reach anyone. Both are collapsed, so
+          they cost one line each until an owner needs them. */}
+      <RolesManager rolesApi={rolesApi} />
+      <PeopleManager peopleApi={peopleApi} rolesApi={rolesApi} />
+
       <nav aria-label="סינון לפי נושא" className="admin-tabs">
         {TABS.map((tab) => (
           <button
@@ -213,6 +272,7 @@ export function AdminClient() {
             <option value="">הכל</option>
             <option value="tip">טיפ</option>
             <option value="process">תהליך</option>
+            <option value="case">מקרה</option>
           </select>
         </div>
       </section>
@@ -245,11 +305,34 @@ export function AdminClient() {
           ) : null}
 
           <ol className="admin-list">
-            {result.rows.map((rule) => (
+            {result.rows.map((rule) => {
+              const kind = normalizeKind(rule.kind)
+              return (
               <li className="admin-row" key={rule.id}>
+                <p className="admin-row__head">
+                  <span className="admin-row__number">{`#${rule.rule_number}`}</span>
+                  <span className="admin-row__topic">{getTopic(rule.topic_id)?.title ?? rule.topic_id}</span>
+                  {/* An em dash, not an empty span: unfiled is a normal state for
+                      every rule that predates the column. */}
+                  <span className="admin-row__sub-topic">{rule.sub_topic ?? '—'}</span>
+                  <LikeCell likePct={rule.like_pct} voteCount={rule.vote_count} />
+                </p>
                 <p className="admin-row__text">{rule.text}</p>
+                {/* A case is a situation plus what to do about it. Showing only
+                    `text` would print the incident and withhold the answer,
+                    which is the half that makes it useful. */}
+                {kind === 'case' && rule.response ? (
+                  <p className="admin-row__response">
+                    <span className="admin-row__response-label">תגובה:</span> {rule.response}
+                  </p>
+                ) : null}
                 <p className="admin-row__meta">
-                  {`${getTopic(rule.topic_id)?.title ?? rule.topic_id} · ${kindLabel(rule.kind)}`}
+                  <span className="admin-kind-badge" data-kind={kind}>{KIND_LABELS[kind]}</span>
+                  {rule.polarity ? (
+                    <span className="admin-polarity-badge" data-polarity={rule.polarity}>
+                      {POLARITY_LABELS[rule.polarity]}
+                    </span>
+                  ) : null}
                 </p>
                 {/* Names the rule, because the visible label repeats down the list. */}
                 <button
@@ -263,7 +346,8 @@ export function AdminClient() {
                   {rule.is_starred ? '★' : '☆'}
                 </button>
               </li>
-            ))}
+              )
+            })}
           </ol>
 
           <div className="admin-paging">

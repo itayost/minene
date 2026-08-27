@@ -31,9 +31,10 @@ async function renderBrain(as: 'owner' | 'staff') {
 }
 
 describe('the מוח ארגוני screen', () => {
-  it('offers an owner all three entry points', async () => {
+  it('offers an owner every entry point', async () => {
     await renderBrain('owner')
 
+    expect(screen.getByRole('link', { name: /ספר החוקים/ })).toBeVisible()
     expect(screen.getByRole('link', { name: /לובי אושר/ })).toBeVisible()
     expect(screen.getByRole('link', { name: /חילוץ חוקים/ })).toBeVisible()
     expect(screen.getByRole('link', { name: /נתוני המוח/ })).toBeVisible()
@@ -43,18 +44,21 @@ describe('the מוח ארגוני screen', () => {
     await renderBrain('owner')
 
     const base = `/${mineneBrand.id}/tools/brain`
+    expect(screen.getByRole('link', { name: /ספר החוקים/ })).toHaveAttribute('href', `${base}/book`)
     expect(screen.getByRole('link', { name: /לובי אושר/ })).toHaveAttribute('href', `${base}/lobby`)
     expect(screen.getByRole('link', { name: /חילוץ חוקים/ })).toHaveAttribute('href', `${base}/extract`)
     expect(screen.getByRole('link', { name: /נתוני המוח/ })).toHaveAttribute('href', `${base}/admin`)
   })
 
-  it('offers a staff member no entry points at all', async () => {
+  it('offers a staff member the knowledge book, and only that', async () => {
     await renderBrain('staff')
 
-    // Every rules and documents policy behind these three requires the owner
-    // role, so all three would 404. Showing a link to a page that refuses you
-    // reads as a broken app rather than as a permission boundary.
-    expect(screen.queryAllByRole('link')).toHaveLength(0)
+    // rules_select_member_approved admits every member to the approved rules, so
+    // the book is real for a staff member. The other three sit behind owner-only
+    // policies and would 404, and a link to a page that refuses you reads as a
+    // broken app rather than as a permission boundary.
+    expect(screen.getByRole('link', { name: /ספר החוקים/ })).toBeVisible()
+    expect(screen.queryAllByRole('link')).toHaveLength(1)
   })
 
   it('still shows a staff member the preview list', async () => {

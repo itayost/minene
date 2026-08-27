@@ -1,13 +1,18 @@
 'use client'
 
 import { RULE_TOPICS } from './topics'
-import type { RuleKind } from './types'
+import type { Role, RuleKind, RulePolarity } from './types'
 
 export type RuleDraft = {
   ruleId: string
   text: string
   kind: RuleKind
   topicId: string
+  /** Empty string, not null: these are form values until they are saved. */
+  subTopic: string
+  polarity: '' | RulePolarity
+  response: string
+  roleIds: string[]
 }
 
 /**
@@ -19,14 +24,24 @@ export type RuleDraft = {
  * is the third correction a reviewer needs, and rejecting it was the only way to
  * do that before.
  */
-export function RuleEditSheet({ draft, error, isSaving, onCancel, onChange, onSave }: {
+export function RuleEditSheet({ draft, error, isSaving, onCancel, onChange, onSave, roles }: {
   draft: RuleDraft
   error: string
   isSaving: boolean
   onCancel: () => void
   onChange: (draft: RuleDraft) => void
   onSave: () => void
+  roles: readonly Role[]
 }) {
+  const isCase = draft.kind === 'case'
+
+  const toggleRole = (roleId: string) => {
+    const next = draft.roleIds.includes(roleId)
+      ? draft.roleIds.filter((id) => id !== roleId)
+      : [...draft.roleIds, roleId]
+    onChange({ ...draft, roleIds: next })
+  }
+
   return (
     <div className="action-sheet-layer">
       <button
@@ -75,9 +90,73 @@ export function RuleEditSheet({ draft, error, isSaving, onCancel, onChange, onSa
             >
               <option value="tip">טיפ</option>
               <option value="process">תהליך</option>
+              <option value="case">מקרה</option>
             </select>
           </label>
         </div>
+
+        <div className="rule-edit-sheet__row">
+          <label className="rule-edit-sheet__field" htmlFor="rule-edit-sub-topic">
+            <span>תת־נושא</span>
+            <input
+              className="rule-edit-sheet__select"
+              id="rule-edit-sub-topic"
+              maxLength={60}
+              onChange={(event) => onChange({ ...draft, subTopic: event.target.value })}
+              type="text"
+              value={draft.subTopic}
+            />
+          </label>
+
+          <label className="rule-edit-sheet__field" htmlFor="rule-edit-polarity">
+            <span>עשה / אל תעשה</span>
+            <select
+              className="rule-edit-sheet__select"
+              id="rule-edit-polarity"
+              onChange={(event) => onChange({ ...draft, polarity: event.target.value as '' | RulePolarity })}
+              value={draft.polarity}
+            >
+              <option value="">ללא</option>
+              <option value="do">עשה</option>
+              <option value="dont">אל תעשה</option>
+            </select>
+          </label>
+        </div>
+
+        {/* rules_response_matches_kind requires one, and refuses one on any
+            other kind. A reviewer who can reclassify a rule as a case with no
+            way to answer it has made the row unsaveable. */}
+        {isCase ? (
+          <label className="rule-edit-sheet__field" htmlFor="rule-edit-response">
+            <span>התגובה</span>
+            <textarea
+              className="rule-edit-sheet__textarea"
+              id="rule-edit-response"
+              onChange={(event) => onChange({ ...draft, response: event.target.value })}
+              rows={3}
+              value={draft.response}
+            />
+          </label>
+        ) : null}
+
+        {roles.length ? (
+          <fieldset className="rule-edit-sheet__roles">
+            <legend>תפקידים</legend>
+            {/* "No rows" in rule_roles is the default and it means everyone. An
+                empty set of checkboxes reads as "nobody" unless it says so. */}
+            <p className="rule-edit-sheet__hint">בלי סימון, החוק חל על כל התפקידים.</p>
+            {roles.map((role) => (
+              <label key={role.id}>
+                <input
+                  checked={draft.roleIds.includes(role.id)}
+                  onChange={() => toggleRole(role.id)}
+                  type="checkbox"
+                />
+                <span>{role.name}</span>
+              </label>
+            ))}
+          </fieldset>
+        ) : null}
 
         {error ? <p className="rule-edit-sheet__error" role="alert">{error}</p> : null}
 
