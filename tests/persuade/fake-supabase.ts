@@ -97,24 +97,37 @@ export function createFakeSupabase(): { client: SupabaseClient; db: FakeDb } {
       },
     }),
 
-    select: () => ({
-      eq: (column: string, value: unknown) => ({
+    /*
+     * .eq() chains, because a read scoped to both an id and a tenant is two of
+     * them -- and a fake that only honoured the first would have let the
+     * tenant filter be dropped without a single test noticing, which is the
+     * exact bug this fake now exists to catch.
+     */
+    select: () => {
+      const chain = (predicates: [string, unknown][]) => ({
+        eq: (column: string, value: unknown) => chain([...predicates, [column, value]]),
+
+        matching: () => db.conversations
+          .filter((r) => predicates.every(([column, value]) => r[column] === value)),
+
         maybeSingle: async () => {
-          const row = db.conversations.find((r) => r[column] === value);
+          const row = chain(predicates).matching()[0];
           return { data: row ? withTurns(row) : null, error: null };
         },
-      }),
-      order: (column: string, options?: { ascending?: boolean }) => ({
-        limit: async (n: number) => {
-          const sorted = [...db.conversations].sort((a, b) => {
-            const left = String(a[column] ?? '');
-            const right = String(b[column] ?? '');
-            return options?.ascending === false ? right.localeCompare(left) : left.localeCompare(right);
-          });
-          return { data: sorted.slice(0, n).map(withTurns), error: null };
-        },
-      }),
-    }),
+
+        order: (column: string, options?: { ascending?: boolean }) => ({
+          limit: async (n: number) => {
+            const sorted = [...chain(predicates).matching()].sort((a, b) => {
+              const left = String(a[column] ?? '');
+              const right = String(b[column] ?? '');
+              return options?.ascending === false ? right.localeCompare(left) : left.localeCompare(right);
+            });
+            return { data: sorted.slice(0, n).map(withTurns), error: null };
+          },
+        }),
+      });
+      return chain([]);
+    },
   });
 
   return { client: { from } as unknown as SupabaseClient, db };

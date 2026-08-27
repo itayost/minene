@@ -21,7 +21,7 @@ describe('conversation store: round trip', () => {
     const run = makeRun('11111111-0000-4000-8000-000000000001');
 
     await store.saveRun(run, context);
-    const loaded = await store.getRun(run.id);
+    const loaded = await store.getRun(run.id, TENANT);
 
     expect(loaded?.id).toBe(run.id);
     expect(loaded?.planId).toBe('briefings');
@@ -29,7 +29,7 @@ describe('conversation store: round trip', () => {
 
   test('returns null for an unknown id instead of throwing', async () => {
     const { client } = createFakeSupabase();
-    expect(await createStore(client).getRun('does-not-exist')).toBeNull();
+    expect(await createStore(client).getRun('does-not-exist', TENANT)).toBeNull();
   });
 
   test('lists conversations newest first', async () => {
@@ -41,7 +41,7 @@ describe('conversation store: round trip', () => {
     await store.saveRun(older, context);
     await store.saveRun(newer, context);
 
-    expect((await store.listRuns()).map((r) => r.id)).toEqual([newer.id, older.id]);
+    expect((await store.listRuns(TENANT)).map((r) => r.id)).toEqual([newer.id, older.id]);
   });
 
   test('a conversation with a person in the seat has no persona', async () => {
@@ -51,7 +51,7 @@ describe('conversation store: round trip', () => {
 
     await store.saveRun(run, context);
 
-    expect((await store.getRun(run.id))?.personaId).toBeNull();
+    expect((await store.getRun(run.id, TENANT))?.personaId).toBeNull();
   });
 });
 
@@ -65,7 +65,7 @@ describe('conversation store: turns', () => {
     const run = makeRun('11111111-0000-4000-8000-000000000003', { turns: [turn()] });
 
     await store.saveRun(run, context);
-    const loaded = await store.getRun(run.id);
+    const loaded = await store.getRun(run.id, TENANT);
 
     expect(loaded?.turns[0]).toEqual(turn());
   });
@@ -82,7 +82,7 @@ describe('conversation store: turns', () => {
 
     await store.saveRun(run, context);
 
-    expect((await store.getRun(run.id))?.turns[0]).toEqual(rich);
+    expect((await store.getRun(run.id, TENANT))?.turns[0]).toEqual(rich);
   });
 
   test('derives run-level violations from the turns rather than storing a second copy', async () => {
@@ -97,7 +97,7 @@ describe('conversation store: turns', () => {
 
     await store.saveRun(run, context);
 
-    expect((await store.getRun(run.id))?.violations).toEqual([violation]);
+    expect((await store.getRun(run.id, TENANT))?.violations).toEqual([violation]);
   });
 
   test('re-saving the same conversation replaces its turns instead of doubling them', async () => {
@@ -180,7 +180,7 @@ describe('conversation store: failures', () => {
 
   test('a read failure returns null rather than throwing, matching the old file store', async () => {
     const { client } = createFakeSupabase();
-    expect(await createStore(client).getRun('nope')).toBeNull();
+    expect(await createStore(client).getRun('nope', TENANT)).toBeNull();
   });
 });
 
@@ -196,5 +196,32 @@ describe('defaultContext', () => {
   test('defaults the channel to simulation when nothing says otherwise', async () => {
     process.env.PERSUADER_TENANT_ID = TENANT;
     expect(defaultContext()).toEqual({ tenantId: TENANT, channel: 'simulation' });
+  });
+});
+
+describe('reads under the service key', () => {
+  // This client is service_role, which bypasses RLS entirely -- supabase.ts says
+  // so in as many words, and notes that loadAmmunition compensates by comparing
+  // the tenant itself. These two reads did not, so with the secret key they
+  // returned any tenant's conversations to any caller.
+  test('getRun returns nothing for a conversation belonging to another tenant', async () => {
+    const { client, db } = createFakeSupabase();
+    db.conversations.push({
+      id: 'c1', tenant_id: 'tenant-a', started_at: '2026-08-27T10:00:00Z',
+      state: { outcome: 'agreed' }, outcome: 'agreed', plan: { id: 'p' }, persona: null,
+    });
+
+    expect(await createStore(client).getRun('c1', 'tenant-b')).toBeNull();
+  });
+
+  test('listRuns is scoped to one tenant', async () => {
+    const { client, db } = createFakeSupabase();
+    db.conversations.push(
+      { id: 'a', tenant_id: 'tenant-a', started_at: '2026-08-27T10:00:00Z', state: {}, outcome: 'open', plan: { id: 'p' }, persona: null },
+      { id: 'b', tenant_id: 'tenant-b', started_at: '2026-08-27T11:00:00Z', state: {}, outcome: 'open', plan: { id: 'p' }, persona: null },
+    );
+
+    const runs = await createStore(client).listRuns('tenant-a');
+    expect(runs.map((r) => r.id)).toEqual(['a']);
   });
 });

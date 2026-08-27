@@ -149,11 +149,24 @@ export function createStore(client: SupabaseClient) {
       if (turnsError) throw new Error(`שמירת השיחה נכשלה: ${turnsError.message}`);
     },
 
-    async getRun(id: string): Promise<Run | null> {
+    /**
+     * The tenant is required, not optional.
+     *
+     * This client is service_role and bypasses RLS, so nothing else scopes this
+     * read -- supabase.ts says exactly that, and notes loadAmmunition
+     * compensates by comparing the tenant itself. This did not, so with the
+     * secret key it returned any tenant's conversation to any caller.
+     *
+     * Required rather than optional on purpose: an optional argument makes
+     * every future caller's omission silent, a required one makes it a compile
+     * error.
+     */
+    async getRun(id: string, tenantId: string): Promise<Run | null> {
       const { data, error } = await client
         .from('conversations')
         .select(`${CONVERSATION_COLUMNS},conversation_turns(role,text,interaction,rung,blocker,violations)`)
         .eq('id', id)
+        .eq('tenant_id', tenantId)
         .maybeSingle();
       // A missing row is null, not an error -- the file store answered the same
       // way and both call sites rely on it.
@@ -161,10 +174,12 @@ export function createStore(client: SupabaseClient) {
       return toRun(data as unknown as ConversationRow);
     },
 
-    async listRuns(limit = 200): Promise<Run[]> {
+    /** Scoped for the same reason getRun is: nothing else scopes it. */
+    async listRuns(tenantId: string, limit = 200): Promise<Run[]> {
       const { data, error } = await client
         .from('conversations')
         .select(`${CONVERSATION_COLUMNS},conversation_turns(role,text,interaction,rung,blocker,violations)`)
+        .eq('tenant_id', tenantId)
         .order('started_at', { ascending: false })
         .limit(limit);
       if (error || !data) return [];
@@ -182,10 +197,10 @@ export async function saveRun(run: Run, context: RunContext = defaultContext()):
   return createStore(supabase()).saveRun(run, context);
 }
 
-export async function getRun(id: string): Promise<Run | null> {
-  return createStore(supabase()).getRun(id);
+export async function getRun(id: string, tenantId: string): Promise<Run | null> {
+  return createStore(supabase()).getRun(id, tenantId);
 }
 
-export async function listRuns(limit = 200): Promise<Run[]> {
-  return createStore(supabase()).listRuns(limit);
+export async function listRuns(tenantId: string, limit = 200): Promise<Run[]> {
+  return createStore(supabase()).listRuns(tenantId, limit);
 }
