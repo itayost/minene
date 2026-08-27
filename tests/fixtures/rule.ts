@@ -16,7 +16,6 @@ export const makeRule = (overrides: Partial<Rule> = {}): Rule => ({
   sub_topic: 'קבלת פנים',
   text: 'לחייך',
   response: null,
-  is_starred: false,
   created_at: '2026-08-20T10:00:00Z',
   kind: 'tip',
   polarity: null,

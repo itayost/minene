@@ -16,7 +16,7 @@ const PAGE_SIZE = 50
  * anywhere; it is a property that is always undefined at runtime.
  */
 const RULE_COLUMNS = [
-  'id', 'rule_number', 'topic_id', 'sub_topic', 'text', 'response', 'is_starred', 'created_at',
+  'id', 'rule_number', 'topic_id', 'sub_topic', 'text', 'response', 'created_at',
   'kind', 'polarity', 'status', 'source', 'source_url', 'like_count', 'vote_count', 'like_pct',
 ].join(',')
 
@@ -158,7 +158,6 @@ function pageFrom(rows: Rule[], limit: number): RulePage {
 export type ListRulesOptions = {
   topicId: string | null
   query?: string
-  starredOnly?: boolean
   kind?: RuleKind | null
   status?: RuleStatus | null
   subTopic?: string | null
@@ -220,7 +219,6 @@ export function createRulesApi(client: RulesClient) {
     async listRules({
       topicId,
       query = '',
-      starredOnly = false,
       kind = null,
       status = 'approved',
       subTopic = null,
@@ -232,7 +230,6 @@ export function createRulesApi(client: RulesClient) {
       const { data, error, status: httpStatus } = await client.rpc('list_rules', {
         p_topic_id: topicId,
         p_query: query || null,
-        p_starred_only: starredOnly,
         p_kind: kind,
         p_status: status,
         ...cursorArgs(cursor),
@@ -264,13 +261,6 @@ export function createRulesApi(client: RulesClient) {
       return pageFrom(data ?? [], limit)
     },
 
-    async setStar({ tipId, isStarred }: { tipId: string; isStarred: boolean }): Promise<Rule> {
-      const { data, error, status } = await client
-        .from('rules').update({ is_starred: isStarred }).eq('id', tipId).select(RULE_COLUMNS).maybeSingle()
-      if (error) throw mapPostgrestError(error, status)
-      if (!data) throw failed(404)
-      return data
-    },
 
     /** The lobby's positive decision: the rule becomes curated knowledge. */
     async approveRule(ruleId: string): Promise<Rule> {

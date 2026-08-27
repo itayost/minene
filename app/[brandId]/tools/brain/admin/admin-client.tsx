@@ -12,9 +12,9 @@ import { getTopic, RULE_TOPICS } from '../../../../../src/brain/topics'
 import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
 import type { Rule, RuleCursor, RuleKind, RulePolarity } from '../../../../../src/brain/types'
 
-type Filters = { query: string; starredOnly: boolean; kind: RuleKind | null }
+type Filters = { query: string; kind: RuleKind | null }
 
-const INITIAL_FILTERS: Filters = { query: '', starredOnly: false, kind: null }
+const INITIAL_FILTERS: Filters = { query: '', kind: null }
 
 /** null means every topic, which list_rules reads as no filter. */
 const TABS: readonly { id: string | null; title: string }[] = [
@@ -99,7 +99,6 @@ export function AdminClient() {
   const [result, setResult] = useState<{ rows: Rule[]; nextCursor: RuleCursor | null }>({ rows: [], nextCursor: null })
   const [requestState, setRequestState] = useState<RequestState>({ status: 'loading' })
   const [savingIds, setSavingIds] = useState<ReadonlySet<string>>(() => new Set())
-  const [starError, setStarError] = useState('')
   const [kpiState, setKpiState] = useState<KpiState>({ status: 'loading' })
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -113,7 +112,7 @@ export function AdminClient() {
   // Counts only what is hidden behind the toggle while it is shut. An applied
   // search term is not included: it stays spelled out in its own chip below, so
   // counting it here would report the same filter twice.
-  const hiddenFilterCount = (filters.starredOnly ? 1 : 0) + (filters.kind ? 1 : 0)
+  const hiddenFilterCount = filters.kind ? 1 : 0
 
   // Opening a search control that does not take focus makes the reader hunt for
   // the field they just asked for.
@@ -156,26 +155,6 @@ export function AdminClient() {
     setCursorStack([null])
   }
 
-  const toggleStar = async (rule: Rule) => {
-    setStarError('')
-    setSavingIds((current) => new Set(current).add(rule.id))
-
-    try {
-      const saved = await rulesApi.setStar({ tipId: rule.id, isStarred: !rule.is_starred })
-      setResult((current) => ({
-        ...current,
-        rows: current.rows.map((row) => (row.id === saved.id ? saved : row)),
-      }))
-    } catch (error) {
-      if (handleError(error)) setStarError('לא הצלחנו לעדכן את הסימון. נסי שוב.')
-    } finally {
-      setSavingIds((current) => {
-        const next = new Set(current)
-        next.delete(rule.id)
-        return next
-      })
-    }
-  }
 
   return (
     <div className="brain-surface">
@@ -254,14 +233,6 @@ export function AdminClient() {
         </form>
 
         <div className="admin-filters">
-          <label>
-            <input
-              checked={filters.starredOnly}
-              onChange={(event) => applyFilters({ starredOnly: event.target.checked })}
-              type="checkbox"
-            />
-            <span>מסומנים בלבד</span>
-          </label>
 
           <label htmlFor="admin-kind">סוג</label>
           <select
@@ -290,7 +261,6 @@ export function AdminClient() {
         </p>
       ) : null}
 
-      {starError ? <p className="admin-error" role="alert">{starError}</p> : null}
 
       {requestState.status === 'error' ? (
         <p className="admin-error" role="alert">{requestState.message}</p>
@@ -334,17 +304,6 @@ export function AdminClient() {
                     </span>
                   ) : null}
                 </p>
-                {/* Names the rule, because the visible label repeats down the list. */}
-                <button
-                  aria-label={`${rule.is_starred ? 'ביטול סימון' : 'סימון'}: ${rule.text}`}
-                  aria-pressed={rule.is_starred}
-                  className="admin-row__star"
-                  disabled={savingIds.has(rule.id)}
-                  onClick={() => void toggleStar(rule)}
-                  type="button"
-                >
-                  {rule.is_starred ? '★' : '☆'}
-                </button>
               </li>
               )
             })}

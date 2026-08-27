@@ -120,7 +120,10 @@ describe('updates filtered to zero rows', () => {
     // { data: null, error: null } means "no row matched", not "cleared". The UI
     // would read properties off the result, so this must throw, and it is not
     // an auth failure.
-    await expect(api.setStar({ tipId: 'rule-1', isStarred: true }))
+    // This assertion used to ride on setStar, which is gone with the star. It
+    // moves rather than disappearing: updateRule writes through the same
+    // from().update().eq().select().maybeSingle() shape and fails the same way.
+    await expect(api.updateRule({ ruleId: 'rule-1', text: 'לחייך', kind: 'tip', topicId: 'store' }))
       .rejects.toMatchObject({ code: 'REQUEST_FAILED', status: 404 })
   })
 
@@ -220,6 +223,17 @@ describe('kpis', () => {
 })
 
 describe('the columns a rule is read with', () => {
+  it('does not select a column nothing renders', async () => {
+    const { api, columns } = client()
+    await api.listRules({ topicId: null })
+
+    // is_starred was one owner's unexplained flag on a row that now carries a
+    // percentage built from real votes. The column stays in the database --
+    // dropping it is a migration in another repo, and it holds live rows --
+    // but nothing here reads it.
+    expect(columns[0]?.split(',')).not.toContain('is_starred')
+  })
+
   it('selects every column the Rule type declares', async () => {
     const { api, columns } = client()
     await api.listRules({ topicId: null })

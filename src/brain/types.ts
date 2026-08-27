@@ -42,7 +42,6 @@ export type Rule = {
   text: string
   /** The answer to a situation. Set only when kind is 'case'. */
   response: string | null
-  is_starred: boolean
   created_at: string
   kind: RuleKind
   polarity: RulePolarity | null
