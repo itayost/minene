@@ -55,6 +55,9 @@ const editableTopic = (topicId: string) => (getTopic(topicId) ? topicId : FIRST_
 
 const isPdf = (file: File) => file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
 
+/** Rounded to one decimal, because a PDF's size is a rough reassurance. */
+const readableSize = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+
 /** Pages list_pending_rules until exhausted: it is tenant-wide and oldest first. */
 export async function loadAllPending(rulesApi: RulesApi): Promise<Rule[]> {
   const rows: Rule[] = []
@@ -330,9 +333,25 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
             </>
           ) : (
             <>
-              <label htmlFor="ingest-file">קובץ PDF</label>
+              {/* The label IS the control. A bare file input renders the
+                  browser's own widget, which is locale-bound: on an
+                  English-locale Chrome this screen said "Choose File / No file
+                  chosen" in the middle of an RTL Hebrew page, and no styling
+                  reaches inside it.
+
+                  The input is clipped rather than display:none, which would
+                  take it out of the tab order and leave a control only a mouse
+                  can operate. htmlFor keeps the accessible name on the input
+                  itself, so it is still what a screen reader announces. */}
+              <label className="file-drop" htmlFor="ingest-file">
+                <span className="file-drop__action">בחרי קובץ PDF</span>
+                <span className="file-drop__state">
+                  {file ? `${file.name} · ${readableSize(file.size)}` : 'לא נבחר קובץ'}
+                </span>
+              </label>
               <input
                 accept="application/pdf"
+                className="file-drop__input"
                 disabled={isBusy}
                 id="ingest-file"
                 onChange={(event) => {

@@ -111,3 +111,28 @@ describe('one screen for feeding the brain', () => {
       .toHaveBeenCalledWith(expect.objectContaining({ topicId: 'live' })))
   })
 })
+
+describe('choosing a file without the browser speaking English', () => {
+  it('names the chosen file, in Hebrew', async () => {
+    const user = setup()
+    await user.upload(screen.getByLabelText(/קובץ PDF/), pdf('נהלי פתיחה.pdf'))
+
+    // A bare <input type="file"> renders the browser's own control, which is
+    // why this screen showed "Choose File / No file chosen" in English in the
+    // middle of an RTL page.
+    expect(await screen.findByText(/נהלי פתיחה\.pdf/)).toBeVisible()
+  })
+
+  it('says no file is chosen rather than showing nothing', () => {
+    setup()
+    expect(screen.getByText('לא נבחר קובץ')).toBeVisible()
+  })
+
+  it('keeps the input reachable by keyboard', () => {
+    setup()
+
+    // Hidden with clip-path, never display:none -- the latter takes it out of
+    // the tab order, so the control becomes mouse-only.
+    expect(screen.getByLabelText(/קובץ PDF/)).toBeInTheDocument()
+  })
+})
