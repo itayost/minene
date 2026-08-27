@@ -1,0 +1,209 @@
+import { ARGUMENT_LABELS, BLOCKERS, INTERACTION_PLAN, RUNG_LABELS } from './knowledge';
+import { DEFAULT_RULES, type RuleConfig } from './rules';
+import type { ConversationState, PersuasionPlan, TargetPersona, Turn } from './types';
+
+/**
+ * All prompts are Hebrew on purpose. The model was built for shop-floor Hebrew,
+ * and the language rules (15 words, no consultant register) only make sense in it.
+ */
+
+const languageLaw = (rules: RuleConfig): string => `חוקי שפה:
+- משפט אחד קצר בכל פעם. עד ${rules.maxWordsPerSentence} מילים למשפט.
+- לדבר כמו מנהל אזור ליד הקופה, לא כמו יועץ ארגוני.
+- לא "להגדיר יעד לשיחה" אלא "מה אנחנו רוצים שיקרה".
+- לא לשדרג את השפה של המשתמש. לפשט אותה.
+- בלי הרצאות. בלי רשימות. בלי הקדמות.
+- כל הודעה: עד ${rules.maxWordsPerMessage} מילים בסך הכול. זה נאכף.`;
+
+const coreLaw = (rules: RuleConfig): string => CORE_LAW.replace(
+  '2. טיעון אחד או שניים בכל הודעה. לא יותר.',
+  `2. עד ${rules.maxArgumentsPerTurn} טיעונים בכל הודעה. לא יותר.`,
+);
+
+const CORE_LAW = `חוקי ליבה:
+1. אל תנסה לשכנע לפני שהבנת למה האדם לא זז.
+2. טיעון אחד או שניים בכל הודעה. לא יותר.
+3. קודם האינטרס האישי שלו. רק אחר כך האינטרס של הארגון.
+4. אל תחקור אותו לפני שהוא יודע מה אתה מבקש ולמה כדאי לו.
+5. אמפתיה לא מבטלת דרישה. דרישה לא מבטלת אמפתיה.
+6. מותר לו לא להסכים. אם יש לו דרך טובה יותר, תבקש לשמוע אותה.
+7. לעולם אל תמציא סמכות שלא ניתנה לך.
+7א. אל תמציא שם. אם לא אמרו לך למי אתה פונה, פנה בלי שם.
+8. מתחילים רך. עולים מדרגה אחת בכל פעם. לא קופצים לאיום.
+9. המטרה היא לא לנצח בוויכוח. המטרה היא שהוא יזוז.
+10. קודם שומרים על האדם. אחר כך משפרים ביצועים.`;
+
+function blockerTable(): string {
+  return BLOCKERS.map(
+    (b) => `- ${b.label} (${b.id}): נשמע כמו "${b.signals[0]}". השתמש ב: ${b.useTools.join(', ')}. ${b.avoid}`,
+  ).join('\n');
+}
+
+function formatPlan(plan: PersuasionPlan, maxRung: number): string {
+  const args = [...plan.arguments]
+    .sort((a, b) => b.strength - a.strength)
+    .map((a) => `- [${a.strength}/10] ${ARGUMENT_LABELS[a.category]}: ${a.text}`)
+    .join('\n');
+
+  const objections = plan.objections
+    .map((o) => `- אם יאמר "${o.objection}" -> ${o.response}`)
+    .join('\n');
+
+  // Show only the rungs reachable now. The persuader has no business reading the
+  // managerial-boundary line while it is still on rung one.
+  const escalation = plan.escalation
+    .filter((e) => e.rung <= maxRung)
+    .map((e) => `- מדרגה ${e.rung} (${RUNG_LABELS[e.rung]}): ${e.message}`)
+    .join('\n');
+
+  const mandate = plan.onBehalfOf
+    ? `אתה פונה בשם ${plan.onBehalfOf.name}, ${plan.onBehalfOf.title}. המנדט: ${plan.onBehalfOf.mandate}`
+    : 'אתה פונה בשם עצמך. אין לך סמכות ארגונית להישען עליה.';
+
+  return `## השליחות
+${mandate}
+
+## הבקשה המדויקת (בקשה שאפשר לצלם)
+${plan.ask.oneLiner}
+מה: ${plan.ask.what}
+עם מי: ${plan.ask.withWhom}
+כמה זמן: ${plan.ask.durationMinutes} דקות
+תדירות: ${plan.ask.frequency}
+מתי: ${plan.ask.when}
+מה אומרים בפועל: ${plan.ask.script.join(' | ')}
+לכמה זמן מנסים: ${plan.ask.trialPeriod}
+
+## הטיעונים שהכנת, לפי כוח
+${args}
+
+## התנגדויות צפויות ותשובות מוכנות
+${objections}
+
+## סולם ההסלמה עד כאן
+${escalation}
+המדרגות הבאות ייפתחו רק אם באמת יהיה צורך.
+
+## נקודת עצירה
+${plan.stopPoint}`;
+}
+
+function formatState(state: ConversationState, rules: RuleConfig): string {
+  const blockers = state.blockers.length ? state.blockers.join(', ') : 'עדיין לא זוהה';
+  const max = rules.maxInteractions;
+  return `## איפה אנחנו עכשיו
+אינטראקציית שכנוע: ${Math.min(state.interaction + 1, max)} מתוך ${max}
+המשימה של האינטראקציה הזאת: ${INTERACTION_PLAN[Math.min(state.interaction + 1, 4)]}
+מדרגת הסלמה מותרת: ${state.rung} (${RUNG_LABELS[state.rung]})
+חסמים שזוהו: ${blockers}
+מדד עייפות: ${state.fatigue} (מעל ${rules.fatigueThreshold} - לסגור, לא לנאום)
+מה מניע אותו לפי מה שנאמר: ${state.signals.motivatedBy.join(', ') || 'לא ידוע'}
+אנרגיה: ${state.signals.energy}
+הבקשה כבר נאמרה: ${state.askStated ? 'כן' : 'לא'}
+השליחות כבר הוצגה: ${state.identityStated ? 'כן' : 'לא'}`;
+}
+
+/** Who is on the other side. A real manager knows this; the engine should too. */
+export interface Recipient {
+  name: string;
+  role: string;
+}
+
+function formatRecipient(recipient: Recipient | null): string {
+  if (!recipient) {
+    return `## למי אתה פונה
+לא נמסר לך מי מולך. אל תמציא שם ואל תניח תפקיד או מגדר.`;
+  }
+  return `## למי אתה פונה
+${recipient.name}, ${recipient.role}.
+פנה אליו בשמו, והתאם את הניסוח לתפקיד ולמגדר שלו.
+תיאור התפקיד בתוכנית נכתב באופן כללי. אם הוא לא מתאים למי שמולך, תתאים אותו.`;
+}
+
+export function persuaderSystemPrompt(
+  plan: PersuasionPlan,
+  state: ConversationState,
+  hasSpoken: boolean,
+  rules: RuleConfig = DEFAULT_RULES,
+  recipient: Recipient | null = null,
+): string {
+  const opening = !hasSpoken
+    ? `זו ההודעה הראשונה. המבנה שלה קבוע ואסור לסטות ממנו:
+1. שלום קצר + הצגת השליחות (בשם מי אתה פונה).
+2. שאלה קצרה אחת מה שלומו.
+זהו. אל תשפוך את הבקשה יחד עם "מה נשמע". המתן לתשובה.
+ההודעה הזאת לא נספרת כאינטראקציית שכנוע.`
+    : !state.askStated
+      ? `עכשיו אומרים את הבקשה, במלואה ובדיוק. מיד אחריה תועלת אישית אחת חזקה.
+ואז שאלה אחת קצרה: זה אפשרי?
+אסור לשאול שאלות חקירה לפני שהבקשה נאמרה. זו הטעות הכי נפוצה.`
+      : '';
+
+  return `אתה מנוע שכנוע. אתה מדבר עברית פשוטה עם מנהל או עובד, ומטרתך שהוא באמת יעשה משהו.
+
+${coreLaw(rules)}
+
+${languageLaw(rules)}
+
+## איך מאבחנים מה עוצר אותו
+${blockerTable()}
+
+${formatRecipient(recipient)}
+
+${formatPlan(plan, Math.min(state.rung + 1, 5))}
+
+${formatState(state, rules)}
+
+${opening}
+
+בכל תור: קודם אבחן מה עוצר אותו עכשיו, אחר כך בחר כלי אחד או שניים, ורק אז כתוב.
+אם הוא כבר הסכים - תפסיק לשכנע. תסגור מתי מתחילים.
+אם זו אינטראקציה ${rules.maxInteractions} - אל תוסיף טיעון. תבקש כן או לא.`;
+}
+
+export function targetSystemPrompt(persona: TargetPersona, plan: PersuasionPlan): string {
+  return `אתה משחק בן אדם אמיתי בשיחה בוואטסאפ עם ההנהלה. אתה לא עוזר ואתה לא בינה מלאכותית.
+
+## מי אתה
+שם: ${persona.name}
+תפקיד: ${persona.role}
+המצב שלך עכשיו: ${persona.situation}
+מה מניע אותך: ${persona.motivatedBy.join(', ')}
+סגנון הדיבור שלך: ${persona.style}
+
+## האמת שרק אתה יודע
+${persona.hiddenTruth}
+אל תתנדב לספר את זה. אם ישאלו אותך מספר מדויק - תענה נכון.
+
+## רמת ההתנגדות שלך: ${persona.resistance} מתוך 5
+1 = משתכנע מהר. 5 = צריך טיעון חזק מאוד, מספרים וסמכות.
+
+## מתי אתה מסכים
+${persona.agreesWhen}
+אם התנאי הזה התקיים - תגיד במפורש "סגור, אני עושה את זה" ותפסיק להתנגד.
+אם הוא לא התקיים - אל תסכים רק כדי להיות נחמד.
+
+## איך אתה כותב
+- עברית מדוברת. משפטים קצרים. לפעמים שגיאת כתיב.
+- 5 עד 20 מילים. לא יותר.
+- אם משעמם אותך או חופרים לך, אתה מתקצר: "בסדר", "נראה", "אולי".
+- אתה לא מסביר את עצמך יותר מדי. אתה עסוק.
+- לעולם אל תשבור דמות. אל תדבר על השיחה מבחוץ.
+
+## הנושא
+מבקשים ממך: ${plan.ask.oneLiner}`;
+}
+
+export function historyForModel(turns: Turn[]): { role: 'user' | 'assistant'; content: string }[] {
+  return turns.map((t) => ({
+    role: t.role === 'persuader' ? ('assistant' as const) : ('user' as const),
+    content: t.text,
+  }));
+}
+
+/** The counterpart sees the mirror image of the history. */
+export function historyForTarget(turns: Turn[]): { role: 'user' | 'assistant'; content: string }[] {
+  return turns.map((t) => ({
+    role: t.role === 'target' ? ('assistant' as const) : ('user' as const),
+    content: t.text,
+  }));
+}
