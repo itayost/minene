@@ -3,6 +3,7 @@ import '../src/styles.css'
 // Second, so a brain rule wins a tie against a shared rule of equal
 // specificity -- which is what the old single-file order already gave it.
 import '../src/brain/brain.css'
+import '../src/persuade/persuade.css'
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
 
