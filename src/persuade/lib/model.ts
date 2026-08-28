@@ -95,12 +95,35 @@ export function model(role: ModelRole): LanguageModel {
  * the model's remaining job is to write one short Hebrew sentence.
  * judge is absent on purpose: scoring runs offline in the lab, nobody waits on
  * it, and it is the one role where depth is worth its seconds.
+ *
+ * target is `low` rather than anything lower. It was `minimal`, which the SDK's
+ * own type accepts and `gpt-5.4-mini` -- this role's default model -- rejects
+ * outright: "Unsupported value: 'minimal' is not supported with the
+ * 'gpt-5.4-mini' model." Every persona reply in the lab threw. `none` is
+ * supported and would be faster still, but the counterpart is the side that
+ * decides whether `agreesWhen` was met, and that decision becomes the run's
+ * outcome, which the matrix and the bank are computed from. Saving a second in
+ * an internal lab is not worth quietly degrading the measurement.
  */
 const effort = (): Partial<Record<ModelRole, string>> => ({
   planner: process.env.PERSUADER_PLANNER_EFFORT ?? 'low',
   persuader: process.env.PERSUADER_EFFORT ?? 'low',
-  target: process.env.PERSUADER_TARGET_EFFORT ?? 'minimal',
+  target: process.env.PERSUADER_TARGET_EFFORT ?? 'low',
 });
+
+/**
+ * The values a model will actually accept, which is narrower than the values
+ * the SDK's type will.
+ *
+ * `LanguageModelV3`'s union includes `minimal` and `max`; gpt-5.4-mini accepts
+ * neither, and sending one is a hard 400 that fails the whole call rather than
+ * a warning. Since these are env-settable, a typo or a model swap would break
+ * conversations in production for a setting whose entire purpose is to shave
+ * seconds off them -- so an unrecognised value is dropped and the model's own
+ * default stands. Validating external input at the boundary, which is what an
+ * env var is.
+ */
+const SUPPORTED_EFFORT = new Set(['none', 'low', 'medium', 'high', 'xhigh']);
 
 /**
  * A ceiling, not a target.
@@ -140,7 +163,7 @@ export function callOptions(role: ModelRole): CallOptions {
   // Overrides mean a scripted model in a test. It has no provider to configure
   // and no budget to spend, and passing either would make every mock assert
   // against options that exist for nobody's benefit.
-  if (overrides[role] || !chosen) return cap;
+  if (overrides[role] || !chosen || !SUPPORTED_EFFORT.has(chosen)) return cap;
 
   // The gateway forwards provider options under the upstream provider's own
   // key, so both paths name the model's real provider rather than 'gateway'.
