@@ -1,4 +1,6 @@
+import { simulateReadableStream } from 'ai';
 import { MockLanguageModelV3 } from 'ai/test';
+import type { Ammunition } from '../../src/persuade/engine/ammunition';
 import type { PersuasionPlan, Run, TargetPersona } from '../../src/persuade/engine/types';
 
 /** Scripted language models, typed off the mock's own constructor so they stay in step with the SDK. */
@@ -60,6 +62,41 @@ export function recordingJsonModel(replies: unknown[]): {
   return { model, prompts: () => seen };
 }
 
+/**
+ * Replays one JSON payload for streamObject, cut into chunks.
+ *
+ * The cuts are deliberately not on token or field boundaries: the point of a
+ * streaming test is what happens when a chunk lands in the middle of a Hebrew
+ * string, which is where the partial-object parser either holds its nerve or
+ * emits half a word as a finished one.
+ */
+export function streamingJsonModel(payload: unknown, chunkSize = 24): MockLanguageModelV3 {
+  const text = JSON.stringify(payload);
+  const chunks: string[] = [];
+  for (let i = 0; i < text.length; i += chunkSize) chunks.push(text.slice(i, i + chunkSize));
+
+  return new MockLanguageModelV3({
+    doStream: async () => ({
+      stream: simulateReadableStream({
+        chunks: [
+          { type: 'text-start' as const, id: '0' },
+          ...chunks.map((delta) => ({ type: 'text-delta' as const, id: '0', delta })),
+          { type: 'text-end' as const, id: '0' },
+          {
+            type: 'finish' as const,
+            finishReason: { unified: 'stop' as const, raw: 'stop' },
+            usage: {
+              inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
+              outputTokens: { total: 10, text: 10, reasoning: 0 },
+            },
+          },
+        ],
+        chunkDelayInMs: 0,
+      }),
+    }),
+  });
+}
+
 /** Replays plain text for generateText calls; the last one repeats. */
 export function textModel(replies: string[]): MockLanguageModelV3 {
   // The clamp already keeps the index in range, but noUncheckedIndexedAccess
@@ -116,6 +153,60 @@ export const TEST_PERSONA: TargetPersona = {
   style: 'ישירה',
   agreesWhen: 'בקשה קטנה ומדויקת',
 };
+
+/**
+ * What the business already knows about one ask, as `persuasion_ammunition`
+ * returns it. Rated rather than empty: the measured `likePct` is the field the
+ * plan cache's invalidation turns on, and an unrated fixture would let a
+ * re-rating test pass without proving anything.
+ */
+export const TEST_AMMUNITION = {
+  tenantId: '22222222-2222-2222-2222-222222222222',
+  assignment: {
+    id: '11111111-1111-1111-1111-111111111111',
+    status: 'open',
+    dueOn: null,
+    assigneeId: 'p1',
+    createdAt: '2026-08-26T09:00:00Z',
+  },
+  ask: {
+    ruleId: 'r1',
+    ruleNumber: 1,
+    text: 'תדריך של ארבע דקות לפני הפתיחה',
+    response: null,
+    kind: 'process',
+    topicId: 'briefing',
+    subTopic: null,
+  },
+  assignee: { id: 'p1', jobRoleId: 'jr1', jobRoleName: 'מנהלת משמרת' },
+  arguments: [
+    {
+      ruleId: 'r2',
+      ruleNumber: 2,
+      text: 'צוות שיודע מה המטרה מוכר יותר',
+      subTopic: null,
+      likePct: 78,
+      voteCount: 9,
+      evidence: '78% מהמדרגים אמרו שזה עובד',
+    },
+    {
+      ruleId: 'r3',
+      ruleNumber: 3,
+      text: 'פחות שאלות באמצע המשמרת',
+      subTopic: null,
+      likePct: 61,
+      voteCount: 7,
+      evidence: null,
+    },
+  ],
+  objections: [{ situation: 'אין זמן בבוקר', response: 'ארבע דקות, לא רבע שעה', likePct: 70 }],
+  howTo: [{ ruleNumber: 4, text: 'שלוש שאלות קבועות', likePct: 66, voteCount: 5 }],
+  dosAndDonts: {
+    do: [{ ruleNumber: 5, text: 'להתחיל בזמן', likePct: 80 }],
+    dont: [{ ruleNumber: 6, text: 'להאריך מעבר לחמש דקות', likePct: 55 }],
+  },
+  history: { timesAssigned: 1, timesDone: 0, timesNotDone: 0, lastAskedAt: null, lastOutcome: null },
+} satisfies Ammunition;
 
 export const PERSUADER_PAYLOAD = {
   blocker: 'overloaded',

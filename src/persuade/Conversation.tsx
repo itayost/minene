@@ -15,10 +15,21 @@ const lastBlocker = (state: ConversationState): string | null => {
 
 type Phase =
   | { kind: 'opening' }
+  | { kind: 'preparing' }
   | { kind: 'ready' }
   | { kind: 'thinking' }
   | { kind: 'finished'; outcome: string }
   | { kind: 'failed'; message: string }
+
+/** The two waits worth naming, and they are not the same wait. */
+const WAITING: Partial<Record<Phase['kind'], string>> = {
+  opening: 'מתחילה…',
+  // Only ever seen on the first conversation about an assignment, when the plan
+  // has to be built before a word can be said. Every later one reads a cached
+  // plan and goes straight to writing.
+  preparing: 'מכינה את השיחה…',
+  thinking: 'כותבת…',
+}
 
 /**
  * The bot talking to a person about one assignment.
@@ -37,20 +48,48 @@ export function Conversation({ assignment, persuaderApi, onClose }: {
   const [snapshot, setSnapshot] = useState<ConversationState | null>(null)
   const [phase, setPhase] = useState<Phase>({ kind: 'opening' })
   const [reply, setReply] = useState('')
+  /**
+   * The bot's message while it is still being written.
+   *
+   * Held apart from `turns` rather than appended to it, because a half-written
+   * message is not a turn: it has no blocker, no rung and no rule check yet,
+   * and anything reading `turns` as the conversation so far would be reading a
+   * sentence that is not finished. It is replaced by the real turn, never
+   * merged with it.
+   */
+  const [draft, setDraft] = useState('')
   const replyRef = useRef<HTMLTextAreaElement>(null)
+  const threadRef = useRef<HTMLDivElement>(null)
+
+  /**
+   * The thread is a 40dvh scroller, so a message that grows past the fold grows
+   * out of sight. Pinned to the bottom on every change, which is what a
+   * messaging thread does and what makes a streamed reply readable at all.
+   */
+  useEffect(() => {
+    const thread = threadRef.current
+    if (thread) thread.scrollTop = thread.scrollHeight
+  }, [turns, draft])
 
   useEffect(() => {
     let cancelled = false
 
-    persuaderApi.openConversation({ assignmentId: assignment.id })
+    const watch = {
+      onPreparing: () => { if (!cancelled) setPhase({ kind: 'preparing' }) },
+      onDelta: (soFar: string) => { if (!cancelled) setDraft(soFar) },
+    }
+
+    persuaderApi.openConversation({ assignmentId: assignment.id }, watch)
       .then((result) => {
         if (cancelled) return
+        setDraft('')
         setTurns(result.turns)
         setSnapshot(result.state)
         setPhase({ kind: 'ready' })
       })
       .catch((error: unknown) => {
         if (cancelled) return
+        setDraft('')
         // A failure has to say so. A sheet that sits on "מתחילה" forever is
         // indistinguishable from a model taking its time, and the person waits.
         if (handleError(error)) setPhase({ kind: 'failed', message: 'לא הצלחנו להתחיל את השיחה. נסי שוב.' })
@@ -61,16 +100,43 @@ export function Conversation({ assignment, persuaderApi, onClose }: {
 
   const send = async () => {
     if (!reply.trim()) return
-    const said = reply
+    const said = reply.trim()
     setReply('')
     setPhase({ kind: 'thinking' })
 
+    /**
+     * Her own message goes up immediately, before the request is even sent.
+     *
+     * It used to wait for the server, which returns the whole turn list at
+     * once -- so pressing שליחה emptied the box and showed nothing until the
+     * bot had finished answering. In a conversation that is meant to read like
+     * WhatsApp, the one message that never needs waiting for is your own.
+     *
+     * `turns` is the list the request was built from, so the optimistic entry
+     * is added to the render and not to what is sent; the server's list
+     * replaces it wholesale below and is the only one that is ever posted back.
+     */
+    const sent = turns
+    setTurns([...sent, { role: 'target', text: said, interaction: snapshot?.interaction ?? 0 }])
+
     try {
-      const result = await persuaderApi.reply({ assignmentId: assignment.id, turns, reply: said })
+      const result = await persuaderApi.reply(
+        { assignmentId: assignment.id, turns: sent, reply: said },
+        {
+          onPreparing: () => setPhase({ kind: 'preparing' }),
+          onDelta: setDraft,
+        },
+      )
+      setDraft('')
       setTurns(result.turns)
       setSnapshot(result.state)
       setPhase({ kind: 'ready' })
     } catch (error) {
+      // Rolled back to what the server last confirmed, and the text put back in
+      // the box. A failed send that leaves her message on screen reads as sent.
+      setDraft('')
+      setTurns(sent)
+      setReply(said)
       if (handleError(error)) setPhase({ kind: 'failed', message: 'התשובה לא נשלחה. נסי שוב.' })
     }
   }
@@ -114,14 +180,24 @@ export function Conversation({ assignment, persuaderApi, onClose }: {
         </p>
       ) : null}
 
-      <div className="conversation__thread">
+      <div className="conversation__thread" ref={threadRef}>
         {turns.map((turn, index) => (
           <p className="conversation__msg" data-from={turn.role} key={`${turn.role}-${index}`}>
             {turn.text}
           </p>
         ))}
-        {phase.kind === 'opening' ? <p className="knowledge-message">מתחילה…</p> : null}
-        {phase.kind === 'thinking' ? <p className="knowledge-message">חושבת…</p> : null}
+        {draft ? (
+          // The same bubble the finished message will occupy, so the text does
+          // not jump from a status line into a message when it lands.
+          // aria-live, because a screen reader gets nothing from a bubble that
+          // grows; it is polite so it is read once it settles rather than
+          // re-announced on every token.
+          <p aria-live="polite" className="conversation__msg" data-from="persuader" data-writing="true">
+            {draft}
+          </p>
+        ) : (
+          WAITING[phase.kind] ? <p className="knowledge-message">{WAITING[phase.kind]}</p> : null
+        )}
       </div>
 
       {phase.kind === 'failed' ? (
@@ -155,7 +231,19 @@ export function Conversation({ assignment, persuaderApi, onClose }: {
             >
               שליחה
             </button>
-            <button data-weight="quiet" onClick={() => void finish()} type="button">סיום</button>
+            {/* Closed while a message is in flight, which it was not before.
+                `turns` now holds her own reply optimistically, so finishing
+                mid-answer would post a turn the engine has not graded and settle
+                the record from it. Failing is also allowed to end a
+                conversation: closing a broken one is the only way out of it. */}
+            <button
+              data-weight="quiet"
+              disabled={phase.kind === 'opening' || phase.kind === 'preparing' || phase.kind === 'thinking'}
+              onClick={() => void finish()}
+              type="button"
+            >
+              סיום
+            </button>
           </div>
         </>
       )}

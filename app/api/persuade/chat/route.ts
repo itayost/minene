@@ -3,13 +3,13 @@ import { NextResponse } from 'next/server';
 import type { BotConfig } from '../../../../src/persuade/engine/config';
 import { validateConfig } from '../../../../src/persuade/engine/config';
 import { DEFAULT_RULES, detectOutcome, initialState } from '../../../../src/persuade/engine/rules';
-import { applyTargetReply, persuaderTurn } from '../../../../src/persuade/engine/turn';
+import { applyTargetReply, streamPersuaderTurn } from '../../../../src/persuade/engine/turn';
 import type { ConversationState, Run, Turn } from '../../../../src/persuade/engine/types';
 import { assertModelAccessConfigured } from '../../../../src/persuade/lib/model';
 import { recordAsked } from '../../../../src/persuade/lib/assignments';
 import { resolveAccess } from '../../../../src/persuade/lib/access';
 import { loadAmmunition } from '../../../../src/persuade/engine/ammunition';
-import { preparePlan } from '../../../../src/persuade/engine/prepare';
+import { createPlanStore, planFor } from '../../../../src/persuade/lib/plans';
 import { isStorageConfigured, supabase } from '../../../../src/persuade/lib/supabase';
 import { saveRun } from '../../../../src/persuade/lib/store';
 
@@ -57,37 +57,115 @@ interface ChatRequest {
  * "no plan" from here and the caller should not be able to tell them apart.
  */
 async function planForAssignment(assignmentId: string, tenantId: string) {
-  const ammunition = await loadAmmunition(supabase(), assignmentId, tenantId);
+  const client = supabase();
+  const ammunition = await loadAmmunition(client, assignmentId, tenantId);
   if (!ammunition) return null;
 
-  return preparePlan({
-    id: assignmentId,
-    topic: ammunition.ask.topicId,
-    // The job, not the person's name. The engine is told who it is speaking to
-    // in role terms; naming them here would put a person's name into a prompt
-    // the plan is cached under.
-    targetDescription: ammunition.assignee.jobRoleName ?? 'עובדת בצוות',
-    onBehalfOf: null,
-    goal: ammunition.ask.text,
-    ammunition,
+  /**
+   * Built once per assignment, not once per message.
+   *
+   * This used to call preparePlan directly, so every turn of every conversation
+   * paid for a full stage-0 generation on the planner model before the turn
+   * itself ran -- two large model calls per message, for a plan that was
+   * identical each time. That is the larger half of "זמן התגובה בלתי אפשרי",
+   * and it is invisible from the client, which correctly sends no plan at all.
+   *
+   * planFor keys on a hash of the planner prompt, so a re-rated rule, a new
+   * objection or the history moving after an ask is recorded all produce a
+   * fresh plan on their own. Nothing here has to remember to invalidate.
+   */
+  return planFor(
+    {
+      id: assignmentId,
+      topic: ammunition.ask.topicId,
+      // The job, not the person's name. The engine is told who it is speaking to
+      // in role terms; naming them here would put a person's name into a prompt
+      // the plan is cached under.
+      targetDescription: ammunition.assignee.jobRoleName ?? 'עובדת בצוות',
+      onBehalfOf: null,
+      goal: ammunition.ask.text,
+      ammunition,
+    },
+    createPlanStore(client),
+    tenantId,
+  );
+}
+
+/**
+ * One line of NDJSON per event, the same protocol /api/persuade/simulate has
+ * used since it was written.
+ *
+ * The route streams because the wait is the product problem: a manager pressing
+ * שליחה used to watch "חושבת…" for the whole generation, since a single JSON
+ * body cannot arrive until its last field is written. The message is now on
+ * screen while the bookkeeping fields behind it are still being produced.
+ *
+ * Refusals are not streamed. 401, 403 and 503 stay status codes, because they
+ * are decided before a byte is written and because the client acts on them --
+ * an expired session has to send someone to sign in, and it cannot do that from
+ * a 200 carrying a sad message. Everything after the access check streams,
+ * including the paths that never touch a model, so the client has one reader
+ * rather than a guess about which format is coming.
+ */
+function ndjson(
+  produce: (emit: (event: unknown) => void) => Promise<void>,
+): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const emit = (event: unknown) =>
+        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      try {
+        await produce(emit);
+      } catch (error) {
+        // Emitted into the stream rather than thrown, because by this point the
+        // response has already begun: the status line is long gone and a throw
+        // would close the body mid-conversation, which the client cannot tell
+        // apart from a network drop.
+        const message = error instanceof Error ? error.message : 'שגיאה לא ידועה';
+        emit({ type: 'error', message });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
+      'Cache-Control': 'no-store',
+    },
   });
 }
 
-/** A person sits in the counterpart's seat and the bot plays the persuader. */
+/**
+ * A person sits in the counterpart's seat and the bot plays the persuader.
+ *
+ * Two phases, split on one question: is this still decidable with a status
+ * code? Who the caller is, and whether they may act on this assignment, are.
+ * Everything after that -- preparing the plan, writing the move -- happens
+ * inside the stream, so the message reaches the screen while it is still being
+ * written instead of after it is finished.
+ */
 export async function POST(req: Request) {
+  let request: ChatRequest;
   try {
-    const { config: rawConfig, turns, state: rawState, reply, finish, assignmentId } =
-      (await req.json()) as ChatRequest;
+    request = (await req.json()) as ChatRequest;
+  } catch {
+    return NextResponse.json({ error: 'הבקשה לא נקראה.' }, { status: 400 });
+  }
 
-    // Before the model is touched: a refused caller must not be able to spend
-    // tokens finding out they were refused. Before parsing the body's shape,
-    // too -- an unauthenticated caller should not be able to tell a malformed
-    // request from a refused one.
-    const access = await resolveAccess(req.headers.get('authorization') ?? '', assignmentId);
-    if (!access.ok) {
-      return NextResponse.json({ error: access.error }, { status: access.status });
-    }
+  const { config: rawConfig, turns, state: rawState, reply, finish, assignmentId } = request;
 
+  // Before the model is touched: a refused caller must not be able to spend
+  // tokens finding out they were refused. Before the stream opens, too, since
+  // a refusal is the one answer here that has to arrive as a status.
+  const access = await resolveAccess(req.headers.get('authorization') ?? '', assignmentId);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
+
+  return ndjson(async (emit) => {
     assertModelAccessConfigured();
 
     /**
@@ -106,23 +184,22 @@ export async function POST(req: Request) {
     if (rawConfig?.plan) {
       config = { ...rawConfig, rules: rawConfig.rules ?? DEFAULT_RULES };
     } else if (assignmentId) {
+      // Announced rather than waited out in silence. A cached plan makes this
+      // step invisible, but the first conversation on an assignment still has
+      // to build one, and that is the only slow moment left -- so the screen
+      // gets to say which moment it is in.
+      emit({ type: 'preparing' });
       const plan = await planForAssignment(assignmentId, access.context.tenantId);
-      if (!plan) {
-        return NextResponse.json({ error: 'לא הצלחנו לבנות תוכנית לשיחה הזאת.' }, { status: 422 });
-      }
+      if (!plan) throw new Error('לא הצלחנו לבנות תוכנית לשיחה הזאת.');
       config = { plan, rules: DEFAULT_RULES } as BotConfig;
     } else {
-      return NextResponse.json({ error: 'חסרה תוכנית או משימה.' }, { status: 400 });
+      throw new Error('חסרה תוכנית או משימה.');
     }
 
     const state = rawState ?? initialState();
 
     const problems = validateConfig(config);
-    if (problems.length > 0) {
-      return NextResponse.json(
-        { error: problems.map((p) => p.message).join(' · ') }, { status: 400 },
-      );
-    }
+    if (problems.length > 0) throw new Error(problems.map((p) => p.message).join(' · '));
 
     let workingTurns = turns;
     let workingState = state;
@@ -179,17 +256,23 @@ export async function POST(req: Request) {
           await recordAsked(supabase(), assignmentId, workingState).catch(() => undefined);
         }
       }
-      return NextResponse.json({ turns: workingTurns, state: workingState, run });
+      emit({ type: 'result', turns: workingTurns, state: workingState, run });
+      return;
     }
 
-    const result = await persuaderTurn(config.plan, workingTurns, workingState, config.rules);
-    return NextResponse.json({
-      turns: [...workingTurns, result.turn],
-      state: result.state,
-      stopped: result.stopped,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'שגיאה לא ידועה';
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+    for await (const event of streamPersuaderTurn(
+      config.plan, workingTurns, workingState, config.rules,
+    )) {
+      if (event.type === 'delta') {
+        emit(event);
+        continue;
+      }
+      emit({
+        type: 'result',
+        turns: [...workingTurns, event.result.turn],
+        state: event.result.state,
+        stopped: event.result.stopped,
+      });
+    }
+  });
 }

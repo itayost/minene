@@ -238,6 +238,22 @@ export const REFUSAL_MARKERS = [
 ];
 
 export const MAX_INTERACTIONS = 4;
-export const MAX_WORDS_PER_SENTENCE = 15;
-export const MAX_WORDS_PER_MESSAGE = 45;
+
+/**
+ * WhatsApp lengths, not memo lengths.
+ *
+ * These were 15 and 45. Forty-five Hebrew words is four or five lines on a
+ * phone -- a paragraph, and the field report called it exactly that: "התשובות
+ * ארוכות לפעמים... צריך תשובות משני הצדדים קצרות ומידיות, כמו במציאות".
+ *
+ * The counterpart persona has always been told 5 to 20 words, because that is
+ * what a busy person actually types. The persuader was held to more than twice
+ * that, which is what made the two sides of the same conversation read as a
+ * consultant answering a shift manager. One standard now covers both.
+ *
+ * Both are still `RuleConfig` fields and both are still editable on the rules
+ * page: these are the defaults, not the ceiling.
+ */
+export const MAX_WORDS_PER_SENTENCE = 12;
+export const MAX_WORDS_PER_MESSAGE = 25;
 export const MAX_ARGUMENTS_PER_TURN = 2;

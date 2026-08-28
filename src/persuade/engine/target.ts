@@ -1,5 +1,5 @@
 import { generateText } from 'ai';
-import { model } from '../lib/model';
+import { callOptions, model } from '../lib/model';
 import { historyForTarget, targetSystemPrompt } from './prompts';
 import type { PersuasionPlan, TargetPersona, Turn } from './types';
 
@@ -17,6 +17,7 @@ export async function targetReply(
     model: model('target'),
     system: targetSystemPrompt(persona, plan),
     messages: historyForTarget(turns),
+    ...callOptions('target'),
   });
   return text.trim();
 }
