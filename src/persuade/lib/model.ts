@@ -80,6 +80,78 @@ export function model(role: ModelRole): LanguageModel {
   }
 }
 
+/**
+ * Reasoning effort per role, tuned for a conversation someone is waiting on.
+ *
+ * The field report that prompted this said "זמן התגובה בלתי אפשרי". Two of
+ * these three roles sit directly between a manager pressing שליחה and a message
+ * appearing, and on a reasoning model the thinking budget is most of that wait.
+ *
+ * planner is `low` because it is no longer inventing: with ammunition it is
+ * decomposing and ranking material the business already approved and already
+ * rated, and `applyMeasuredStrength` overwrites its scores afterwards anyway.
+ * persuader is `low` because the hard thinking has been moved into code -- the
+ * blocker table, the rung ladder and the rule checks are all deterministic, and
+ * the model's remaining job is to write one short Hebrew sentence.
+ * judge is absent on purpose: scoring runs offline in the lab, nobody waits on
+ * it, and it is the one role where depth is worth its seconds.
+ */
+const effort = (): Partial<Record<ModelRole, string>> => ({
+  planner: process.env.PERSUADER_PLANNER_EFFORT ?? 'low',
+  persuader: process.env.PERSUADER_EFFORT ?? 'low',
+  target: process.env.PERSUADER_TARGET_EFFORT ?? 'minimal',
+});
+
+/**
+ * A ceiling, not a target.
+ *
+ * Message length is enforced by `rules.maxWordsPerMessage` in code, which is
+ * where it belongs. This exists so a model that ignores its instructions costs
+ * a bounded number of seconds instead of an unbounded one. On the OpenAI
+ * Responses API reasoning tokens count against this budget too, so these are
+ * set generously: a truncated structured object is a failed turn, which is a
+ * far worse outcome than a slow one.
+ */
+const OUTPUT_CAP: Record<ModelRole, number> = {
+  planner: 8000,
+  persuader: 2000,
+  target: 1000,
+  judge: 4000,
+};
+
+export interface CallOptions {
+  maxOutputTokens: number;
+  providerOptions?: Record<string, Record<string, string>>;
+}
+
+/**
+ * The speed settings for one role, spread into a generate/stream call.
+ *
+ * Provider options are namespaced by provider and ignored by the others, but
+ * they are only emitted for the provider that understands them: an unknown
+ * option is a warning rather than an error, and a warning nobody reads is how
+ * a setting silently stops applying.
+ */
+export function callOptions(role: ModelRole): CallOptions {
+  const chosen = effort()[role];
+  const provider = activeProvider();
+  const cap = { maxOutputTokens: OUTPUT_CAP[role] };
+
+  // Overrides mean a scripted model in a test. It has no provider to configure
+  // and no budget to spend, and passing either would make every mock assert
+  // against options that exist for nobody's benefit.
+  if (overrides[role] || !chosen) return cap;
+
+  // The gateway forwards provider options under the upstream provider's own
+  // key, so both paths name the model's real provider rather than 'gateway'.
+  const upstream = provider === 'gateway'
+    ? modelId(role).split('/')[0] ?? 'openai'
+    : provider;
+  if (upstream !== 'openai') return cap;
+
+  return { ...cap, providerOptions: { openai: { reasoningEffort: chosen } } };
+}
+
 export function assertModelAccessConfigured(): void {
   if (Object.keys(overrides).length > 0) return;
   if (process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY) return;

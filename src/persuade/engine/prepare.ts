@@ -1,6 +1,6 @@
 import { generateObject } from 'ai';
 import { z } from 'zod';
-import { model } from '../lib/model';
+import { callOptions, model } from '../lib/model';
 import { ARGUMENT_LABELS, RUNG_LABELS } from './knowledge';
 import { formatAmmunition, strengthFromLikePct, type Ammunition } from './ammunition';
 import type { Argument, PersuasionPlan } from './types';
@@ -120,7 +120,39 @@ export function applyMeasuredStrength(
   });
 }
 
-export async function preparePlan(input: PrepareInput): Promise<PersuasionPlan> {
+/**
+ * Everything that reaches the returned plan WITHOUT going through the prompt.
+ *
+ * There is exactly one such path and it is `applyMeasuredStrength`: a rule's
+ * measured rating overwrites the model's own score after the fact, deliberately,
+ * because "the rules are enforced in code, not asked for in a prompt". So the
+ * rating is not in the prompt -- `formatAmmunition` renders each argument with
+ * its evidence sentence and not its number -- and a plan cache keyed on the
+ * prompt alone would keep serving yesterday's ranking after the floor re-rated
+ * a rule. The arguments would be right and their order would be wrong, which is
+ * the failure nobody would ever notice.
+ *
+ * Keyed by ruleNumber because that is what the map in applyMeasuredStrength is
+ * keyed by, and sorted because the payload's order is the RPC's business.
+ */
+export function measuredInputs(input: PrepareInput): string {
+  if (!input.ammunition) return '';
+  return input.ammunition.arguments
+    .map((a) => `${a.ruleNumber}:${a.likePct ?? ''}:${a.evidence ?? ''}`)
+    .sort()
+    .join('|');
+}
+
+/**
+ * The exact two strings the planner is handed.
+ *
+ * Split out of preparePlan so the plan cache can hash its real input. Keyed on
+ * a hand-picked list of ammunition fields instead, the cache would serve a
+ * stale plan the first time somebody added a section to `formatAmmunition` --
+ * and that function has already grown once. Hashing what is actually sent
+ * cannot drift, because the thing hashed is the input.
+ */
+export function preparePrompt(input: PrepareInput): { system: string; prompt: string } {
   const categories = Object.entries(ARGUMENT_LABELS)
     .map(([k, v]) => `${k} = ${v}`)
     .join(', ');
@@ -141,9 +173,7 @@ export async function preparePlan(input: PrepareInput): Promise<PersuasionPlan> 
 - הבקשה כבר נוסחה ואושרה. אל תנסח אותה מחדש, רק פרק אותה לשדות.`
     : '';
 
-  const { object } = await generateObject({
-    model: model('planner'),
-    schema: planSchema,
+  return {
     system: `אתה מכין שיחת שכנוע לפני שהיא מתחילה. אתה לא כותב את השיחה, אתה כותב את התחמושת.
 
 כללי הכנה:
@@ -168,6 +198,18 @@ ${
 
 ${input.ammunition ? `\n${formatAmmunition(input.ammunition)}\n` : ''}
 הכן את תוכנית השכנוע.`,
+  };
+}
+
+export async function preparePlan(input: PrepareInput): Promise<PersuasionPlan> {
+  const { system, prompt } = preparePrompt(input);
+
+  const { object } = await generateObject({
+    model: model('planner'),
+    schema: planSchema,
+    system,
+    prompt,
+    ...callOptions('planner'),
   });
 
   return {
