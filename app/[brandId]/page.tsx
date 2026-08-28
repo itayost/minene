@@ -1,91 +1,79 @@
-import Image from "next/image";
 import { requireBrand } from "../../src/auth/require-brand";
-import { FeatureAction } from "./cockpit/feature-action";
 import { MentorBar } from "./cockpit/mentor-bar";
 import { ToolsGrid } from "./cockpit/tools-grid";
 
 type BrandHomeParams = { params: Promise<{ brandId: string }> };
 
-const sparkleIcon = (
-  <svg aria-hidden="true" viewBox="0 0 20 20">
-    <path d="M10 2c.7 4 2 5.3 6 6-4 .7-5.3 2-6 6-.7-4-2-5.3-6-6 4-.7 5.3-2 6-6Z" />
-    <path d="M16 13c.3 1.7.8 2.2 2.5 2.5-1.7.3-2.2.8-2.5 2.5-.3-1.7-.8-2.2-2.5-2.5 1.7-.3 2.2-.8 2.5-2.5Z" />
-  </svg>
-);
-
 export default async function BrandHomePage({ params }: BrandHomeParams) {
   const { brandId } = await params;
   const { brand } = await requireBrand(brandId);
 
-  /* Built per request so the video tool can carry this brand's wizard path.
-     Only that tool has a screen behind it; the rest say so when pressed. */
+  /* Two columns, four rows, in DOM order -- which in RTL fills right to left.
+     Built per request so the cards that have a screen can carry this brand's
+     path; the rest say they are not connected yet when pressed.
+
+     Every card carries a line saying what it does. Eight titles on their own
+     are eight guesses, and the subtitle is the half that makes one choosable. */
   const tools = [
     {
       title: "חיים אישיים",
+      subtitle: "האיזון, האנרגיה והזמן שלך",
       icon: "/brands/minene/icons/home-tools/personal-life.png",
     },
     {
-      title: "תכנית ופרוייקט",
+      title: "תוכנית ופרויקט",
+      subtitle: "לבנות תוכנית ופרויקט לחנות",
       icon: "/brands/minene/icons/home-tools/plan-project.png",
     },
     {
-      title: "ניתוח נתונים",
+      title: "לנתח נתונים",
+      subtitle: "מה המספרים אומרים על החנות",
       icon: "/brands/minene/icons/home-tools/data-analysis.png",
     },
     {
-      title: "תרגילי הדרכה",
-      icon: "/brands/minene/icons/home-tools/training-exercises.png",
+      /* One card, not two. Creating a training video and creating a training
+         image are the same errand with a different output, and the icon set was
+         drawn for this: training-media.png existed unused while create-video
+         and create-image split the job between them. */
+      title: "הדרכה: סרטון, תמונה",
+      subtitle: "סרטון או תמונה להדרכת הצוות",
+      icon: "/brands/minene/icons/home-tools/training-media.png",
+      href: `/${brand.id}/cockpit/video`,
     },
     {
       title: "עידוד ושכנוע",
+      subtitle: "חיזוק, הכרה ומסר שמזיז לפעולה",
       icon: "/brands/minene/icons/home-tools/encouragement-persuasion.png",
     },
     {
-      title: "מנטורינג לעובדת",
+      title: "תרגילי הדרכה",
+      subtitle: "תרגול קצר שמטמיע בפועל",
+      icon: "/brands/minene/icons/home-tools/training-exercises.png",
+    },
+    {
+      title: "מנטורינג לעובדות",
+      subtitle: "שיחה אישית עם כל עובדת",
       icon: "/brands/minene/icons/home-tools/employee-mentoring.png",
     },
     {
-      title: "יצירת סרטון",
-      icon: "/brands/minene/icons/home-tools/create-video.png",
-      href: `/${brand.id}/cockpit/video`,
-      compact: true,
-    },
-    {
-      title: "יצירת תמונה",
-      icon: "/brands/minene/icons/home-tools/create-image.png",
-      compact: true,
+      /* The brain is also in the bottom nav. Both stay: the nav is how you get
+         back to it from anywhere, and the card is how you meet it while
+         reading what this screen offers. */
+      title: "ספר ארגוני ומוח",
+      subtitle: "הידע הארגוני והמוח של החנות",
+      icon: "/brands/minene/icons/home-tools/organizational-book-brain.png",
+      href: `/${brand.id}/tools/brain`,
     },
   ] as const;
 
   return (
     <div className="cockpit" dir="rtl">
-      <section
-        aria-labelledby="recommendation-title"
-        className="cockpit-feature"
-      >
-        <div className="cockpit-feature__copy">
-          <div className="cockpit-feature__label">
-            {sparkleIcon}
-            <span>המלצת המנטור</span>
-          </div>
-          <h1 id="recommendation-title">יש לך שיחה חשובה בקרוב</h1>
-          <p>נתכונן יחד לשיחה ונבנה את התוכנית שלך.</p>
-          <FeatureAction label="התחילי הכנה" />
-        </div>
-
-        <div className="cockpit-feature__visual">
-          <Image
-            alt="מנהלת ועובדת צעירות מנהלות שיחה מקצועית"
-            fill
-            priority
-            sizes="(max-width: 539px) 52vw, 210px"
-            src="/brands/minene/home-manager-conversation-v3.png"
-          />
-        </div>
-      </section>
-
       <section aria-labelledby="tools-title" className="cockpit-tools">
-        <h2 id="tools-title">כלים עבורך</h2>
+        <header className="cockpit-tools__header">
+          <h2 id="tools-title">קוקפיט מנהלת</h2>
+          <p>כל מה שמנהלת צריכה, במקום אחד</p>
+        </header>
+
         <ToolsGrid tools={tools} />
       </section>
 

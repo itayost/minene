@@ -7,11 +7,12 @@ import { NOT_WIRED } from "./not-wired";
 
 type HomeTool = {
   title: string;
+  /** What the card does. Eight titles alone are eight guesses. */
+  subtitle: string;
   icon: string;
   /* Set only for tools that have a screen to go to. The rest render as
      buttons that say they are not connected yet. */
   href?: string;
-  compact?: boolean;
 };
 
 /**
@@ -28,30 +29,25 @@ export function ToolsGrid({ tools }: { tools: readonly HomeTool[] }) {
     <>
       <ul className="cockpit-tools__grid" role="list">
         {tools.map((tool) => {
-          const className = `cockpit-tool${tool.compact ? " cockpit-tool--compact" : ""}`;
           const inner = (
             <>
               <span className="cockpit-tool__icon">
-                <Image alt="" height={44} src={tool.icon} width={44} />
+                <Image alt="" height={56} src={tool.icon} width={56} />
               </span>
               <span className="cockpit-tool__title">{tool.title}</span>
+              <span className="cockpit-tool__subtitle">{tool.subtitle}</span>
             </>
           );
 
           return (
-            <li
-              className={
-                tool.compact ? "cockpit-tools__item--compact" : undefined
-              }
-              key={tool.title}
-            >
+            <li key={tool.title}>
               {tool.href ? (
-                <Link className={className} href={tool.href}>
+                <Link className="cockpit-tool" href={tool.href}>
                   {inner}
                 </Link>
               ) : (
                 <button
-                  className={className}
+                  className="cockpit-tool"
                   onClick={() => setNotice(NOT_WIRED)}
                   type="button"
                 >

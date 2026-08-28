@@ -1338,34 +1338,35 @@ a:focus-visible {
   line-height: 1.25;
 }
 
+/* Two columns, four rows. Was six tracks with span-2 and span-3 items, which
+   existed only so the two media cards could sit as a half-width pair; one media
+   card replaced them, and the arithmetic went with it. */
 .cockpit-tools__grid {
   margin: 0;
   padding: 0;
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .cockpit-tools__grid > li {
   min-width: 0;
-  grid-column: span 2;
-}
-
-.cockpit-tools__grid > .cockpit-tools__item--compact {
-  grid-column: span 3;
 }
 
 .cockpit-tool {
   position: relative;
   height: 100%;
-  min-height: 130px;
+  min-height: 150px;
   display: grid;
-  grid-template-rows: 1fr auto;
+  /* Icon takes the slack, then title, then the line that says what it does --
+     so the titles sit on the same baseline across a row however tall the icons
+     render. */
+  grid-template-rows: 1fr auto auto;
   justify-items: center;
-  gap: 7px;
-  padding: 10px 9px 12px;
-  border-radius: 14px;
+  gap: 6px;
+  padding: 14px 11px 13px;
+  border-radius: 16px;
   background: #f1e8e0;
   text-align: center;
 }
@@ -1430,33 +1431,23 @@ a:focus-visible {
   align-self: end;
   margin: 0;
   color: var(--text);
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 800;
   line-height: 1.2;
   text-wrap: balance;
 }
 
-.cockpit-tool--compact {
-  min-height: 60px;
-  grid-template-columns: 36px minmax(0, 1fr);
-  grid-template-rows: 1fr;
-  align-items: center;
-  justify-items: start;
-  gap: 7px;
-  padding: 8px 10px;
-  text-align: start;
-  background: #ead0d1;
+.cockpit-tool__subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-wrap: balance;
 }
 
-.cockpit-tool--compact .cockpit-tool__icon {
-  width: 42px;
-  height: 42px;
-}
 
-.cockpit-tool--compact .cockpit-tool__title {
-  align-self: center;
-  font-size: 14px;
-}
+
 
 @media (max-width: 350px) {
   .cockpit {
@@ -1476,17 +1467,14 @@ a:focus-visible {
     min-height: 205px;
   }
 
-  .cockpit-tools__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .cockpit-tools__grid > li,
-  .cockpit-tools__grid > .cockpit-tools__item--compact {
-    grid-column: span 1;
-  }
-
+  /* The grid is two columns everywhere now, so the narrow case only has to
+     take the pressure off the type. */
   .cockpit-tool__title {
-    font-size: 15px;
+    font-size: 13.5px;
+  }
+
+  .cockpit-tool__subtitle {
+    font-size: 11px;
   }
 }
 

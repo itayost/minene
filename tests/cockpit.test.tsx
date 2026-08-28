@@ -15,27 +15,74 @@ vi.mock('../src/auth/require-brand', () => ({
 const { default: CockpitPage } = await import('../app/[brandId]/page')
 const { VideoWizard } = await import('../app/[brandId]/cockpit/video/video-wizard')
 
+/**
+ * The catalog as approved: two columns, four rows, every card carrying a line
+ * that says what it does. Order is DOM order, which in RTL fills right-to-left.
+ */
+const CATALOG = [
+  ['חיים אישיים', 'האיזון, האנרגיה והזמן שלך'],
+  ['תוכנית ופרויקט', 'לבנות תוכנית ופרויקט לחנות'],
+  ['לנתח נתונים', 'מה המספרים אומרים על החנות'],
+  ['הדרכה: סרטון, תמונה', 'סרטון או תמונה להדרכת הצוות'],
+  ['עידוד ושכנוע', 'חיזוק, הכרה ומסר שמזיז לפעולה'],
+  ['תרגילי הדרכה', 'תרגול קצר שמטמיע בפועל'],
+  ['מנטורינג לעובדות', 'שיחה אישית עם כל עובדת'],
+  ['ספר ארגוני ומוח', 'הידע הארגוני והמוח של החנות'],
+] as const
+
 describe('the cockpit', () => {
-  it('shows the approved eight-item tool catalog and daily recommendation', async () => {
+  it('leads with the catalog rather than a recommendation', async () => {
     render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
 
-    expect(screen.queryByText('במה תרצי להתמקד היום?')).toBeNull()
-    expect(screen.getByRole('heading', { level: 1, name: 'יש לך שיחה חשובה בקרוב' })).toBeVisible()
-    expect(screen.getByRole('region', { name: 'יש לך שיחה חשובה בקרוב' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'קוקפיט מנהלת' })).toBeVisible()
+    expect(screen.getByText('כל מה שמנהלת צריכה, במקום אחד')).toBeVisible()
 
-    for (const tool of [
-      'חיים אישיים',
-      'תכנית ופרוייקט',
-      'ניתוח נתונים',
-      'תרגילי הדרכה',
-      'עידוד ושכנוע',
-      'מנטורינג לעובדת',
-      'יצירת סרטון',
-      'יצירת תמונה',
-    ]) {
-      // Every card is a control: a link when it has a screen, a button otherwise.
-      expect(screen.getByRole(tool === 'יצירת סרטון' ? 'link' : 'button', { name: tool })).toBeVisible()
+    // The recommendation was the previous composition's whole thesis. Asserted
+    // absent rather than simply not asserted, so bringing it back is a decision
+    // somebody makes on purpose.
+    expect(screen.queryByText('יש לך שיחה חשובה בקרוב')).toBeNull()
+    expect(screen.queryByText('המלצת המנטור')).toBeNull()
+  })
+
+  it('shows all eight cards, each saying what it does', async () => {
+    render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
+
+    for (const [title, subtitle] of CATALOG) {
+      expect(screen.getByText(title)).toBeVisible()
+      // The subtitle is the half that makes a card choosable: eight titles alone
+      // are eight guesses.
+      expect(screen.getByText(subtitle)).toBeVisible()
     }
+  })
+
+  it('gives every card an icon of its own from the home set', async () => {
+    const { container } = render(
+      await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }),
+    )
+
+    const icons = [...container.querySelectorAll('.cockpit-tool img')]
+      .map((img) => decodeURIComponent(img.getAttribute('src') ?? ''))
+
+    expect(icons).toHaveLength(CATALOG.length)
+    for (const icon of icons) {
+      expect(icon).toContain('/brands/minene/icons/home-tools/')
+    }
+    // Distinct, so no two cards are confusable at a glance.
+    expect(new Set(icons.map((i) => i.replace(/.*home-tools\//, '').split(/[?&]/)[0]))).toHaveLength(8)
+  })
+
+  it('sends the two cards that have screens to them, and only those', async () => {
+    render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
+
+    expect(screen.getByRole('link', { name: /הדרכה: סרטון, תמונה/ }))
+      .toHaveAttribute('href', `/${mineneBrand.id}/cockpit/video`)
+    expect(screen.getByRole('link', { name: /ספר ארגוני ומוח/ }))
+      .toHaveAttribute('href', `/${mineneBrand.id}/tools/brain`)
+
+    // Everything else is a button that says so when pressed, rather than a link
+    // to a page that does not exist.
+    expect(screen.getAllByRole('link')).toHaveLength(2)
+    expect(screen.getAllByRole('button').length).toBeGreaterThanOrEqual(6)
   })
 
   it('gives every action its own icon', () => {
@@ -49,19 +96,6 @@ describe('the cockpit', () => {
     }
   })
 
-  it('sends the video card to the brief wizard', async () => {
-    render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
-
-    expect(screen.getByRole('link', { name: 'יצירת סרטון' })).toHaveAttribute(
-      'href',
-      `/${mineneBrand.id}/cockpit/video`,
-    )
-
-    // It is the only card with a screen behind it, so it is the only link.
-    expect(screen.queryAllByRole('link')).toHaveLength(1)
-    expect(screen.queryAllByText('בקרוב')).toHaveLength(0)
-  })
-
   it('admits a tool is not connected instead of ignoring a press', async () => {
     const user = userEvent.setup()
     render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
@@ -69,20 +103,10 @@ describe('the cockpit', () => {
     // A card that silently ignores a press reads as broken, and the whole grid
     // did exactly that: every card was an <article>.
     expect(screen.queryByText(/לא מחובר/)).toBeNull()
-    await user.click(screen.getByRole('button', { name: 'ניתוח נתונים' }))
+    await user.click(screen.getByRole('button', { name: /לנתח נתונים/ }))
     expect(screen.getByText(/הכלי הזה עדיין לא מחובר/)).toBeVisible()
   })
 
-  it('gives the recommendation a control that can actually be pressed', async () => {
-    const user = userEvent.setup()
-    render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
-
-    // It shipped as a span: the most prominent control on the screen could not
-    // be focused or reached by keyboard.
-    const action = screen.getByRole('button', { name: 'התחילי הכנה' })
-    await user.click(action)
-    expect(screen.getByText(/הכלי הזה עדיין לא מחובר/)).toBeVisible()
-  })
 
   it('closes with the mentor composer rather than a prompt with nowhere to answer', async () => {
     render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))

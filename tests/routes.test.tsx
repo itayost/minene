@@ -140,7 +140,7 @@ describe('route bodies', () => {
 
     expect(screen.queryByRole('link', { name: /Single subject/ })).toBeNull()
     expect(screen.queryByRole('link', { name: /Multiple subject/ })).toBeNull()
-    expect(screen.getByRole('heading', { name: 'יש לך שיחה חשובה בקרוב' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'קוקפיט מנהלת' })).toBeInTheDocument()
   })
 
   test('an unknown brand is not found', async () => {
