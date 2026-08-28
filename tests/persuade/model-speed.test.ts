@@ -33,7 +33,30 @@ describe('speed settings per role', () => {
   test('keeps the roles someone is waiting on at a low thinking budget', () => {
     expect(callOptions('persuader').providerOptions?.openai?.reasoningEffort).toBe('low');
     expect(callOptions('planner').providerOptions?.openai?.reasoningEffort).toBe('low');
-    expect(callOptions('target').providerOptions?.openai?.reasoningEffort).toBe('minimal');
+    expect(callOptions('target').providerOptions?.openai?.reasoningEffort).toBe('low');
+  });
+
+  test('never defaults to a value a model would reject', () => {
+    // target was 'minimal', which the SDK's type accepts and gpt-5.4-mini --
+    // that role's own default model -- refuses with a 400: "Unsupported value:
+    // 'minimal' is not supported with the 'gpt-5.4-mini' model." Every persona
+    // reply in the lab threw. A union the provider accepts is not the same as a
+    // union the model accepts, and only the second one matters.
+    for (const role of ['planner', 'persuader', 'target'] as const) {
+      const chosen = callOptions(role).providerOptions?.openai?.reasoningEffort;
+      expect(['none', 'low', 'medium', 'high', 'xhigh']).toContain(chosen);
+    }
+  });
+
+  test('drops an effort the model would refuse rather than failing the call', () => {
+    // These are env-settable, so a typo or a model swap would otherwise break
+    // conversations in production for a setting whose whole purpose is to make
+    // them faster. The model's own default is a far better outcome than a 400.
+    process.env.PERSUADER_EFFORT = 'minimal';
+    expect(callOptions('persuader').providerOptions).toBeUndefined();
+
+    process.env.PERSUADER_EFFORT = 'lwo';
+    expect(callOptions('persuader').providerOptions).toBeUndefined();
   });
 
   test('leaves the judge alone, because nobody is waiting on a score', () => {
