@@ -1007,6 +1007,14 @@ a:focus-visible {
   padding: 16px 13px 22px;
   animation: screen-enter 0.26s ease both;
   display: grid;
+  /* Bounded, not `auto`.
+     An undeclared track is one `auto` column, and `auto` is
+     minmax(min-content, max-content): it grows to the widest child's
+     max-content and then stretches every sibling to match. The composer's
+     placeholder was the widest thing here, which made the tool cards 14px too
+     wide for a 360px phone -- clipped by overflow-x: hidden, leftward in RTL,
+     with nothing to scroll and no error anywhere. */
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 14px;
 }
@@ -1089,6 +1097,9 @@ a:focus-visible {
   inset-block-end: 0;
   align-self: end;
   display: grid;
+  /* Same reason as .cockpit: this column holds the bar whose intrinsic width
+     started the whole problem. */
+  grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   padding-block-start: 8px;
   background: linear-gradient(to top, var(--surface) 78%, transparent);
