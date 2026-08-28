@@ -50,3 +50,40 @@ describe('the home screen stacks in a bounded column', () => {
     expect(body).toMatch(/grid-template-columns:\s*minmax\(\s*0\s*,/)
   })
 })
+
+/**
+ * The home is meant to be read at a glance, not scrolled: eight cards, a
+ * header and the composer, sized to whatever screen they land on.
+ *
+ * That only holds if nothing in the column insists on its own height. Each rule
+ * below is exactly the thing that would quietly reintroduce a scrollbar, so
+ * each is asserted rather than trusted.
+ */
+describe('the home fits the screen it is on', () => {
+  /** Every body with this selector, since the property may be set in any of them. */
+  function allBodies(selector: string): string {
+    const bodies = [...css.matchAll(new RegExp(`^${selector}\\s*\\{([^}]*)\\}`, 'gm'))]
+      .map((m) => m[1] ?? '')
+    expect(bodies.length, `no rule for ${selector}`).toBeGreaterThan(0)
+    return bodies.join('\n').replace(/\s+/g, ' ')
+  }
+
+  it('does not scroll the screen vertically', () => {
+    // overflow-y: auto is how it used to absorb a column taller than the frame.
+    // Leaving it means "too tall" silently becomes "scrollable" again.
+    expect(allBodies('\\.cockpit')).toMatch(/overflow-y:\s*hidden/)
+  })
+
+  it('shares the leftover height between the four card rows', () => {
+    // Content-sized rows add up to whatever the content wants. Fractional rows
+    // divide what there is.
+    expect(allBodies('\\.cockpit-tools__grid')).toMatch(/grid-template-rows:\s*repeat\(\s*4\s*,\s*minmax\(\s*0/)
+  })
+
+  it('lets a card be as short as its row', () => {
+    // A fixed min-height on the card is the single most likely way for this to
+    // regress: four of them plus the header and composer exceed a short screen,
+    // and the overflow has nowhere to go.
+    expect(allBodies('\\.cockpit-tool')).not.toMatch(/min-height:\s*[1-9]/)
+  })
+})

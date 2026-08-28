@@ -999,10 +999,11 @@ a:focus-visible {
 .cockpit {
   position: absolute;
   inset: 0;
+  /* Neither axis scrolls. This screen is meant to be taken in at a glance, so
+     everything below divides the height it is given rather than claiming the
+     height it would prefer. */
   overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  overflow-y: hidden;
   --screen-enter-x: -8%;
   padding: 16px 13px 22px;
   animation: screen-enter 0.26s ease both;
@@ -1015,7 +1016,6 @@ a:focus-visible {
      wide for a 360px phone -- clipped by overflow-x: hidden, leftward in RTL,
      with nothing to scroll and no error anywhere. */
   grid-template-columns: minmax(0, 1fr);
-  align-content: start;
   gap: 14px;
 }
 
@@ -1171,9 +1171,16 @@ a:focus-visible {
 
 .cockpit {
   --screen-enter-x: 8%;
-  grid-template-rows: auto auto minmax(64px, 1fr);
-  padding: 22px 20px 26px;
-  gap: 24px;
+  /* Was `auto auto minmax(64px, 1fr)` for three children, the first of them the
+     recommendation. Two now: the catalog takes what is left, the composer takes
+     what it needs. */
+  grid-template-rows: minmax(0, 1fr) auto;
+  /* Every dimension below is a share of the screen, floored so it stays legible
+     and capped so a tall screen does not just inflate. The cards get whatever
+     the chrome gives back, which on a short phone is the difference between an
+     icon and no icon. */
+  padding: clamp(10px, 2.6dvh, 22px) 20px clamp(12px, 3dvh, 26px);
+  gap: clamp(10px, 2.8dvh, 24px);
   background: var(--surface);
   scrollbar-width: none;
 }
@@ -1182,160 +1189,34 @@ a:focus-visible {
   display: none;
 }
 
-.cockpit-feature {
-  min-height: 194px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.22fr);
-  overflow: hidden;
-  border: 0;
-  border-radius: 16px;
-  background: #eee5dd;
-}
-
-.cockpit-feature__copy {
-  position: relative;
-  z-index: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 19px 15px 17px 12px;
-}
-
-.cockpit-feature__label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--primary-strong);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.cockpit-feature__label svg {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-}
-
-.cockpit-feature__copy h1 {
-  margin: 15px 0 0;
-  color: var(--text);
-  font-size: 21px;
-  font-weight: 800;
-  line-height: 1.16;
-  letter-spacing: -0.025em;
-  text-wrap: balance;
-}
-
-.cockpit-feature__copy p {
-  margin: 10px 0 0;
-  color: #665a55;
-  font-size: 13.5px;
-  line-height: 1.45;
-}
-
-.cockpit-tools__notice,
-.cockpit-feature__notice {
-  /* Empty until a control is pressed, so it must not reserve space. */
-  margin: 0;
-  color: var(--primary-strong);
-  font-size: 12.5px;
-  font-weight: 650;
-  line-height: 1.35;
-}
-
-.cockpit-tools__notice:empty,
-.cockpit-feature__notice:empty {
-  display: none;
-}
-
-@media (hover: hover) {
-  .cockpit-feature__action:hover {
-    gap: 11px;
-  }
-}
-
-.cockpit-feature__action:focus-visible {
-  outline: 2px solid var(--primary-strong);
-  outline-offset: 3px;
-  border-radius: 6px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cockpit-feature__action {
-    transition: none;
-  }
-
-  .cockpit-feature__action:hover {
-    gap: 7px;
-  }
-}
-
-.cockpit-feature__action {
-  /* A button now: it was a span, so it could not be pressed or focused. */
-  margin-block-start: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-  text-align: start;
-  transition: gap 140ms cubic-bezier(0.16, 1, 0.3, 1);
-  color: var(--primary-strong);
-  font-size: 15px;
-  font-weight: 750;
-}
-
-.cockpit-feature__action svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.cockpit-feature__visual {
-  position: relative;
-  min-width: 0;
-  min-height: 194px;
-  overflow: hidden;
-}
-
-.cockpit-feature__visual::after {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: 24px;
-  background: linear-gradient(to left, #eee5dd, transparent);
-  pointer-events: none;
-}
-
-.cockpit-feature__visual img {
-  object-fit: cover;
-  object-position: center;
-}
-
 .cockpit-tools {
+  min-height: 0;
   display: grid;
-  gap: 12px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: clamp(6px, 1.4dvh, 12px);
 }
 
-.cockpit-tools > h2 {
+.cockpit-tools__header {
+  display: grid;
+  gap: 3px;
+}
+
+/* Was `.cockpit-tools > h2`, which stopped matching the moment the heading
+   moved inside this header -- so the title had been falling back to the
+   browser's default h2. */
+.cockpit-tools__header h2 {
   margin: 0;
   color: var(--text);
-  font-size: 22px;
+  font-size: clamp(17px, 2.6dvh, 22px);
   font-weight: 800;
   line-height: 1.25;
+}
+
+.cockpit-tools__header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(11px, 1.6dvh, 13px);
+  line-height: 1.35;
 }
 
 /* Two columns, four rows. Was six tracks with span-2 and span-3 items, which
@@ -1345,27 +1226,36 @@ a:focus-visible {
   margin: 0;
   padding: 0;
   list-style: none;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: clamp(6px, 1.2dvh, 10px);
 }
 
+/* Each cell is a size container, so a card can answer to the height it was
+   actually given rather than to the viewport. A media query cannot see this:
+   the shell is a fixed 402x846 frame inside a much taller desktop window, so
+   the card's height and the screen's height are different questions. */
 .cockpit-tools__grid > li {
   min-width: 0;
+  container-type: size;
 }
 
 .cockpit-tool {
   position: relative;
   height: 100%;
-  min-height: 150px;
+  /* No min-height. Four of them plus the header and the composer would exceed a
+     short screen, and with nothing scrolling the excess has nowhere to go. */
+  min-height: 0;
   display: grid;
   /* Icon takes the slack, then title, then the line that says what it does --
      so the titles sit on the same baseline across a row however tall the icons
      render. */
-  grid-template-rows: 1fr auto auto;
+  grid-template-rows: minmax(0, 1fr) auto auto;
   justify-items: center;
-  gap: 6px;
-  padding: 14px 11px 13px;
+  gap: clamp(2px, 0.7dvh, 6px);
+  padding: clamp(6px, 1.6dvh, 14px) 11px clamp(6px, 1.5dvh, 13px);
   border-radius: 16px;
   background: #f1e8e0;
   text-align: center;
@@ -1414,10 +1304,15 @@ a:focus-visible {
   }
 }
 
+/* The flexible part of the card. Title and subtitle are content-sized, so the
+   icon is what gives way as the row gets shorter -- down to nothing on a very
+   short screen, rather than pushing the text out of the frame. */
 .cockpit-tool__icon {
   display: block;
-  width: 64px;
-  height: 64px;
+  width: 100%;
+  max-width: 64px;
+  height: 100%;
+  min-height: 0;
   align-self: center;
 }
 
@@ -1431,7 +1326,7 @@ a:focus-visible {
   align-self: end;
   margin: 0;
   color: var(--text);
-  font-size: 14.5px;
+  font-size: clamp(12px, 1.75dvh, 14.5px);
   font-weight: 800;
   line-height: 1.2;
   text-wrap: balance;
@@ -1440,10 +1335,55 @@ a:focus-visible {
 .cockpit-tool__subtitle {
   margin: 0;
   color: var(--muted);
-  font-size: 11.5px;
+  font-size: clamp(9.5px, 1.4dvh, 11.5px);
   font-weight: 500;
   line-height: 1.3;
   text-wrap: balance;
+}
+
+/* Short rows: the icon moves beside the text instead of above it.
+   Stacked, a card needs roughly 100px to hold a 44px icon and two lines. Below
+   that the icon is what gives way, and on a 640px-tall phone it collapsed to
+   nothing -- eight cards of plain text. Laid out in a row it spends width,
+   which is the axis that still has room. */
+@container (max-height: 96px) {
+  .cockpit-tool {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: center;
+    justify-items: start;
+    column-gap: 8px;
+    text-align: start;
+  }
+
+  .cockpit-tool__icon {
+    grid-row: span 2;
+    width: clamp(28px, 42cqh, 46px);
+    height: auto;
+    aspect-ratio: 1;
+    align-self: center;
+  }
+
+  .cockpit-tool__title {
+    align-self: end;
+  }
+}
+
+/* Shorter still: two lines no longer fit beside the icon, and the title is the
+   half that identifies the card. */
+@container (max-height: 62px) {
+  .cockpit-tool__subtitle {
+    display: none;
+  }
+
+  .cockpit-tool {
+    grid-template-rows: minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .cockpit-tool__icon {
+    grid-row: auto;
+  }
 }
 
 
@@ -1454,18 +1394,8 @@ a:focus-visible {
     padding-inline: 14px;
   }
 
-  .cockpit-feature {
-    grid-template-columns: 1fr;
-  }
 
-  .cockpit-feature__visual {
-    order: -1;
-    min-height: 138px;
-  }
 
-  .cockpit-feature__copy {
-    min-height: 205px;
-  }
 
   /* The grid is two columns everywhere now, so the narrow case only has to
      take the pressure off the type. */
