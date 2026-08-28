@@ -71,18 +71,33 @@ describe('the cockpit', () => {
     expect(new Set(icons.map((i) => i.replace(/.*home-tools\//, '').split(/[?&]/)[0]))).toHaveLength(8)
   })
 
-  it('sends the two cards that have screens to them, and only those', async () => {
+  it('carries every destination the bottom nav used to', async () => {
+    render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
+
+    // The nav is gone, so these three cards are the only way to reach the three
+    // tools. If one of them stops being a link, a whole tool becomes
+    // unreachable and nothing else on the screen would say so.
+    const destinations = Object.fromEntries(
+      screen.getAllByRole('link').map((a) => [a.getAttribute('href'), true]),
+    )
+    for (const path of ['tools/campaign', 'tools/persuade', 'tools/brain']) {
+      expect(destinations[`/${mineneBrand.id}/${path}`], path).toBe(true)
+    }
+  })
+
+  it('names which card leads where', async () => {
     render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
 
     expect(screen.getByRole('link', { name: /הדרכה: סרטון, תמונה/ }))
-      .toHaveAttribute('href', `/${mineneBrand.id}/cockpit/video`)
+      .toHaveAttribute('href', `/${mineneBrand.id}/tools/campaign`)
+    expect(screen.getByRole('link', { name: /עידוד ושכנוע/ }))
+      .toHaveAttribute('href', `/${mineneBrand.id}/tools/persuade`)
     expect(screen.getByRole('link', { name: /ספר ארגוני ומוח/ }))
       .toHaveAttribute('href', `/${mineneBrand.id}/tools/brain`)
 
-    // Everything else is a button that says so when pressed, rather than a link
-    // to a page that does not exist.
-    expect(screen.getAllByRole('link')).toHaveLength(2)
-    expect(screen.getAllByRole('button').length).toBeGreaterThanOrEqual(6)
+    // The rest are buttons that say they are not connected, rather than links
+    // to pages that do not exist.
+    expect(screen.getAllByRole('link')).toHaveLength(3)
   })
 
   it('gives every action its own icon', () => {

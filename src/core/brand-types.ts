@@ -23,6 +23,13 @@ export type BrandTool = {
   icon: string
   note?: string
   items: string[]
+  /**
+   * A way out of a preview screen into the tool that actually does the work.
+   *
+   * `path` is relative to the brand root, because a brand's own id is not
+   * something this config should have to repeat. The screen composes it.
+   */
+  action?: { label: string; path: string }
 }
 
 export type BrandTheme = {

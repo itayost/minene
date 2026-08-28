@@ -123,6 +123,10 @@ export const mineneBrand: BrandManifest = {
       label: 'קמפיינר',
       icon: '/brands/minene/icons/navigation/campaigner.png',
       note: 'תצוגה מקדימה – התכנים מתוך המסמך',
+      /* The one tool on this screen that is built. Without this the wizard has
+         no entrance: the home card leads here, and the bottom nav that used to
+         reach it is gone. */
+      action: { label: 'יצירת סרטון', path: 'cockpit/video' },
       items: ['תבחרי נושא לקדם בצוות שלך', 'רוצה סרטון חד פעמי? תמונה חד פעמית?', 'רוצה קמפיין של שבוע, כל יום סרטון או תמונה?', 'נושא: מה יוצא לך ממיננה?', 'מכירת מוצר ספציפי', 'תרגיל אנרגיות טיל', 'פי 2 בטחון עצמי', 'חיבור למכירות', 'חששות ותשובות', 'שיפור יחס המרה', 'שיפור סל קניה', 'סטנדרד גבוה', 'המותג שלנו', 'עידוד עובדות', 'בחירת דמות וסגנון: אירופאי / ישראלי, בחור / בחורה, מבוגר / צעיר', 'מתלהב / רגוע, שפה גבוהה / עממית, בחנות / במקום אחר'],
     },
     {

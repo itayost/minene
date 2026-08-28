@@ -30,5 +30,10 @@ export default async function ToolPage({ params }: ToolParams) {
     `resolveScreen returned unknown tool "${screen.toolId}" for brand "${brand.id}"`,
   )
 
-  return <ToolScreen tool={tool} />
+  return (
+    <ToolScreen
+      actionHref={tool.action ? `/${brandId}/${tool.action.path}` : undefined}
+      tool={tool}
+    />
+  )
 }

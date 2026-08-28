@@ -168,26 +168,6 @@ export function BrandShell({
 
           <main className="shell-content">{children}</main>
 
-          <nav className={`bottom-nav${brand.id === 'minene' ? ' bottom-nav--minene' : ''}`} aria-label={brand.labels.navigation}>
-            <Link className="bottom-nav__action" href={homeHref} aria-current={isHome ? 'page' : undefined}>
-              {brand.id === 'minene'
-                ? <img src="/brands/minene/icons/navigation/home.png" alt="" />
-                : homeIcon}
-              <span>{brand.labels.home}</span>
-            </Link>
-            {brand.tools.map((tool) => (
-              <Link
-                className="bottom-nav__action"
-                href={toolHref(brand.id, tool.id)}
-                key={tool.id}
-                aria-current={screen.kind === 'tool' && screen.toolId === tool.id ? 'page' : undefined}
-              >
-                <img src={tool.icon} alt="" />
-                <span>{tool.label}</span>
-              </Link>
-            ))}
-          </nav>
-
         </div>
         {modal}
       </div>

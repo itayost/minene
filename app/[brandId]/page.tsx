@@ -12,6 +12,9 @@ export default async function BrandHomePage({ params }: BrandHomeParams) {
      Built per request so the cards that have a screen can carry this brand's
      path; the rest say they are not connected yet when pressed.
 
+     Three of them are now the only way to reach their tool: the bottom nav that
+     used to carry קמפיינר, משכנע and מוח ארגני is gone.
+
      Every card carries a line saying what it does. Eight titles on their own
      are eight guesses, and the subtitle is the half that makes one choosable. */
   const tools = [
@@ -38,12 +41,13 @@ export default async function BrandHomePage({ params }: BrandHomeParams) {
       title: "הדרכה: סרטון, תמונה",
       subtitle: "סרטון או תמונה להדרכת הצוות",
       icon: "/brands/minene/icons/home-tools/training-media.png",
-      href: `/${brand.id}/cockpit/video`,
+      href: `/${brand.id}/tools/campaign`,
     },
     {
       title: "עידוד ושכנוע",
       subtitle: "חיזוק, הכרה ומסר שמזיז לפעולה",
       icon: "/brands/minene/icons/home-tools/encouragement-persuasion.png",
+      href: `/${brand.id}/tools/persuade`,
     },
     {
       title: "תרגילי הדרכה",

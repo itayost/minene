@@ -138,11 +138,35 @@ describe('shared branded components', () => {
       .toHaveAttribute('href', '/demo/multiple/group-two')
   })
 
-  it('uses the brand accessibility labels for shell navigation', () => {
+  it('leaves the shell with a way back and no bottom nav', () => {
     render(<SharedComponentHarness initialScreen={{ kind: 'menu', subjectId: 'multiple' }} />)
 
-    expect(screen.getByRole('navigation', { name: 'Demo destinations' })).toBeVisible()
+    // The bottom nav is gone: the home cards carry the destinations now. The
+    // header's back link is what keeps an inner screen from being a dead end,
+    // so it is the thing that has to survive.
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Return to previous screen' })).toBeVisible()
+  })
+
+  it('offers a way out of a preview screen into the tool that does the work', () => {
+    // A tool screen is a list of bullets from the source document. Where a real
+    // tool exists behind one, the screen has to say so -- otherwise dropping the
+    // nav leaves the working wizard with no entrance at all.
+    render(
+      <ToolScreen
+        actionHref="/demo/cockpit/video"
+        tool={{ ...demoBrand.tools[0]!, action: { label: 'יצירת סרטון', path: 'cockpit/video' } }}
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: 'יצירת סרטון' }))
+      .toHaveAttribute('href', '/demo/cockpit/video')
+  })
+
+  it('shows no action on a tool that has none', () => {
+    render(<ToolScreen tool={demoBrand.tools[0]!} />)
+
+    expect(screen.queryAllByRole('link')).toHaveLength(0)
   })
 
   it('points the back link at the parent route of the current screen', () => {
@@ -180,24 +204,17 @@ describe('shared branded components', () => {
     expect(container.querySelector('.app-stage')).toHaveStyle('--primary: #246BCE')
   })
 
-  it('exposes home, share, and configured bottom-tool controls', () => {
+  it('keeps the share control off every screen but the viewer', () => {
+    // What this used to assert about home and per-tool links belonged to the
+    // bottom nav, which the home cards replaced.
     render(<SharedComponentHarness />)
 
-    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/demo')
     expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
-
-    for (const tool of demoBrand.tools) {
-      expect(screen.getByRole('link', { name: tool.label }))
-        .toHaveAttribute('href', `/demo/tools/${tool.id}`)
-    }
   })
 
-  it('marks the current bottom-tool destination and renders its screen', () => {
+  it('renders the screen a tool route resolves to', () => {
     render(<SharedComponentHarness initialScreen={{ kind: 'tool', toolId: 'notes', subPath: [] }} />)
 
-    expect(screen.getByRole('link', { name: 'Notes' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current')
     expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
     expect(screen.getByText('Ideas to discuss')).toBeVisible()
     expect(screen.getByRole('list')).toHaveTextContent('First idea')
@@ -247,10 +264,12 @@ describe('shared branded components', () => {
     expect(shellBase).toHaveAttribute('inert')
     expect(shellBase).toHaveAttribute('aria-hidden', 'true')
 
-    // An unblocked anchor behind the modal would navigate away from it.
-    const homeLink = within(shellBase).getByRole('link', { name: 'Home', hidden: true })
+    // An unblocked anchor behind the modal would navigate away from it. Any
+    // anchor will do; this used to reach for the bottom nav's home link.
+    const behind = within(shellBase).getAllByRole('link', { hidden: true })[0]
+    if (!behind) throw new Error('No anchor behind the modal to test against')
     const click = new MouseEvent('click', { bubbles: true, cancelable: true })
-    homeLink.dispatchEvent(click)
+    behind.dispatchEvent(click)
     expect(click.defaultPrevented).toBe(true)
   })
 
