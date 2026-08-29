@@ -105,6 +105,24 @@ describe('turning evidence into a suggestion', () => {
     expect(authority.weight).toBeLessThan(1)
   })
 
+  it('weights the peer average by evidence, not by counting each technique once', () => {
+    // Two techniques with a thousand runs each at the same 40% rate are the real
+    // peer average. A third technique's two lucky runs at 100% should not be
+    // able to drag that baseline up and make the well-evidenced techniques read
+    // as underperforming their peers when they ARE the peers.
+    const proposals = propose([
+      report('numbers', 40, 1000),
+      report('authority', 40, 1000),
+      report('social_proof', 100, 2),
+    ])
+
+    const numbers = proposals.find((p) => p.category === 'numbers')!
+    const authority = proposals.find((p) => p.category === 'authority')!
+
+    expect(numbers.weight).toBeGreaterThan(0.9)
+    expect(authority.weight).toBeGreaterThan(0.9)
+  })
+
   it('carries the evidence, so a promotion can record what it was based on', () => {
     const [proposal] = propose([report('numbers', 60, 42)])
     expect(proposal!.evidence).toEqual({ runs: 42, winPct: 60, negativeReactionPct: 0 })
