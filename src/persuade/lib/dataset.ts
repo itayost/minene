@@ -60,6 +60,56 @@ export interface ExportReport {
   rejected: Record<string, number>
 }
 
+/** The columns `export:dataset` reads. Kept separate from `Run` because the row is flat and the type is not. */
+export interface DatasetSourceRow {
+  id: string
+  created_at: string
+  plan: Run['plan']
+  persona_id: string | null
+  turns: Run['turns'] | null
+  state: Run['state']
+  score: RunScore | null
+  rules: RuleConfig | null
+}
+
+/**
+ * Turns raw rows into `SourceRun`s, resolving each row's `persona_id` back to
+ * the name and role the persuader was actually given.
+ *
+ * `runSimulation` always passes the real persona as the recipient turn by
+ * turn -- never null -- so a replay that leaves this out does not merely lose
+ * color, it tells the model the opposite of what it was told when the answer
+ * was produced: "you were not told who you are talking to" (`prompts.ts`'s
+ * `formatRecipient(null)`) paired with an answer that addresses the recipient
+ * by name, because it was asked to. Split out from the script so the
+ * resolution can be tested without a database: `personas` is a lookup built
+ * ahead of time, so this stays synchronous.
+ */
+export function sourceRunsFromRows(
+  rows: readonly DatasetSourceRow[],
+  personas: ReadonlyMap<string, Recipient>,
+): SourceRun[] {
+  return rows.map((row) => ({
+    run: {
+      id: row.id,
+      createdAt: row.created_at,
+      planId: row.plan?.id ?? '',
+      personaId: row.persona_id,
+      plan: row.plan,
+      persona: null,
+      turns: row.turns ?? [],
+      state: row.state,
+      violations: (row.turns ?? []).flatMap((t) => t.violations ?? []),
+    } as Run,
+    score: row.score,
+    rules: row.rules,
+    // Falls back to null (no recipient stated) only when the persona is
+    // genuinely unresolvable -- a row with no persona_id at all -- rather
+    // than whenever the caller did not bother to look one up.
+    persona: row.persona_id ? (personas.get(row.persona_id) ?? null) : null,
+  }))
+}
+
 const reject = (report: Record<string, number>, reason: string) => {
   report[reason] = (report[reason] ?? 0) + 1
 }
