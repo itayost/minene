@@ -9,6 +9,7 @@
     "start": "next start",
     "validate:brands": "tsx scripts/validate-brands.ts",
     "validate:lab": "tsx scripts/validate-lab-content.ts",
+    "export:dataset": "tsx scripts/export-dataset.ts",
     "test": "vitest",
     "test:run": "vitest run",
     "lint": "biome check .",
