@@ -156,7 +156,18 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       // Worn down rather than persuaded. Counted per technique that was on the
       // table, because a technique cannot be credited for a win and excused
       // from the exhaustion in the same conversation.
-      if (run.fatigue >= 0.7) at.negative += 1
+      //
+      // Two signals, not one: `stopped_fatigue` is the engine's own verdict,
+      // reached against whatever fatigueThreshold that run's RuleConfig
+      // actually used -- which an experiment is free to set below 0.7 (it is
+      // an ordinary field on RuleConfig, see experiments.ts). A run that
+      // stopped at 0.4 under a lowered threshold is not less worn down than
+      // one that reached 0.7 under the default; checking only the fixed bar
+      // silently undercounts exactly the runs an experiment on this setting
+      // exists to compare. The fixed bar stays, for the case this outcome
+      // doesn't cover: an agreed run where fatigue crept high without ever
+      // tripping the stop.
+      if (run.outcome === 'stopped_fatigue' || run.fatigue >= 0.7) at.negative += 1
       at.reasons.push({ key: run.world?.reason ?? null, won: isWin })
       at.personas.push({ key: run.personaId, won: isWin })
       byCategory.set(category, at)
