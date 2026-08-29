@@ -10,6 +10,7 @@ import type {
   TargetPersona,
   Turn,
 } from './types'
+import type { WorldState } from './world'
 
 /**
  * A conversation between two parties: the persuader, which works by the rules, and
@@ -21,6 +22,15 @@ export interface SimulationInput {
   plan: PersuasionPlan
   persona: TargetPersona
   rules?: RuleConfig
+  /**
+   * The closed world this run happens inside.
+   *
+   * Passed to targetReply and to nothing else. persuaderTurn below takes the
+   * plan, the turns, the state and the rules -- it has no parameter this could
+   * be handed to, which is the isolation being structural rather than a
+   * convention somebody remembers.
+   */
+  world?: WorldState | null
 }
 
 export type SimulationEvent =
@@ -29,7 +39,7 @@ export type SimulationEvent =
   | { type: 'done'; run: Run }
 
 export async function* runSimulation(input: SimulationInput): AsyncGenerator<SimulationEvent> {
-  const { plan, persona, rules = DEFAULT_RULES } = input
+  const { plan, persona, rules = DEFAULT_RULES, world = null } = input
   const turns: Turn[] = []
   let state = initialState()
   let stopReason: string | null = null
@@ -49,7 +59,7 @@ export async function* runSimulation(input: SimulationInput): AsyncGenerator<Sim
       break
     }
 
-    const reply = await targetReply(persona, plan, turns)
+    const reply = await targetReply(persona, plan, turns, world)
     const t = applyTargetReply(reply, turns, state, rules)
     turns.push(t.turn)
     state = t.state

@@ -1,6 +1,7 @@
 import { ARGUMENT_LABELS, BLOCKERS, INTERACTION_PLAN, RUNG_LABELS } from './knowledge'
 import { DEFAULT_RULES, type RuleConfig } from './rules'
 import type { ConversationState, PersuasionPlan, TargetPersona, Turn } from './types'
+import { describeWorld, type WorldState } from './world'
 
 /**
  * All prompts are Hebrew on purpose. The model was built for shop-floor Hebrew,
@@ -164,27 +165,49 @@ ${opening}
 אם זו אינטראקציה ${rules.maxInteractions} - אל תוסיף טיעון. תבקש כן או לא.`
 }
 
-export function targetSystemPrompt(persona: TargetPersona, plan: PersuasionPlan): string {
-  return `אתה משחק בן אדם אמיתי בשיחה בוואטסאפ עם ההנהלה. אתה לא עוזר ואתה לא בינה מלאכותית.
-
-## מי אתה
-שם: ${persona.name}
-תפקיד: ${persona.role}
-המצב שלך עכשיו: ${persona.situation}
-מה מניע אותך: ${persona.motivatedBy.join(', ')}
-סגנון הדיבור שלך: ${persona.style}
+/**
+ * The counterpart's prompt, and the only place a WorldState may ever appear.
+ *
+ * The world is what the simulated person knows and the persuader has to find
+ * out. `persuaderSystemPrompt` takes no world and must never take one -- a leak
+ * there turns the lab into a measurement of a bot reading an answer key.
+ * tests/persuade/world-isolation.test.ts checks the signature and the text.
+ */
+export function targetSystemPrompt(
+  persona: TargetPersona,
+  plan: PersuasionPlan,
+  world: WorldState | null = null,
+): string {
+  // With a world, the world owns the situation, the secret and the condition;
+  // the persona keeps its name, role and voice. Without one, the persona
+  // supplies all of it, which is how every run before scenarios worked and how
+  // a hand-started lab run still works.
+  const situation = world
+    ? describeWorld(world)
+    : `## המצב שלך עכשיו
+${persona.situation}
 
 ## האמת שרק אתה יודע
 ${persona.hiddenTruth}
 אל תתנדב לספר את זה. אם ישאלו אותך מספר מדויק - תענה נכון.
 
-## רמת ההתנגדות שלך: ${persona.resistance} מתוך 5
-1 = משתכנע מהר. 5 = צריך טיעון חזק מאוד, מספרים וסמכות.
-
 ## מתי אתה מסכים
 ${persona.agreesWhen}
 אם התנאי הזה התקיים - תגיד במפורש "סגור, אני עושה את זה" ותפסיק להתנגד.
-אם הוא לא התקיים - אל תסכים רק כדי להיות נחמד.
+אם הוא לא התקיים - אל תסכים רק כדי להיות נחמד.`
+
+  return `אתה משחק בן אדם אמיתי בשיחה בוואטסאפ עם ההנהלה. אתה לא עוזר ואתה לא בינה מלאכותית.
+
+## מי אתה
+שם: ${persona.name}
+תפקיד: ${persona.role}
+מה מניע אותך: ${persona.motivatedBy.join(', ')}
+סגנון הדיבור שלך: ${persona.style}
+
+${situation}
+
+## רמת ההתנגדות שלך: ${persona.resistance} מתוך 5
+1 = משתכנע מהר. 5 = צריך טיעון חזק מאוד, מספרים וסמכות.
 
 ## איך אתה כותב
 - עברית מדוברת. משפטים קצרים. לפעמים שגיאת כתיב.
