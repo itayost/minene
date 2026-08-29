@@ -44,8 +44,14 @@ const ALL_ROLES: Role = { id: '', name: 'כל התפקידים', sortOrder: -1 }
 type LoadState = { status: 'loading' | 'ready' } | { status: 'error'; message: string }
 
 export function BookClient({ brandId, role }: { brandId: string; role: 'owner' | 'staff' }) {
-  const rulesApi = useMemo(() => createRulesApi(createBrowserSupabase() as unknown as RulesClient), [])
-  const rolesApi = useMemo(() => createRolesApi(createBrowserSupabase() as unknown as RolesClient), [])
+  const rulesApi = useMemo(
+    () => createRulesApi(createBrowserSupabase() as unknown as RulesClient),
+    [],
+  )
+  const rolesApi = useMemo(
+    () => createRolesApi(createBrowserSupabase() as unknown as RolesClient),
+    [],
+  )
   const handleError = useApiErrorHandler()
 
   const [tab, setTab] = useState<TabId>('rules')
@@ -70,13 +76,20 @@ export function BookClient({ brandId, role }: { brandId: string; role: 'owner' |
 
   useEffect(() => {
     let cancelled = false
-    rolesApi.listRoles()
-      .then((loaded) => { if (!cancelled) setRoles(loaded) })
+    rolesApi
+      .listRoles()
+      .then((loaded) => {
+        if (!cancelled) setRoles(loaded)
+      })
       // A failed role list is not worth failing the page over: only the
       // עשה ואל תעשה filter needs it, and that tab degrades to every role, which
       // is a superset. handleError still runs so an expired session redirects.
-      .catch((error) => { if (!cancelled) handleError(error) })
-    return () => { cancelled = true }
+      .catch((error) => {
+        if (!cancelled) handleError(error)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [handleError, rolesApi])
 
   useEffect(() => {
@@ -97,11 +110,13 @@ export function BookClient({ brandId, role }: { brandId: string; role: 'owner' |
         ])
         return [...dos.rows, ...donts.rows]
       }
-      return (await rulesApi.listRules({
-        topicId: null,
-        ...(query ? { query } : {}),
-        ...(status === 'approved' ? {} : { status }),
-      })).rows
+      return (
+        await rulesApi.listRules({
+          topicId: null,
+          ...(query ? { query } : {}),
+          ...(status === 'approved' ? {} : { status }),
+        })
+      ).rows
     }
 
     Promise.all([load(), rulesApi.listMyVotes()])
@@ -113,29 +128,35 @@ export function BookClient({ brandId, role }: { brandId: string; role: 'owner' |
       })
       .catch((error) => {
         if (cancelled) return
-        if (handleError(error)) setState({ status: 'error', message: 'לא הצלחנו לטעון את הידע כרגע' })
+        if (handleError(error))
+          setState({ status: 'error', message: 'לא הצלחנו לטעון את הידע כרגע' })
       })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [handleError, query, reloadKey, roleId, rulesApi, status, tab])
 
-  const withSaving = useCallback(async (ruleId: string, work: () => Promise<unknown>) => {
-    setSavingIds((current) => new Set(current).add(ruleId))
-    setActionError('')
-    try {
-      await work()
-      return true
-    } catch (error) {
-      if (handleError(error)) setActionError('הדירוג לא נשמר. נסי שוב.')
-      return false
-    } finally {
-      setSavingIds((current) => {
-        const next = new Set(current)
-        next.delete(ruleId)
-        return next
-      })
-    }
-  }, [handleError])
+  const withSaving = useCallback(
+    async (ruleId: string, work: () => Promise<unknown>) => {
+      setSavingIds((current) => new Set(current).add(ruleId))
+      setActionError('')
+      try {
+        await work()
+        return true
+      } catch (error) {
+        if (handleError(error)) setActionError('הדירוג לא נשמר. נסי שוב.')
+        return false
+      } finally {
+        setSavingIds((current) => {
+          const next = new Set(current)
+          next.delete(ruleId)
+          return next
+        })
+      }
+    },
+    [handleError],
+  )
 
   /**
    * Optimistic on the vote, and deliberately not on the percentage. The vote is
@@ -143,21 +164,27 @@ export function BookClient({ brandId, role }: { brandId: string; role: 'owner' |
    * is honest. The percentage is an aggregate a trigger recomputes, and guessing
    * at it here would show a number that is subtly wrong until the next load.
    */
-  const onVote = useCallback(async (ruleId: string, isLike: boolean) => {
-    const saved = await withSaving(ruleId, () => rulesApi.setRuleVote({ ruleId, isLike }))
-    if (saved) setVotes((current) => new Map(current).set(ruleId, isLike))
-  }, [rulesApi, withSaving])
+  const onVote = useCallback(
+    async (ruleId: string, isLike: boolean) => {
+      const saved = await withSaving(ruleId, () => rulesApi.setRuleVote({ ruleId, isLike }))
+      if (saved) setVotes((current) => new Map(current).set(ruleId, isLike))
+    },
+    [rulesApi, withSaving],
+  )
 
-  const onClear = useCallback(async (ruleId: string) => {
-    const saved = await withSaving(ruleId, () => rulesApi.clearRuleVote({ ruleId }))
-    if (saved) {
-      setVotes((current) => {
-        const next = new Map(current)
-        next.delete(ruleId)
-        return next
-      })
-    }
-  }, [rulesApi, withSaving])
+  const onClear = useCallback(
+    async (ruleId: string) => {
+      const saved = await withSaving(ruleId, () => rulesApi.clearRuleVote({ ruleId }))
+      if (saved) {
+        setVotes((current) => {
+          const next = new Map(current)
+          next.delete(ruleId)
+          return next
+        })
+      }
+    },
+    [rulesApi, withSaving],
+  )
 
   const list = (items: Rule[], labelledBy?: string) => (
     <ul aria-labelledby={labelledBy} className="knowledge-list">
@@ -189,8 +216,12 @@ export function BookClient({ brandId, role }: { brandId: string; role: 'owner' |
                   hunt, the approval queue and the documents list. The deleted
                   hub used to be that route. */}
               <Link href={`/${brandId}/tools/brain/ingest`}>הזנה</Link>
-              <button onClick={() => setIsSearchOpen((open) => !open)} type="button">חיפוש וסינון</button>
-              <button onClick={() => setIsRolesOpen(true)} type="button">תפקידים</button>
+              <button onClick={() => setIsSearchOpen((open) => !open)} type="button">
+                חיפוש וסינון
+              </button>
+              <button onClick={() => setIsRolesOpen(true)} type="button">
+                תפקידים
+              </button>
             </div>
           ) : null}
         </header>
@@ -209,7 +240,9 @@ export function BookClient({ brandId, role }: { brandId: string; role: 'owner' |
                 type="search"
                 value={draftQuery}
               />
-              <button onClick={() => setQuery(draftQuery)} type="button">חיפוש</button>
+              <button onClick={() => setQuery(draftQuery)} type="button">
+                חיפוש
+              </button>
             </div>
 
             <label htmlFor="book-status">סטטוס</label>
@@ -227,7 +260,11 @@ export function BookClient({ brandId, role }: { brandId: string; role: 'owner' |
           </section>
         ) : null}
 
-        <div aria-label="תצוגות הידע" className="knowledge-tabs knowledge-tabs--grid" role="tablist">
+        <div
+          aria-label="תצוגות הידע"
+          className="knowledge-tabs knowledge-tabs--grid"
+          role="tablist"
+        >
           {TABS.map((item) => (
             <button
               aria-selected={tab === item.id}
@@ -247,7 +284,9 @@ export function BookClient({ brandId, role }: { brandId: string; role: 'owner' |
             <span>תפקיד</span>
             <select onChange={(event) => setRoleId(event.target.value)} value={roleId}>
               {[ALL_ROLES, ...roles].map((role) => (
-                <option key={role.id || 'all'} value={role.id}>{role.name}</option>
+                <option key={role.id || 'all'} value={role.id}>
+                  {role.name}
+                </option>
               ))}
             </select>
           </label>
@@ -255,10 +294,16 @@ export function BookClient({ brandId, role }: { brandId: string; role: 'owner' |
 
         <SubmitKnowledge onSubmitted={() => setReloadKey((key) => key + 1)} rulesApi={rulesApi} />
 
-        {actionError ? <p className="knowledge-message" role="alert">{actionError}</p> : null}
+        {actionError ? (
+          <p className="knowledge-message" role="alert">
+            {actionError}
+          </p>
+        ) : null}
 
         {state.status === 'error' ? (
-          <p className="knowledge-message" role="alert">{state.message}</p>
+          <p className="knowledge-message" role="alert">
+            {state.message}
+          </p>
         ) : state.status === 'loading' ? (
           <p className="knowledge-message">טוענת…</p>
         ) : rows.length === 0 ? (
@@ -269,10 +314,22 @@ export function BookClient({ brandId, role }: { brandId: string; role: 'owner' |
                 "What to do" and "what never to do" are read as separate
                 checklists, and interleaving them makes a reader parse each row
                 before knowing which kind it is. */}
-            <h3 className="knowledge-heading" data-polarity="do" id="knowledge-dos">עשה</h3>
-            {dos.length ? list(dos, 'knowledge-dos') : <p className="knowledge-message">אין הנחיות עשה לתפקיד הזה.</p>}
-            <h3 className="knowledge-heading" data-polarity="dont" id="knowledge-donts">אל תעשה</h3>
-            {donts.length ? list(donts, 'knowledge-donts') : <p className="knowledge-message">אין הנחיות אל תעשה לתפקיד הזה.</p>}
+            <h3 className="knowledge-heading" data-polarity="do" id="knowledge-dos">
+              עשה
+            </h3>
+            {dos.length ? (
+              list(dos, 'knowledge-dos')
+            ) : (
+              <p className="knowledge-message">אין הנחיות עשה לתפקיד הזה.</p>
+            )}
+            <h3 className="knowledge-heading" data-polarity="dont" id="knowledge-donts">
+              אל תעשה
+            </h3>
+            {donts.length ? (
+              list(donts, 'knowledge-donts')
+            ) : (
+              <p className="knowledge-message">אין הנחיות אל תעשה לתפקיד הזה.</p>
+            )}
           </>
         ) : (
           list(rows)

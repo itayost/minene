@@ -132,7 +132,9 @@ describe('who a rule is addressed to', () => {
 
     // setRuleRoles replaces rather than merges, so what this sends IS the final
     // state. An additive payload could never uncheck one.
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ roleIds: ['role-2', 'role-1'] }))
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ roleIds: ['role-2', 'role-1'] }),
+    )
   })
 
   it('says what checking nothing means, rather than leaving it to be guessed', () => {
@@ -159,9 +161,14 @@ const documentsApi = vi.hoisted(() => ({
   listRecentDocuments: vi.fn(async () => ({ rows: [], hasMore: false })),
 }))
 vi.mock('../../src/brain/documents-api', async (o) => ({
-  ...(await o<Record<string, unknown>>()), createDocumentsApi: () => documentsApi,
+  ...(await o<Record<string, unknown>>()),
+  createDocumentsApi: () => documentsApi,
 }))
-const rolesApi = vi.hoisted(() => ({ listRoles: vi.fn(), listRuleRoles: vi.fn(), setRuleRoles: vi.fn() }))
+const rolesApi = vi.hoisted(() => ({
+  listRoles: vi.fn(),
+  listRuleRoles: vi.fn(),
+  setRuleRoles: vi.fn(),
+}))
 
 vi.mock('../../src/brain/rules-api', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -177,7 +184,10 @@ const { IngestClient } = await import('../../app/[brandId]/tools/brain/ingest/in
 describe('saving a correction from the queue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    rulesApi.listPendingRules.mockResolvedValue({ rows: [makeRule({ text: 'לחייך' })], nextCursor: null })
+    rulesApi.listPendingRules.mockResolvedValue({
+      rows: [makeRule({ text: 'לחייך' })],
+      nextCursor: null,
+    })
     rulesApi.loadKpis.mockResolvedValue({ knowledgeItems: 0, qualityItems: 0, growthPercent: null })
     rulesApi.updateRule.mockResolvedValue(makeRule({ text: 'לחייך' }))
     rolesApi.listRoles.mockResolvedValue(ROLES)
@@ -192,9 +202,16 @@ describe('saving a correction from the queue', () => {
     await user.selectOptions(screen.getByLabelText('עשה / אל תעשה'), 'do')
     await user.click(screen.getByRole('button', { name: 'שמירה' }))
 
-    await waitFor(() => expect(rulesApi.updateRule).toHaveBeenCalledWith(expect.objectContaining({
-      ruleId: 'rule-1', polarity: 'do', subTopic: 'קבלת פנים', response: null,
-    })))
+    await waitFor(() =>
+      expect(rulesApi.updateRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ruleId: 'rule-1',
+          polarity: 'do',
+          subTopic: 'קבלת פנים',
+          response: null,
+        }),
+      ),
+    )
   })
 
   it('writes the role assignment alongside the rule itself', async () => {
@@ -205,7 +222,9 @@ describe('saving a correction from the queue', () => {
 
     // rule_roles is a separate table, so it takes a separate call. Both belong
     // to the one correction the reviewer just made.
-    await waitFor(() => expect(rolesApi.setRuleRoles).toHaveBeenCalledWith({ ruleId: 'rule-1', roleIds: ['role-2'] }))
+    await waitFor(() =>
+      expect(rolesApi.setRuleRoles).toHaveBeenCalledWith({ ruleId: 'rule-1', roleIds: ['role-2'] }),
+    )
   })
 
   it('clears a sub-topic to nothing rather than to an empty string', async () => {
@@ -217,6 +236,8 @@ describe('saving a correction from the queue', () => {
 
     // The column is nullable text. '' would be a sub-topic named the empty
     // string, which sorts and filters as a real value.
-    await waitFor(() => expect(rulesApi.updateRule).toHaveBeenCalledWith(expect.objectContaining({ subTopic: null })))
+    await waitFor(() =>
+      expect(rulesApi.updateRule).toHaveBeenCalledWith(expect.objectContaining({ subTopic: null })),
+    )
   })
 })

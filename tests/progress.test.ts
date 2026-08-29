@@ -29,9 +29,16 @@ describe('progress persistence', () => {
 
   test('discards negative, non-integer, non-number, and non-finite values', () => {
     const storage = new MemoryStorage()
-    storage.setItem(progressStorageKey('minene'), JSON.stringify({
-      negative: -1, decimal: 1.5, text: '2', infinity: null, valid: 3,
-    }))
+    storage.setItem(
+      progressStorageKey('minene'),
+      JSON.stringify({
+        negative: -1,
+        decimal: 1.5,
+        text: '2',
+        infinity: null,
+        valid: 3,
+      }),
+    )
     expect(readProgress(storage, 'minene')).toEqual({ valid: 3 })
   })
 
@@ -56,8 +63,12 @@ describe('progress persistence', () => {
 
   test('catches storage read and write exceptions', () => {
     const failingStorage = {
-      getItem: () => { throw new Error('security') },
-      setItem: () => { throw new Error('quota') },
+      getItem: () => {
+        throw new Error('security')
+      },
+      setItem: () => {
+        throw new Error('quota')
+      },
     } as unknown as Storage
     expect(readProgress(failingStorage, 'minene')).toEqual({})
     expect(() => writeProgress(failingStorage, 'minene', { 'tasks/daily-tasks': 1 })).not.toThrow()

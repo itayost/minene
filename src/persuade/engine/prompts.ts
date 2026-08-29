@@ -1,6 +1,6 @@
-import { ARGUMENT_LABELS, BLOCKERS, INTERACTION_PLAN, RUNG_LABELS } from './knowledge';
-import { DEFAULT_RULES, type RuleConfig } from './rules';
-import type { ConversationState, PersuasionPlan, TargetPersona, Turn } from './types';
+import { ARGUMENT_LABELS, BLOCKERS, INTERACTION_PLAN, RUNG_LABELS } from './knowledge'
+import { DEFAULT_RULES, type RuleConfig } from './rules'
+import type { ConversationState, PersuasionPlan, TargetPersona, Turn } from './types'
 
 /**
  * All prompts are Hebrew on purpose. The model was built for shop-floor Hebrew,
@@ -15,12 +15,13 @@ const languageLaw = (rules: RuleConfig): string => `חוקי שפה:
 - בלי הרצאות. בלי רשימות. בלי הקדמות.
 - כל הודעה: עד ${rules.maxWordsPerMessage} מילים בסך הכול. זה נאכף.
 - זו הודעת וואטסאפ באמצע משמרת, לא מייל. שתי שורות על המסך, לא יותר.
-- הוא עונה לך בחמש מילים. תענה לו באותו אורך.`;
+- הוא עונה לך בחמש מילים. תענה לו באותו אורך.`
 
-const coreLaw = (rules: RuleConfig): string => CORE_LAW.replace(
-  '2. טיעון אחד או שניים בכל הודעה. לא יותר.',
-  `2. עד ${rules.maxArgumentsPerTurn} טיעונים בכל הודעה. לא יותר.`,
-);
+const coreLaw = (rules: RuleConfig): string =>
+  CORE_LAW.replace(
+    '2. טיעון אחד או שניים בכל הודעה. לא יותר.',
+    `2. עד ${rules.maxArgumentsPerTurn} טיעונים בכל הודעה. לא יותר.`,
+  )
 
 const CORE_LAW = `חוקי ליבה:
 1. אל תנסה לשכנע לפני שהבנת למה האדם לא זז.
@@ -33,34 +34,35 @@ const CORE_LAW = `חוקי ליבה:
 7א. אל תמציא שם. אם לא אמרו לך למי אתה פונה, פנה בלי שם.
 8. מתחילים רך. עולים מדרגה אחת בכל פעם. לא קופצים לאיום.
 9. המטרה היא לא לנצח בוויכוח. המטרה היא שהוא יזוז.
-10. קודם שומרים על האדם. אחר כך משפרים ביצועים.`;
+10. קודם שומרים על האדם. אחר כך משפרים ביצועים.`
 
 function blockerTable(): string {
   return BLOCKERS.map(
-    (b) => `- ${b.label} (${b.id}): נשמע כמו "${b.signals[0]}". השתמש ב: ${b.useTools.join(', ')}. ${b.avoid}`,
-  ).join('\n');
+    (b) =>
+      `- ${b.label} (${b.id}): נשמע כמו "${b.signals[0]}". השתמש ב: ${b.useTools.join(', ')}. ${b.avoid}`,
+  ).join('\n')
 }
 
 function formatPlan(plan: PersuasionPlan, maxRung: number): string {
   const args = [...plan.arguments]
     .sort((a, b) => b.strength - a.strength)
     .map((a) => `- [${a.strength}/10] ${ARGUMENT_LABELS[a.category]}: ${a.text}`)
-    .join('\n');
+    .join('\n')
 
   const objections = plan.objections
     .map((o) => `- אם יאמר "${o.objection}" -> ${o.response}`)
-    .join('\n');
+    .join('\n')
 
   // Show only the rungs reachable now. The persuader has no business reading the
   // managerial-boundary line while it is still on rung one.
   const escalation = plan.escalation
     .filter((e) => e.rung <= maxRung)
     .map((e) => `- מדרגה ${e.rung} (${RUNG_LABELS[e.rung]}): ${e.message}`)
-    .join('\n');
+    .join('\n')
 
   const mandate = plan.onBehalfOf
     ? `אתה פונה בשם ${plan.onBehalfOf.name}, ${plan.onBehalfOf.title}. המנדט: ${plan.onBehalfOf.mandate}`
-    : 'אתה פונה בשם עצמך. אין לך סמכות ארגונית להישען עליה.';
+    : 'אתה פונה בשם עצמך. אין לך סמכות ארגונית להישען עליה.'
 
   return `## השליחות
 ${mandate}
@@ -86,12 +88,12 @@ ${escalation}
 המדרגות הבאות ייפתחו רק אם באמת יהיה צורך.
 
 ## נקודת עצירה
-${plan.stopPoint}`;
+${plan.stopPoint}`
 }
 
 function formatState(state: ConversationState, rules: RuleConfig): string {
-  const blockers = state.blockers.length ? state.blockers.join(', ') : 'עדיין לא זוהה';
-  const max = rules.maxInteractions;
+  const blockers = state.blockers.length ? state.blockers.join(', ') : 'עדיין לא זוהה'
+  const max = rules.maxInteractions
   return `## איפה אנחנו עכשיו
 אינטראקציית שכנוע: ${Math.min(state.interaction + 1, max)} מתוך ${max}
 המשימה של האינטראקציה הזאת: ${INTERACTION_PLAN[Math.min(state.interaction + 1, 4)]}
@@ -101,24 +103,24 @@ function formatState(state: ConversationState, rules: RuleConfig): string {
 מה מניע אותו לפי מה שנאמר: ${state.signals.motivatedBy.join(', ') || 'לא ידוע'}
 אנרגיה: ${state.signals.energy}
 הבקשה כבר נאמרה: ${state.askStated ? 'כן' : 'לא'}
-השליחות כבר הוצגה: ${state.identityStated ? 'כן' : 'לא'}`;
+השליחות כבר הוצגה: ${state.identityStated ? 'כן' : 'לא'}`
 }
 
 /** Who is on the other side. A real manager knows this; the engine should too. */
 export interface Recipient {
-  name: string;
-  role: string;
+  name: string
+  role: string
 }
 
 function formatRecipient(recipient: Recipient | null): string {
   if (!recipient) {
     return `## למי אתה פונה
-לא נמסר לך מי מולך. אל תמציא שם ואל תניח תפקיד או מגדר.`;
+לא נמסר לך מי מולך. אל תמציא שם ואל תניח תפקיד או מגדר.`
   }
   return `## למי אתה פונה
 ${recipient.name}, ${recipient.role}.
 פנה אליו בשמו, והתאם את הניסוח לתפקיד ולמגדר שלו.
-תיאור התפקיד בתוכנית נכתב באופן כללי. אם הוא לא מתאים למי שמולך, תתאים אותו.`;
+תיאור התפקיד בתוכנית נכתב באופן כללי. אם הוא לא מתאים למי שמולך, תתאים אותו.`
 }
 
 export function persuaderSystemPrompt(
@@ -138,7 +140,7 @@ export function persuaderSystemPrompt(
       ? `עכשיו אומרים את הבקשה, במלואה ובדיוק. מיד אחריה תועלת אישית אחת חזקה.
 ואז שאלה אחת קצרה: זה אפשרי?
 אסור לשאול שאלות חקירה לפני שהבקשה נאמרה. זו הטעות הכי נפוצה.`
-      : '';
+      : ''
 
   return `אתה מנוע שכנוע. אתה מדבר עברית פשוטה עם מנהל או עובד, ומטרתך שהוא באמת יעשה משהו.
 
@@ -159,7 +161,7 @@ ${opening}
 
 בכל תור: קודם אבחן מה עוצר אותו עכשיו, אחר כך בחר כלי אחד או שניים, ורק אז כתוב.
 אם הוא כבר הסכים - תפסיק לשכנע. תסגור מתי מתחילים.
-אם זו אינטראקציה ${rules.maxInteractions} - אל תוסיף טיעון. תבקש כן או לא.`;
+אם זו אינטראקציה ${rules.maxInteractions} - אל תוסיף טיעון. תבקש כן או לא.`
 }
 
 export function targetSystemPrompt(persona: TargetPersona, plan: PersuasionPlan): string {
@@ -192,14 +194,14 @@ ${persona.agreesWhen}
 - לעולם אל תשבור דמות. אל תדבר על השיחה מבחוץ.
 
 ## הנושא
-מבקשים ממך: ${plan.ask.oneLiner}`;
+מבקשים ממך: ${plan.ask.oneLiner}`
 }
 
 export function historyForModel(turns: Turn[]): { role: 'user' | 'assistant'; content: string }[] {
   return turns.map((t) => ({
     role: t.role === 'persuader' ? ('assistant' as const) : ('user' as const),
     content: t.text,
-  }));
+  }))
 }
 
 /** The counterpart sees the mirror image of the history. */
@@ -207,5 +209,5 @@ export function historyForTarget(turns: Turn[]): { role: 'user' | 'assistant'; c
   return turns.map((t) => ({
     role: t.role === 'target' ? ('assistant' as const) : ('user' as const),
     content: t.text,
-  }));
+  }))
 }

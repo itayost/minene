@@ -9,8 +9,9 @@ describe('useProgress', () => {
 
     result.current.remember('multiple', 'group-one', 2)
 
-    expect(JSON.parse(window.localStorage.getItem(progressStorageKey('demo'))!))
-      .toEqual({ 'multiple/group-one': 2 })
+    expect(JSON.parse(window.localStorage.getItem(progressStorageKey('demo'))!)).toEqual({
+      'multiple/group-one': 2,
+    })
   })
 
   it('reads back what it remembered', () => {

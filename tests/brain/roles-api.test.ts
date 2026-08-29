@@ -11,7 +11,11 @@ type Step = { table: string; verb: string; values?: unknown }
  * which payload.
  */
 function client(outcomes: Record<string, Outcome> = {}) {
-  const calls: { table: string; columns: string; ordered: string[] } = { table: '', columns: '', ordered: [] }
+  const calls: { table: string; columns: string; ordered: string[] } = {
+    table: '',
+    columns: '',
+    ordered: [],
+  }
   const steps: Step[] = []
 
   const result = (table: string) => outcomes[table] ?? { data: [], error: null }
@@ -20,13 +24,28 @@ function client(outcomes: Record<string, Outcome> = {}) {
     from: vi.fn((table: string) => {
       calls.table = table
       const query = {
-        select: (columns: string) => { calls.columns = columns; return query },
-        order: (column: string) => { calls.ordered.push(column); return query },
+        select: (columns: string) => {
+          calls.columns = columns
+          return query
+        },
+        order: (column: string) => {
+          calls.ordered.push(column)
+          return query
+        },
         eq: () => query,
         in: () => query,
-        insert: (values: unknown) => { steps.push({ table, verb: 'insert', values }); return query },
-        update: (values: unknown) => { steps.push({ table, verb: 'update', values }); return query },
-        delete: () => { steps.push({ table, verb: 'delete' }); return query },
+        insert: (values: unknown) => {
+          steps.push({ table, verb: 'insert', values })
+          return query
+        },
+        update: (values: unknown) => {
+          steps.push({ table, verb: 'update', values })
+          return query
+        },
+        delete: () => {
+          steps.push({ table, verb: 'delete' })
+          return query
+        },
         maybeSingle: async () => result(table),
         then: (resolve: (value: Outcome) => unknown) => resolve(result(table)),
       }
@@ -58,9 +77,13 @@ describe('the job-role catalogue', () => {
   })
 
   it('hands back a role the UI can read without knowing the column names', async () => {
-    const { api } = client({ roles: { data: [{ id: 'role-1', name: 'מנהלת חנות', sort_order: 10 }], error: null } })
+    const { api } = client({
+      roles: { data: [{ id: 'role-1', name: 'מנהלת חנות', sort_order: 10 }], error: null },
+    })
 
-    await expect(api.listRoles()).resolves.toEqual([{ id: 'role-1', name: 'מנהלת חנות', sortOrder: 10 }])
+    await expect(api.listRoles()).resolves.toEqual([
+      { id: 'role-1', name: 'מנהלת חנות', sortOrder: 10 },
+    ])
   })
 
   it('reads as an empty catalogue rather than failing when no role exists yet', async () => {
@@ -103,7 +126,9 @@ describe('naming a role', () => {
     // it to equal current_tenant_id(), so it has to be sent, and the only honest
     // source for it is the caller's own row.
     expect(steps[0]).toEqual({
-      table: 'roles', verb: 'insert', values: { tenant_id: 'tenant-1', name: 'מנהלת חנות', sort_order: 100 },
+      table: 'roles',
+      verb: 'insert',
+      values: { tenant_id: 'tenant-1', name: 'מנהלת חנות', sort_order: 100 },
     })
   })
 
@@ -119,7 +144,9 @@ describe('naming a role', () => {
   it('says a duplicate name is a duplicate, which is a thing a person can fix', async () => {
     const { api } = client({ profiles: PROFILE, roles: { data: null, error: { code: '23505' } } })
 
-    await expect(api.createRole({ name: 'מנהלת חנות' })).rejects.toMatchObject({ code: 'DUPLICATE_ROLE' })
+    await expect(api.createRole({ name: 'מנהלת חנות' })).rejects.toMatchObject({
+      code: 'DUPLICATE_ROLE',
+    })
   })
 })
 
@@ -134,8 +161,10 @@ describe('renaming and removing a role', () => {
   it('throws rather than returning a role with no fields when RLS hides the row', async () => {
     const { api } = client({ roles: { data: null, error: null } })
 
-    await expect(api.renameRole({ roleId: 'role-1', name: 'מנהלת' }))
-      .rejects.toMatchObject({ code: 'REQUEST_FAILED', status: 404 })
+    await expect(api.renameRole({ roleId: 'role-1', name: 'מנהלת' })).rejects.toMatchObject({
+      code: 'REQUEST_FAILED',
+      status: 404,
+    })
   })
 
   it('deletes the role itself and nothing else', async () => {

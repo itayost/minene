@@ -1,7 +1,15 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 import { BrandShell, type PagePosition } from '../../src/components/BrandShell'
 import { ShareSheet } from '../../src/components/ShareSheet'
 import type { BrandManifest } from '../../src/core/brand-types'
@@ -38,7 +46,13 @@ function samePosition(current: PagePosition | null, next: PagePosition | null): 
   return current.pageIndex === next.pageIndex && current.pageCount === next.pageCount
 }
 
-export function BrandShellClient({ brand, children }: { brand: BrandManifest; children: ReactNode }) {
+export function BrandShellClient({
+  brand,
+  children,
+}: {
+  brand: BrandManifest
+  children: ReactNode
+}) {
   const pathname = usePathname()
   const [build, setBuild] = useState<(() => PageActionContext) | null>(null)
   const [shareContext, setShareContext] = useState<PageActionContext | null>(null)
@@ -85,13 +99,15 @@ export function BrandShellClient({ brand, children }: { brand: BrandManifest; ch
         backHref={parentHref(brand, screen)}
         homeHref={brandHref(brand.id)}
         onShare={() => setShareContext(build ? build() : null)}
-        modal={shareContext ? (
-          <ShareSheet
-            context={shareContext}
-            labels={brand.labels}
-            onClose={() => setShareContext(null)}
-          />
-        ) : undefined}
+        modal={
+          shareContext ? (
+            <ShareSheet
+              context={shareContext}
+              labels={brand.labels}
+              onClose={() => setShareContext(null)}
+            />
+          ) : undefined
+        }
       >
         {children}
       </BrandShell>

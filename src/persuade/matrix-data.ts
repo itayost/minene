@@ -16,20 +16,22 @@ export function matrixFrom(
 ): MatrixCell[] {
   const industries = [...new Set(simulations.map((s) => s.cell.industry))].sort()
 
-  return industries.flatMap((industry) => roles.map((role) => {
-    const inCell = simulations.filter(
-      (s) => s.cell.industry === industry && s.cell.jobRoleId === role.id,
-    )
-    const agreed = inCell.filter((s) => s.run.state.outcome === 'agreed').length
+  return industries.flatMap((industry) =>
+    roles.map((role) => {
+      const inCell = simulations.filter(
+        (s) => s.cell.industry === industry && s.cell.jobRoleId === role.id,
+      )
+      const agreed = inCell.filter((s) => s.run.state.outcome === 'agreed').length
 
-    return {
-      industry,
-      jobRoleId: role.id,
-      jobRoleName: role.name,
-      runs: inCell.length,
-      // Null, never 0, when nothing has been run here. The heat scale reads
-      // null as "no fill at all" rather than as the palest measured value.
-      persuasionRate: inCell.length === 0 ? null : Math.round((agreed / inCell.length) * 100),
-    }
-  }))
+      return {
+        industry,
+        jobRoleId: role.id,
+        jobRoleName: role.name,
+        runs: inCell.length,
+        // Null, never 0, when nothing has been run here. The heat scale reads
+        // null as "no fill at all" rather than as the palest measured value.
+        persuasionRate: inCell.length === 0 ? null : Math.round((agreed / inCell.length) * 100),
+      }
+    }),
+  )
 }

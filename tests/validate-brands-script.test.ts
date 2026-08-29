@@ -22,11 +22,13 @@ function brandUsing(src: string): BrandManifest {
   return {
     ...demoBrand,
     logo: { src, alt: 'Independent demo logo' },
-    subjects: [{
-      ...subject,
-      icon: src,
-      groups: [{ ...group, icon: src, pages: [{ src, alt: 'Demo page' }] }],
-    }],
+    subjects: [
+      {
+        ...subject,
+        icon: src,
+        groups: [{ ...group, icon: src, pages: [{ src, alt: 'Demo page' }] }],
+      },
+    ],
     tools: [],
   }
 }

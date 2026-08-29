@@ -18,8 +18,6 @@ const ROLES: Role[] = [
   { id: 'role-2', name: 'מוכרת', sortOrder: 20 },
 ]
 
-
-
 /**
  * The catalogue is owned by the caller now, so the harness owns it too and
  * re-renders when the sheet reports a change -- which is the behaviour that
@@ -90,7 +88,9 @@ describe('the org chart, editable', () => {
 
   it('keeps the duplicate message, which is the one a person can act on', async () => {
     const { user } = roles({
-      createRole: vi.fn(async () => { throw new RulesApiError('DUPLICATE_ROLE', 409, 'כבר קיים תפקיד בשם הזה') }),
+      createRole: vi.fn(async () => {
+        throw new RulesApiError('DUPLICATE_ROLE', 409, 'כבר קיים תפקיד בשם הזה')
+      }),
     })
     await user.type(screen.getByLabelText('תפקיד חדש'), 'מוכרת')
     await user.click(screen.getByRole('button', { name: 'הוספה' }))

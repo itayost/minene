@@ -1,6 +1,6 @@
-import { anthropic } from '@ai-sdk/anthropic';
-import { openai } from '@ai-sdk/openai';
-import type { LanguageModel } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic'
+import { openai } from '@ai-sdk/openai'
+import type { LanguageModel } from 'ai'
 
 /**
  * Model selection through the AI SDK. The provider is picked from whichever key is
@@ -8,8 +8,8 @@ import type { LanguageModel } from 'ai';
  * env change rather than a code change.
  */
 
-export type ModelRole = 'planner' | 'persuader' | 'target' | 'judge';
-export type Provider = 'openai' | 'anthropic' | 'gateway';
+export type ModelRole = 'planner' | 'persuader' | 'target' | 'judge'
+export type Provider = 'openai' | 'anthropic' | 'gateway'
 
 /**
  * planner  — stage 0, ranking arguments. Runs once per plan, off the request path.
@@ -43,40 +43,40 @@ const defaults = (): Record<Provider, Record<ModelRole, string>> => ({
     persuader: process.env.PERSUADER_MODEL ?? 'anthropic/claude-sonnet-5',
     target: process.env.PERSUADER_TARGET_MODEL ?? 'anthropic/claude-sonnet-5',
   },
-});
+})
 
-let overrides: Partial<Record<ModelRole, LanguageModel>> = {};
+let overrides: Partial<Record<ModelRole, LanguageModel>> = {}
 
 /** Swap in mock models for tests, or pin a specific model at runtime. */
 export function setModelOverrides(next: Partial<Record<ModelRole, LanguageModel>>): void {
-  overrides = next;
+  overrides = next
 }
 
 export function activeProvider(): Provider {
-  const forced = process.env.PERSUADER_PROVIDER;
-  if (forced === 'openai' || forced === 'anthropic' || forced === 'gateway') return forced;
-  if (process.env.OPENAI_API_KEY) return 'openai';
-  if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
-  return 'gateway';
+  const forced = process.env.PERSUADER_PROVIDER
+  if (forced === 'openai' || forced === 'anthropic' || forced === 'gateway') return forced
+  if (process.env.OPENAI_API_KEY) return 'openai'
+  if (process.env.ANTHROPIC_API_KEY) return 'anthropic'
+  return 'gateway'
 }
 
 export function modelId(role: ModelRole): string {
-  return defaults()[activeProvider()][role];
+  return defaults()[activeProvider()][role]
 }
 
 export function model(role: ModelRole): LanguageModel {
-  const override = overrides[role];
-  if (override) return override;
+  const override = overrides[role]
+  if (override) return override
 
-  const id = modelId(role);
+  const id = modelId(role)
   switch (activeProvider()) {
     case 'openai':
-      return openai(id);
+      return openai(id)
     case 'anthropic':
-      return anthropic(id);
+      return anthropic(id)
     default:
       // Bare "provider/model" strings resolve through the Vercel AI Gateway.
-      return id;
+      return id
   }
 }
 
@@ -109,7 +109,7 @@ const effort = (): Partial<Record<ModelRole, string>> => ({
   planner: process.env.PERSUADER_PLANNER_EFFORT ?? 'low',
   persuader: process.env.PERSUADER_EFFORT ?? 'low',
   target: process.env.PERSUADER_TARGET_EFFORT ?? 'low',
-});
+})
 
 /**
  * The values a model will actually accept, which is narrower than the values
@@ -123,7 +123,7 @@ const effort = (): Partial<Record<ModelRole, string>> => ({
  * default stands. Validating external input at the boundary, which is what an
  * env var is.
  */
-const SUPPORTED_EFFORT = new Set(['none', 'low', 'medium', 'high', 'xhigh']);
+const SUPPORTED_EFFORT = new Set(['none', 'low', 'medium', 'high', 'xhigh'])
 
 /**
  * A ceiling, not a target.
@@ -140,11 +140,11 @@ const OUTPUT_CAP: Record<ModelRole, number> = {
   persuader: 2000,
   target: 1000,
   judge: 4000,
-};
+}
 
 export interface CallOptions {
-  maxOutputTokens: number;
-  providerOptions?: Record<string, Record<string, string>>;
+  maxOutputTokens: number
+  providerOptions?: Record<string, Record<string, string>>
 }
 
 /**
@@ -156,31 +156,29 @@ export interface CallOptions {
  * a setting silently stops applying.
  */
 export function callOptions(role: ModelRole): CallOptions {
-  const chosen = effort()[role];
-  const provider = activeProvider();
-  const cap = { maxOutputTokens: OUTPUT_CAP[role] };
+  const chosen = effort()[role]
+  const provider = activeProvider()
+  const cap = { maxOutputTokens: OUTPUT_CAP[role] }
 
   // Overrides mean a scripted model in a test. It has no provider to configure
   // and no budget to spend, and passing either would make every mock assert
   // against options that exist for nobody's benefit.
-  if (overrides[role] || !chosen || !SUPPORTED_EFFORT.has(chosen)) return cap;
+  if (overrides[role] || !chosen || !SUPPORTED_EFFORT.has(chosen)) return cap
 
   // The gateway forwards provider options under the upstream provider's own
   // key, so both paths name the model's real provider rather than 'gateway'.
-  const upstream = provider === 'gateway'
-    ? modelId(role).split('/')[0] ?? 'openai'
-    : provider;
-  if (upstream !== 'openai') return cap;
+  const upstream = provider === 'gateway' ? (modelId(role).split('/')[0] ?? 'openai') : provider
+  if (upstream !== 'openai') return cap
 
-  return { ...cap, providerOptions: { openai: { reasoningEffort: chosen } } };
+  return { ...cap, providerOptions: { openai: { reasoningEffort: chosen } } }
 }
 
 export function assertModelAccessConfigured(): void {
-  if (Object.keys(overrides).length > 0) return;
-  if (process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY) return;
-  if (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN) return;
+  if (Object.keys(overrides).length > 0) return
+  if (process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY) return
+  if (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN) return
 
   throw new Error(
     'אין גישה למודל. הוסף ל-.env.local את OPENAI_API_KEY, או ANTHROPIC_API_KEY, או AI_GATEWAY_API_KEY.',
-  );
+  )
 }

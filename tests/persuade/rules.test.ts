@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'vitest';
-import { MAX_INTERACTIONS } from '../../src/persuade/engine/knowledge';
+import { describe, expect, test } from 'vitest'
+import { MAX_INTERACTIONS } from '../../src/persuade/engine/knowledge'
 import {
   checkTurn,
   DEFAULT_RULES,
@@ -11,11 +11,11 @@ import {
   nextRung,
   containsRequest,
   shouldStop,
-} from '../../src/persuade/engine/rules';
-import type { PersuasionPlan, Rung, Turn } from '../../src/persuade/engine/types';
+} from '../../src/persuade/engine/rules'
+import type { PersuasionPlan, Rung, Turn } from '../../src/persuade/engine/types'
 
 function targetTurn(text: string): Turn {
-  return { role: 'target', text, interaction: 1 };
+  return { role: 'target', text, interaction: 1 }
 }
 
 const plan: PersuasionPlan = {
@@ -38,74 +38,74 @@ const plan: PersuasionPlan = {
   escalation: [],
   stopPoint: 'אחרי ארבע אינטראקציות',
   successCriteria: 'תדריך מתועד בכל בוקר',
-};
+}
 
 describe('fatigue detection', () => {
   test('a short non-committal reply raises fatigue', () => {
-    expect(fatigueScore([targetTurn('בסדר')])).toBeGreaterThan(0.5);
-  });
+    expect(fatigueScore([targetTurn('בסדר')])).toBeGreaterThan(0.5)
+  })
 
   test('an engaged reply keeps fatigue low', () => {
     const score = fatigueScore([
       targetTurn('אני חושבת שזה יכול לעבוד אבל אני צריכה להבין איך משלבים את זה בבוקר עמוס'),
-    ]);
-    expect(score).toBeLessThan(0.3);
-  });
+    ])
+    expect(score).toBeLessThan(0.3)
+  })
 
   test('shrinking replies are read as losing them', () => {
     const shrinking = fatigueScore([
       targetTurn('תשמע זה נשמע הגיוני אבל יש לי מלא קרטונים והקולקציה החדשה הרגע נכנסה'),
       targetTurn('אני אנסה לראות מתי אפשר'),
       targetTurn('נראה'),
-    ]);
-    expect(shrinking).toBeGreaterThanOrEqual(0.7);
-  });
-});
+    ])
+    expect(shrinking).toBeGreaterThanOrEqual(0.7)
+  })
+})
 
 describe('outcome detection', () => {
   test('explicit commitment reads as agreed', () => {
-    expect(detectOutcome('סגור, אני עושה את זה מחר')).toBe('agreed');
-  });
+    expect(detectOutcome('סגור, אני עושה את זה מחר')).toBe('agreed')
+  })
 
   test('explicit refusal reads as refused', () => {
-    expect(detectOutcome('אני לא מסכים לזה')).toBe('refused');
-  });
+    expect(detectOutcome('אני לא מסכים לזה')).toBe('refused')
+  })
 
   test('a vague reply is not a yes', () => {
-    expect(detectOutcome('נראה, אולי בשבוע הבא')).toBe('open');
-  });
-});
+    expect(detectOutcome('נראה, אולי בשבוע הבא')).toBe('open')
+  })
+})
 
 describe('escalation ladder', () => {
   test('climbs one rung at a time, never jumps', () => {
-    let state = { ...initialState(), interaction: 3, rung: 1 as Rung };
-    expect(nextRung(state)).toBe(2);
-    state = { ...state, rung: 2 as Rung };
-    expect(nextRung(state)).toBe(3);
-  });
+    let state = { ...initialState(), interaction: 3, rung: 1 as Rung }
+    expect(nextRung(state)).toBe(2)
+    state = { ...state, rung: 2 as Rung }
+    expect(nextRung(state)).toBe(3)
+  })
 
   test('rung cannot outrun the interaction count', () => {
-    const state = { ...initialState(), interaction: 0, rung: 1 as Rung };
-    expect(nextRung(state)).toBe(1);
-  });
-});
+    const state = { ...initialState(), interaction: 0, rung: 1 as Rung }
+    expect(nextRung(state)).toBe(1)
+  })
+})
 
 describe('stop conditions', () => {
   test('stops after the fourth interaction without a decision', () => {
-    const state = { ...initialState(), interaction: MAX_INTERACTIONS };
-    expect(shouldStop(state, DEFAULT_RULES).stop).toBe(true);
-  });
+    const state = { ...initialState(), interaction: MAX_INTERACTIONS }
+    expect(shouldStop(state, DEFAULT_RULES).stop).toBe(true)
+  })
 
   test('stops on high fatigue', () => {
-    const state = { ...initialState(), interaction: 2, fatigue: 0.8 };
-    expect(shouldStop(state, DEFAULT_RULES).stop).toBe(true);
-  });
+    const state = { ...initialState(), interaction: 2, fatigue: 0.8 }
+    expect(shouldStop(state, DEFAULT_RULES).stop).toBe(true)
+  })
 
   test('keeps going while the conversation is alive', () => {
-    const state = { ...initialState(), interaction: 2, fatigue: 0.2 };
-    expect(shouldStop(state, DEFAULT_RULES).stop).toBe(false);
-  });
-});
+    const state = { ...initialState(), interaction: 2, fatigue: 0.2 }
+    expect(shouldStop(state, DEFAULT_RULES).stop).toBe(false)
+  })
+})
 
 describe('turn rule checks', () => {
   const greeting = {
@@ -116,90 +116,86 @@ describe('turn rule checks', () => {
     statesAsk: false,
     argumentsUsed: 0,
     askedForDecision: false,
-  };
-  const followUp = { ...greeting, isGreetingTurn: false };
+  }
+  const followUp = { ...greeting, isGreetingTurn: false }
 
   test('flags an opener that never says on whose authority', () => {
-    const v = checkTurn('אהלן עדי, רציתי לדבר איתך על תדריך בוקר של ארבע דקות', greeting);
-    expect(v.some((x) => x.rule === 'לא הוצגה שליחות')).toBe(true);
-  });
+    const v = checkTurn('אהלן עדי, רציתי לדבר איתך על תדריך בוקר של ארבע דקות', greeting)
+    expect(v.some((x) => x.rule === 'לא הוצגה שליחות')).toBe(true)
+  })
 
   test('the opener may ask how you are', () => {
-    const v = checkTurn('אהלן עדי, אני פונה אליך בשם אושר. מה שלומך היום?', greeting);
-    expect(v.filter((x) => x.severity === 'critical')).toHaveLength(0);
-  });
+    const v = checkTurn('אהלן עדי, אני פונה אליך בשם אושר. מה שלומך היום?', greeting)
+    expect(v.filter((x) => x.severity === 'critical')).toHaveLength(0)
+  })
 
   test('flags interrogating before the ask is on the table', () => {
-    const v = checkTurn('מה את עושה היום כדי להדריך את הצוות שלך?', followUp);
-    expect(v.some((x) => x.rule === 'שאלות לפני בקשה')).toBe(true);
-  });
+    const v = checkTurn('מה את עושה היום כדי להדריך את הצוות שלך?', followUp)
+    expect(v.some((x) => x.rule === 'שאלות לפני בקשה')).toBe(true)
+  })
 
   test('questions are fine once the ask has been stated', () => {
     const v = checkTurn('אז זה אפשרי מחר בבוקר?', {
       ...followUp,
       state: { ...initialState(), askStated: true },
-    });
-    expect(v.some((x) => x.rule === 'שאלות לפני בקשה')).toBe(false);
-  });
+    })
+    expect(v.some((x) => x.rule === 'שאלות לפני בקשה')).toBe(false)
+  })
 
   test('flags a lecture with too many arguments', () => {
-    const v = checkTurn('אהלן, אני פונה בשם אושר.', { ...greeting, argumentsUsed: 4 });
-    expect(v.some((x) => x.rule === 'יותר משני טיעונים בבת אחת')).toBe(true);
-  });
+    const v = checkTurn('אהלן, אני פונה בשם אושר.', { ...greeting, argumentsUsed: 4 })
+    expect(v.some((x) => x.rule === 'יותר משני טיעונים בבת אחת')).toBe(true)
+  })
 
   test('flags interaction four that does not force a decision', () => {
     const v = checkTurn('בוא נראה איך אפשר למצוא את הזמן.', {
       ...followUp,
       state: { ...initialState(), interaction: 4, askStated: true },
-    });
-    expect(v.some((x) => x.rule === 'אינטראקציה 4 בלי חתירה להחלטה')).toBe(true);
-  });
+    })
+    expect(v.some((x) => x.rule === 'אינטראקציה 4 בלי חתירה להחלטה')).toBe(true)
+  })
 
   test('flags ignoring a counterpart who has gone flat', () => {
     const v = checkTurn('ועוד נקודה חשובה על התהליך.', {
       ...followUp,
       state: { ...initialState(), interaction: 2, fatigue: 0.8, askStated: true },
-    });
-    expect(v.some((x) => x.rule === 'התעלמות מעייפות שכנוע')).toBe(true);
-  });
+    })
+    expect(v.some((x) => x.rule === 'התעלמות מעייפות שכנוע')).toBe(true)
+  })
 
   test('a clean opener passes', () => {
-    const v = checkTurn(
-      'אהלן עדי, אני פונה אליך בשם אושר. מה שלומך היום?',
-      greeting,
-    );
-    expect(v.filter((x) => x.severity === 'critical')).toHaveLength(0);
-  });
-});
+    const v = checkTurn('אהלן עדי, אני פונה אליך בשם אושר. מה שלומך היום?', greeting)
+    expect(v.filter((x) => x.severity === 'critical')).toHaveLength(0)
+  })
+})
 
 describe('sentence length rule', () => {
   test('catches a sentence over fifteen words', () => {
     const long =
-      'אני רוצה להסביר לך בדיוק למה התהליך הזה חשוב לך ולצוות שלך ולחנות כולה ולרשת בטווח הארוך.';
-    expect(longSentences(long)).toHaveLength(1);
-  });
+      'אני רוצה להסביר לך בדיוק למה התהליך הזה חשוב לך ולצוות שלך ולחנות כולה ולרשת בטווח הארוך.'
+    expect(longSentences(long)).toHaveLength(1)
+  })
 
   test('short sentences pass', () => {
-    expect(longSentences('אושר מבקש תדריך בוקר. ארבע דקות. אפשרי?')).toHaveLength(0);
-  });
-});
+    expect(longSentences('אושר מבקש תדריך בוקר. ארבע דקות. אפשרי?')).toHaveLength(0)
+  })
+})
 
 describe('photographable ask gate', () => {
   test('a fully specified ask passes', () => {
-    expect(isAskPhotographable(plan).ok).toBe(true);
-  });
+    expect(isAskPhotographable(plan).ok).toBe(true)
+  })
 
   test('a vague ask is blocked with a list of what is missing', () => {
     const vague: PersuasionPlan = {
       ...plan,
       ask: { ...plan.ask, script: [], frequency: '', trialPeriod: '' },
-    };
-    const gate = isAskPhotographable(vague);
-    expect(gate.ok).toBe(false);
-    expect(gate.missing.length).toBeGreaterThanOrEqual(3);
-  });
-});
-
+    }
+    const gate = isAskPhotographable(vague)
+    expect(gate.ok).toBe(false)
+    expect(gate.missing.length).toBeGreaterThanOrEqual(3)
+  })
+})
 
 describe('message length rule', () => {
   const ctx = {
@@ -209,48 +205,51 @@ describe('message length rule', () => {
     statesAsk: false,
     argumentsUsed: 1,
     askedForDecision: false,
-  };
+  }
 
   test('a message of legal sentences can still be an illegal speech', () => {
-    const speech = Array.from({ length: 12 }, (_, i) => `משפט קצר מספר ${i}.`).join(' ');
-    const v = checkTurn(speech, ctx);
-    expect(v.some((x) => x.rule.includes('הודעה ארוכה'))).toBe(true);
-    expect(v.some((x) => x.rule.includes('משפט ארוך'))).toBe(false);
-  });
+    const speech = Array.from({ length: 12 }, (_, i) => `משפט קצר מספר ${i}.`).join(' ')
+    const v = checkTurn(speech, ctx)
+    expect(v.some((x) => x.rule.includes('הודעה ארוכה'))).toBe(true)
+    expect(v.some((x) => x.rule.includes('משפט ארוך'))).toBe(false)
+  })
 
   test('a short message passes', () => {
-    expect(checkTurn('אושר מבקש תדריך בוקר של ארבע דקות. אפשרי?', ctx)).toHaveLength(0);
-  });
-});
+    expect(checkTurn('אושר מבקש תדריך בוקר של ארבע דקות. אפשרי?', ctx)).toHaveLength(0)
+  })
+})
 
 describe('fatigue only counts once persuasion has started', () => {
   test('a terse opening reply does not end the conversation', () => {
-    const opening = { ...initialState(), interaction: 0, fatigue: 0.8 };
-    expect(shouldStop(opening, DEFAULT_RULES).stop).toBe(false);
-  });
+    const opening = { ...initialState(), interaction: 0, fatigue: 0.8 }
+    expect(shouldStop(opening, DEFAULT_RULES).stop).toBe(false)
+  })
 
   test('the same fatigue after the ask does end it', () => {
-    const later = { ...initialState(), interaction: 2, fatigue: 0.8 };
-    expect(shouldStop(later, DEFAULT_RULES).stop).toBe(true);
-  });
-});
+    const later = { ...initialState(), interaction: 2, fatigue: 0.8 }
+    expect(shouldStop(later, DEFAULT_RULES).stop).toBe(true)
+  })
+})
 
 describe('fatigue is measured only under persuasion', () => {
-  const reply = (text: string, interaction: number): Turn => ({ role: 'target', text, interaction });
+  const reply = (text: string, interaction: number): Turn => ({ role: 'target', text, interaction })
 
   test('a terse answer to the greeting scores nothing', () => {
-    expect(fatigueScore([reply('בסדר. מה נסגר?', 0)])).toBe(0);
-  });
+    expect(fatigueScore([reply('בסדר. מה נסגר?', 0)])).toBe(0)
+  })
 
   test('the same answer after the ask does score', () => {
-    expect(fatigueScore([reply('בסדר. מה נסגר?', 1)])).toBeGreaterThan(0.5);
-  });
+    expect(fatigueScore([reply('בסדר. מה נסגר?', 1)])).toBeGreaterThan(0.5)
+  })
 
   test('the greeting reply never drags the average down mid-conversation', () => {
-    const withGreeting = fatigueScore([reply('בסדר', 0), reply('נשמע הגיוני, בוא נראה איך משלבים את זה', 1)]);
-    expect(withGreeting).toBeLessThan(0.3);
-  });
-});
+    const withGreeting = fatigueScore([
+      reply('בסדר', 0),
+      reply('נשמע הגיוני, בוא נראה איך משלבים את זה', 1),
+    ])
+    expect(withGreeting).toBeLessThan(0.3)
+  })
+})
 
 describe('the ask-before-questions check, when the ask has no long words', () => {
   test('does not silently pass a message that never states the ask', () => {

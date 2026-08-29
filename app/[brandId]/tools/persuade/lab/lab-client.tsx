@@ -28,10 +28,7 @@ interface LabClientProps {
  * the same fact -- which is the mistake the brain's five screens made.
  */
 export function LabClient({ personas, plans }: LabClientProps) {
-  const simulationsApi = useMemo(
-    () => createSimulationsApi(createBrowserSupabase() as never),
-    [],
-  )
+  const simulationsApi = useMemo(() => createSimulationsApi(createBrowserSupabase() as never), [])
   const rolesApi = useMemo(
     () => createRolesApi(createBrowserSupabase() as unknown as RolesClient),
     [],
@@ -56,21 +53,28 @@ export function LabClient({ personas, plans }: LabClientProps) {
     }
   }, [handleError, rolesApi, simulationsApi])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    void load()
+  }, [load])
 
   const cells = useMemo(
-    () => matrixFrom(simulations, roles.map((r) => ({ id: r.id, name: r.name }))),
+    () =>
+      matrixFrom(
+        simulations,
+        roles.map((r) => ({ id: r.id, name: r.name })),
+      ),
     [roles, simulations],
   )
 
   // The bank and the blockers are queries over the selected cell's runs, never
   // a stored list -- so they cannot disagree with the evidence behind them.
   const inCell = useMemo(
-    () => (selected
-      ? simulations.filter(
-        (s) => s.cell.industry === selected.industry && s.cell.jobRoleId === selected.jobRoleId,
-      )
-      : []),
+    () =>
+      selected
+        ? simulations.filter(
+            (s) => s.cell.industry === selected.industry && s.cell.jobRoleId === selected.jobRoleId,
+          )
+        : [],
     [selected, simulations],
   )
   const bank = useMemo(() => buildBank(inCell.map((s) => s.run)), [inCell])
@@ -83,7 +87,11 @@ export function LabClient({ personas, plans }: LabClientProps) {
           <h2>מעבדת השכנוע</h2>
         </header>
 
-        {error ? <p className="knowledge-message" role="alert">{error}</p> : null}
+        {error ? (
+          <p className="knowledge-message" role="alert">
+            {error}
+          </p>
+        ) : null}
 
         {/* Outside the "are there runs" branch below, deliberately. The matrix
             is built from runs, so it is empty until one exists -- and a control
@@ -146,7 +154,9 @@ export function LabClient({ personas, plans }: LabClientProps) {
             ) : selected.runs > 0 ? (
               // Runs but no bank means nothing was scored, which is a different
               // fact from nothing having been run, and worth saying separately.
-              <p className="knowledge-message">אף ריצה בתא הזה לא נוקדה, ולכן אין עדיין טיעונים מנצחים.</p>
+              <p className="knowledge-message">
+                אף ריצה בתא הזה לא נוקדה, ולכן אין עדיין טיעונים מנצחים.
+              </p>
             ) : null}
 
             {blockers.length ? (

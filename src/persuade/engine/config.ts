@@ -1,5 +1,5 @@
-import { DEFAULT_RULES, isAskPhotographable, type RuleConfig } from './rules';
-import type { PersuasionPlan } from './types';
+import { DEFAULT_RULES, isAskPhotographable, type RuleConfig } from './rules'
+import type { PersuasionPlan } from './types'
 
 /**
  * Everything that governs the persuader, in one object: how it is allowed to behave,
@@ -7,8 +7,8 @@ import type { PersuasionPlan } from './types';
  * conversation request carries, so no two runs disagree about the rules in force.
  */
 export interface BotConfig {
-  rules: RuleConfig;
-  plan: PersuasionPlan;
+  rules: RuleConfig
+  plan: PersuasionPlan
 }
 
 /**
@@ -16,70 +16,70 @@ export interface BotConfig {
  * rather than half-read: a plan missing its mandate produces a bot that says it is
  * calling on its own behalf, and nothing in the UI would tell you why.
  */
-export const CONFIG_VERSION = 2;
+export const CONFIG_VERSION = 2
 
 export interface StoredConfig {
-  version: number;
-  config: BotConfig;
+  version: number
+  config: BotConfig
 }
 
 /** Returns null when the stored value is absent, corrupt, or from an older shape. */
 export function readStoredConfig(raw: string | null): BotConfig | null {
-  if (!raw) return null;
+  if (!raw) return null
   try {
-    const parsed = JSON.parse(raw) as Partial<StoredConfig>;
-    if (parsed.version !== CONFIG_VERSION || !parsed.config) return null;
-    const { rules, plan } = parsed.config;
-    if (!rules || !plan || !plan.ask || !Array.isArray(plan.arguments)) return null;
-    return parsed.config;
+    const parsed = JSON.parse(raw) as Partial<StoredConfig>
+    if (parsed.version !== CONFIG_VERSION || !parsed.config) return null
+    const { rules, plan } = parsed.config
+    if (!rules || !plan || !plan.ask || !Array.isArray(plan.arguments)) return null
+    return parsed.config
   } catch {
-    return null;
+    return null
   }
 }
 
 export interface ConfigProblem {
-  field: string;
-  message: string;
+  field: string
+  message: string
 }
 
 /** Reject a config that would produce a conversation nobody could act on. */
 export function validateConfig(config: BotConfig): ConfigProblem[] {
-  const problems: ConfigProblem[] = [];
-  const { rules, plan } = config;
+  const problems: ConfigProblem[] = []
+  const { rules, plan } = config
 
-  const gate = isAskPhotographable(plan);
+  const gate = isAskPhotographable(plan)
   if (!gate.ok) {
     problems.push({
       field: 'ask',
       message: `הבקשה לא מספיק מדויקת. חסר: ${gate.missing.join(', ')}`,
-    });
+    })
   }
 
-  if (!plan.topic.trim()) problems.push({ field: 'topic', message: 'צריך נושא' });
+  if (!plan.topic.trim()) problems.push({ field: 'topic', message: 'צריך נושא' })
   if (plan.arguments.length === 0) {
-    problems.push({ field: 'arguments', message: 'צריך לפחות טיעון אחד' });
+    problems.push({ field: 'arguments', message: 'צריך לפחות טיעון אחד' })
   }
   if (plan.escalation.length === 0) {
-    problems.push({ field: 'escalation', message: 'צריך לפחות מדרגת הסלמה אחת' });
+    problems.push({ field: 'escalation', message: 'צריך לפחות מדרגת הסלמה אחת' })
   }
   if (rules.maxInteractions < 1) {
-    problems.push({ field: 'maxInteractions', message: 'צריך לפחות אינטראקציה אחת' });
+    problems.push({ field: 'maxInteractions', message: 'צריך לפחות אינטראקציה אחת' })
   }
   if (rules.maxWordsPerSentence < 3) {
-    problems.push({ field: 'maxWordsPerSentence', message: 'מעט מדי מילים למשפט' });
+    problems.push({ field: 'maxWordsPerSentence', message: 'מעט מדי מילים למשפט' })
   }
   if (rules.maxWordsPerMessage < rules.maxWordsPerSentence) {
     problems.push({
       field: 'maxWordsPerMessage',
       message: 'הודעה לא יכולה להיות קצרה ממשפט אחד',
-    });
+    })
   }
 
   if (plan.onBehalfOf && !plan.onBehalfOf.name.trim()) {
-    problems.push({ field: 'onBehalfOf', message: 'אם פונים בשם מישהו, צריך שם' });
+    problems.push({ field: 'onBehalfOf', message: 'אם פונים בשם מישהו, צריך שם' })
   }
 
-  return problems;
+  return problems
 }
 
 export function emptyPlan(): PersuasionPlan {
@@ -103,13 +103,13 @@ export function emptyPlan(): PersuasionPlan {
     escalation: [],
     stopPoint: '',
     successCriteria: '',
-  };
+  }
 }
 
 export function defaultConfig(plan: PersuasionPlan): BotConfig {
-  return { rules: { ...DEFAULT_RULES }, plan };
+  return { rules: { ...DEFAULT_RULES }, plan }
 }
 
 export function toStored(config: BotConfig): string {
-  return JSON.stringify({ version: CONFIG_VERSION, config } satisfies StoredConfig);
+  return JSON.stringify({ version: CONFIG_VERSION, config } satisfies StoredConfig)
 }

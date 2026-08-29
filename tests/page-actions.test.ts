@@ -20,9 +20,12 @@ const context: PageActionContext = {
 
 function browserApis(overrides: Partial<BrowserActionApis> = {}): BrowserActionApis {
   return {
-    fetch: vi.fn(async () => new Response('image bytes', {
-      headers: { 'content-type': 'image/png' },
-    })) as typeof fetch,
+    fetch: vi.fn(
+      async () =>
+        new Response('image bytes', {
+          headers: { 'content-type': 'image/png' },
+        }),
+    ) as typeof fetch,
     canShare: undefined,
     share: undefined,
     clipboard: undefined,
@@ -42,7 +45,9 @@ describe('page actions', () => {
     const shared: ShareData[] = []
     const apis = browserApis({
       canShare: (data) => Array.isArray(data.files) && data.files.length === 1,
-      share: async (data) => { shared.push(data) },
+      share: async (data) => {
+        shared.push(data)
+      },
     })
 
     await expect(sharePage(context, apis)).resolves.toBe('file')
@@ -55,24 +60,36 @@ describe('page actions', () => {
     const shared: ShareData[] = []
     const apis = browserApis({
       canShare: () => false,
-      share: async (data) => { shared.push(data) },
+      share: async (data) => {
+        shared.push(data)
+      },
     })
 
     await expect(sharePage(context, apis)).resolves.toBe('url')
 
-    expect(shared).toEqual([{
-      title: 'Demo brand: Group two — Group two page',
-      text: 'Demo brand: Group two — Group two page',
-      url: 'https://viewer.example/brands/demo/groups/group-two?page=1',
-    }])
+    expect(shared).toEqual([
+      {
+        title: 'Demo brand: Group two — Group two page',
+        text: 'Demo brand: Group two — Group two page',
+        url: 'https://viewer.example/brands/demo/groups/group-two?page=1',
+      },
+    ])
   })
 
   it('copies the current URL after sharing cannot be completed', async () => {
     const copied: string[] = []
     const apis = browserApis({
-      fetch: vi.fn(async () => { throw new Error('offline') }) as typeof fetch,
-      share: async () => { throw new Error('share declined') },
-      clipboard: { writeText: async (text) => { copied.push(text) } },
+      fetch: vi.fn(async () => {
+        throw new Error('offline')
+      }) as typeof fetch,
+      share: async () => {
+        throw new Error('share declined')
+      },
+      clipboard: {
+        writeText: async (text) => {
+          copied.push(text)
+        },
+      },
     })
 
     await expect(sharePage(context, apis)).resolves.toBe('copied')
@@ -82,7 +99,9 @@ describe('page actions', () => {
 
   it('releases its object URL even when starting the download fails', async () => {
     const anchor = document.createElement('a')
-    const click = vi.spyOn(anchor, 'click').mockImplementation(() => { throw new Error('click failed') })
+    const click = vi.spyOn(anchor, 'click').mockImplementation(() => {
+      throw new Error('click failed')
+    })
     const revokeObjectURL = vi.fn()
     const apis = browserApis({
       createAnchor: () => anchor,
@@ -125,7 +144,11 @@ describe('page actions', () => {
     const close = vi.fn()
     const popup = {
       opener: window,
-      location: { replace: () => { throw new Error('navigation denied') } },
+      location: {
+        replace: () => {
+          throw new Error('navigation denied')
+        },
+      },
       close,
     }
 

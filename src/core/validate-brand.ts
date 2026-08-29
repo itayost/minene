@@ -34,13 +34,17 @@ const requiredFeedbackLabelKeys = [
   'whatsappFailed',
 ] as const
 
-const assetPathMessage = (brandId: string) => (
+const assetPathMessage = (brandId: string) =>
   `must be a normalized path beneath /brands/${brandId}/ without dot segments, backslashes, query strings, or fragments`
-)
 
 export function normalizeBrandAssetPath(brandId: string, assetPath: string): string | undefined {
   const requiredPrefix = `/brands/${brandId}/`
-  if (!assetPath.startsWith(requiredPrefix) || assetPath.includes('\\') || assetPath.includes('?') || assetPath.includes('#')) {
+  if (
+    !assetPath.startsWith(requiredPrefix) ||
+    assetPath.includes('\\') ||
+    assetPath.includes('?') ||
+    assetPath.includes('#')
+  ) {
     return undefined
   }
 
@@ -51,16 +55,26 @@ export function normalizeBrandAssetPath(brandId: string, assetPath: string): str
     return undefined
   }
 
-  if (parsed.origin !== 'https://brand-assets.invalid' || parsed.pathname !== assetPath) return undefined
+  if (parsed.origin !== 'https://brand-assets.invalid' || parsed.pathname !== assetPath)
+    return undefined
 
   const segments = assetPath.slice(1).split('/')
   if (segments.some((segment) => segment.length === 0)) return undefined
 
   try {
-    if (segments.some((segment) => {
-      const decoded = decodeURIComponent(segment)
-      return decoded === '.' || decoded === '..' || decoded.includes('/') || decoded.includes('\\') || decoded.includes('\0')
-    })) return undefined
+    if (
+      segments.some((segment) => {
+        const decoded = decodeURIComponent(segment)
+        return (
+          decoded === '.' ||
+          decoded === '..' ||
+          decoded.includes('/') ||
+          decoded.includes('\\') ||
+          decoded.includes('\0')
+        )
+      })
+    )
+      return undefined
   } catch {
     return undefined
   }
@@ -102,7 +116,8 @@ export function validateBrand(brand: BrandManifest): ValidationIssue[] {
 
   for (const token of themeTokens) requireValue(brand.theme[token], `theme.${token}`)
   for (const key of requiredLabelKeys) requireValue(brand.labels[key], `labels.${key}`)
-  for (const key of requiredFeedbackLabelKeys) requireValue(brand.labels.feedback?.[key] ?? '', `labels.feedback.${key}`)
+  for (const key of requiredFeedbackLabelKeys)
+    requireValue(brand.labels.feedback?.[key] ?? '', `labels.feedback.${key}`)
 
   if (brand.subjects.length === 0) addIssue('subjects', 'must contain at least one subject')
   const subjectIds = new Set<string>()
@@ -118,7 +133,8 @@ export function validateBrand(brand: BrandManifest): ValidationIssue[] {
     validateAssetPath(subject.icon, `${subjectPath}.icon`)
     requireValue(subject.cardColor, `${subjectPath}.cardColor`)
 
-    if (subject.groups.length === 0) addIssue(`${subjectPath}.groups`, 'must contain at least one group')
+    if (subject.groups.length === 0)
+      addIssue(`${subjectPath}.groups`, 'must contain at least one group')
     const groupIds = new Set<string>()
     subject.groups.forEach((group, groupIndex) => {
       const groupPath = `${subjectPath}.groups[${groupIndex}]`
@@ -129,7 +145,9 @@ export function validateBrand(brand: BrandManifest): ValidationIssue[] {
       if (group.icon !== undefined) validateAssetPath(group.icon, `${groupPath}.icon`)
 
       if (group.pages.length === 0) addIssue(`${groupPath}.pages`, 'must contain at least one page')
-      group.pages.forEach((page, pageIndex) => validateAsset(page, `${groupPath}.pages[${pageIndex}]`))
+      group.pages.forEach((page, pageIndex) =>
+        validateAsset(page, `${groupPath}.pages[${pageIndex}]`),
+      )
     })
   })
 

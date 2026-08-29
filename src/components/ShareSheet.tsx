@@ -27,7 +27,8 @@ export function ShareSheet({ context, labels, onClose, browserApis, openWindow }
   closeRef.current = onClose
 
   useEffect(() => {
-    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
     shareButtonRef.current?.focus()
 
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -45,11 +46,13 @@ export function ShareSheet({ context, labels, onClose, browserApis, openWindow }
     setFeedback(null)
     try {
       const outcome = await sharePage(context, browserApis)
-      setFeedback({
-        file: labels.feedback.sharedFile,
-        url: labels.feedback.sharedUrl,
-        copied: labels.feedback.copied,
-      }[outcome])
+      setFeedback(
+        {
+          file: labels.feedback.sharedFile,
+          url: labels.feedback.sharedUrl,
+          copied: labels.feedback.copied,
+        }[outcome],
+      )
     } catch {
       setFeedback(labels.feedback.shareFailed)
     }
@@ -68,11 +71,13 @@ export function ShareSheet({ context, labels, onClose, browserApis, openWindow }
   const openWhatsApp = () => {
     setFeedback(null)
     const outcome = openExternalWindow(whatsappUrl(context), openWindow)
-    setFeedback({
-      opened: labels.feedback.whatsappOpened,
-      blocked: labels.feedback.whatsappBlocked,
-      failed: labels.feedback.whatsappFailed,
-    }[outcome])
+    setFeedback(
+      {
+        opened: labels.feedback.whatsappOpened,
+        blocked: labels.feedback.whatsappBlocked,
+        failed: labels.feedback.whatsappFailed,
+      }[outcome],
+    )
   }
 
   return (
@@ -83,12 +88,23 @@ export function ShareSheet({ context, labels, onClose, browserApis, openWindow }
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <section aria-labelledby="share-sheet-title" aria-modal="true" className="share-sheet" role="dialog">
+      <section
+        aria-labelledby="share-sheet-title"
+        aria-modal="true"
+        className="share-sheet"
+        role="dialog"
+      >
         <h2 id="share-sheet-title">{context.groupName}</h2>
         <div className="share-sheet__actions">
-          <button ref={shareButtonRef} type="button" onClick={completeShare}>{labels.share}</button>
-          <button type="button" onClick={completeDownload}>{labels.save}</button>
-          <button type="button" onClick={openWhatsApp}>{labels.whatsapp}</button>
+          <button ref={shareButtonRef} type="button" onClick={completeShare}>
+            {labels.share}
+          </button>
+          <button type="button" onClick={completeDownload}>
+            {labels.save}
+          </button>
+          <button type="button" onClick={openWhatsApp}>
+            {labels.whatsapp}
+          </button>
         </div>
         <p aria-live="polite" className="share-sheet__feedback" role="status">
           {feedback}

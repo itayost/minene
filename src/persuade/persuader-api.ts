@@ -33,7 +33,8 @@ export interface ConversationWatcher {
 }
 
 const unauthorized = () => new RulesApiError('UNAUTHORIZED', 401, 'ההרשאה פגה. נא להתחבר מחדש.')
-const failed = (status: number) => new RulesApiError('REQUEST_FAILED', status, 'לא הצלחנו להשלים את הבקשה')
+const failed = (status: number) =>
+  new RulesApiError('REQUEST_FAILED', status, 'לא הצלחנו להשלים את הבקשה')
 
 /**
  * The routes read the caller from the Authorization header, not from the
@@ -51,7 +52,13 @@ async function authorization(): Promise<string> {
 type StreamEvent =
   | { type: 'preparing' }
   | { type: 'delta'; text: string }
-  | { type: 'result'; turns: Turn[]; state: ConversationState; stopped?: ConversationResult['stopped']; run?: Run }
+  | {
+      type: 'result'
+      turns: Turn[]
+      state: ConversationState
+      stopped?: ConversationResult['stopped']
+      run?: Run
+    }
   | { type: 'error'; message: string }
 
 /**

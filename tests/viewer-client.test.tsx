@@ -36,12 +36,16 @@ const EIGHT_PAGE_GROUP: ContentGroup = {
 // and a counter that is stuck on the first page cannot be caught by one of those.
 const eightPageBrand: BrandManifest = {
   ...demoBrand,
-  subjects: demoBrand.subjects.map((subject) => subject.id === 'multiple'
-    ? {
-      ...subject,
-      groups: subject.groups.map((group) => group.id === EIGHT_PAGE_GROUP.id ? EIGHT_PAGE_GROUP : group),
-    }
-    : subject),
+  subjects: demoBrand.subjects.map((subject) =>
+    subject.id === 'multiple'
+      ? {
+          ...subject,
+          groups: subject.groups.map((group) =>
+            group.id === EIGHT_PAGE_GROUP.id ? EIGHT_PAGE_GROUP : group,
+          ),
+        }
+      : subject,
+  ),
 }
 
 function viewerTree({ pageIndex = 0, hasExplicitPage = false } = {}) {
@@ -99,8 +103,7 @@ describe('viewer route', () => {
 
     await user.click(screen.getByRole('button', { name: 'Go to page 3 of 8' }))
 
-    expect(window.localStorage.getItem(progressStorageKey('demo')))
-      .toBe('{"multiple/group-two":2}')
+    expect(window.localStorage.getItem(progressStorageKey('demo'))).toBe('{"multiple/group-two":2}')
   })
 
   it('never pushes a page turn, so back still leaves the group', async () => {

@@ -16,7 +16,9 @@ describe('useApiErrorHandler', () => {
     replace.mockClear()
     const { result } = renderHook(() => useApiErrorHandler())
 
-    const message = result.current(new RulesApiError('UNAUTHORIZED', 401, 'ההרשאה פגה. נא להתחבר מחדש.'))
+    const message = result.current(
+      new RulesApiError('UNAUTHORIZED', 401, 'ההרשאה פגה. נא להתחבר מחדש.'),
+    )
 
     expect(replace).toHaveBeenCalledWith('/login?next=%2Fminene%2Ftools%2Fbrain%2Flobby')
     expect(message).toBeNull()
@@ -26,7 +28,9 @@ describe('useApiErrorHandler', () => {
     replace.mockClear()
     const { result } = renderHook(() => useApiErrorHandler())
 
-    const message = result.current(new DocumentsApiError('UNAUTHORIZED', 'ההרשאה פגה. נא להתחבר מחדש.'))
+    const message = result.current(
+      new DocumentsApiError('UNAUTHORIZED', 'ההרשאה פגה. נא להתחבר מחדש.'),
+    )
 
     expect(replace).toHaveBeenCalled()
     expect(message).toBeNull()
@@ -36,7 +40,9 @@ describe('useApiErrorHandler', () => {
     replace.mockClear()
     const { result } = renderHook(() => useApiErrorHandler())
 
-    const message = result.current(new RulesApiError('REQUEST_FAILED', 500, 'לא הצלחנו להשלים את הבקשה'))
+    const message = result.current(
+      new RulesApiError('REQUEST_FAILED', 500, 'לא הצלחנו להשלים את הבקשה'),
+    )
 
     expect(replace).not.toHaveBeenCalled()
     expect(message).toBe('לא הצלחנו להשלים את הבקשה')
@@ -46,8 +52,9 @@ describe('useApiErrorHandler', () => {
     replace.mockClear()
     const { result } = renderHook(() => useApiErrorHandler())
 
-    expect(result.current(new DocumentsApiError('UPLOAD_FAILED', 'העלאת הקובץ נכשלה. נסי שוב.')))
-      .toBe('העלאת הקובץ נכשלה. נסי שוב.')
+    expect(
+      result.current(new DocumentsApiError('UPLOAD_FAILED', 'העלאת הקובץ נכשלה. נסי שוב.')),
+    ).toBe('העלאת הקובץ נכשלה. נסי שוב.')
   })
 
   it('returns a generic Hebrew message for an unrecognised throw', () => {

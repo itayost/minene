@@ -48,10 +48,17 @@ const homeIcon = (
   </svg>
 )
 
-function findHeaderContent(brand: BrandManifest, screen: Screen, pagePosition: PagePosition | null) {
+function findHeaderContent(
+  brand: BrandManifest,
+  screen: Screen,
+  pagePosition: PagePosition | null,
+) {
   if (screen.kind === 'home') return { title: '', subtitle: '' }
   if (screen.kind === 'tool') {
-    return { title: brand.tools.find((tool) => tool.id === screen.toolId)?.label ?? '', subtitle: '' }
+    return {
+      title: brand.tools.find((tool) => tool.id === screen.toolId)?.label ?? '',
+      subtitle: '',
+    }
   }
 
   const subject = brand.subjects.find((candidate) => candidate.id === screen.subjectId)
@@ -69,9 +76,10 @@ function findHeaderContent(brand: BrandManifest, screen: Screen, pagePosition: P
   const positionLabel = pageCount > 0 ? `${pageIndex + 1} / ${pageCount}` : ''
   return {
     title: subject?.label ?? '',
-    subtitle: subject && subject.groups.length > 1 && group
-      ? `${group.label} · ${positionLabel}`
-      : positionLabel,
+    subtitle:
+      subject && subject.groups.length > 1 && group
+        ? `${group.label} · ${positionLabel}`
+        : positionLabel,
   }
 }
 
@@ -129,7 +137,9 @@ export function BrandShell({
           inert={isModalOpen ? true : undefined}
           onClickCapture={isModalOpen ? blockBackgroundClick : undefined}
         >
-          <header className={`app-header ${isHome ? 'app-header--home' : 'app-header--inner'}${isHome && brand.id === 'minene' ? ' app-header--minene-home' : ''}`}>
+          <header
+            className={`app-header ${isHome ? 'app-header--home' : 'app-header--inner'}${isHome && brand.id === 'minene' ? ' app-header--minene-home' : ''}`}
+          >
             {isHome ? (
               brand.id === 'minene' ? (
                 <img className="app-header__home-logo" src={brand.logo.src} alt={brand.logo.alt} />
@@ -145,15 +155,28 @@ export function BrandShell({
               )
             ) : (
               <>
-                <Link className="icon-button back-button" href={backHref} aria-label={brand.labels.back}>
-                  <svg aria-hidden="true" viewBox="0 0 11 18"><path d="m1.5 1.5 7.5 7.5-7.5 7.5" /></svg>
+                <Link
+                  className="icon-button back-button"
+                  href={backHref}
+                  aria-label={brand.labels.back}
+                >
+                  <svg aria-hidden="true" viewBox="0 0 11 18">
+                    <path d="m1.5 1.5 7.5 7.5-7.5 7.5" />
+                  </svg>
                 </Link>
                 <div className="app-header__titles">
                   <div className="app-header__title">{header.title}</div>
-                  {header.subtitle ? <div className="app-header__subtitle">{header.subtitle}</div> : null}
+                  {header.subtitle ? (
+                    <div className="app-header__subtitle">{header.subtitle}</div>
+                  ) : null}
                 </div>
                 {screen.kind === 'viewer' ? (
-                  <button className="icon-button share-button" type="button" aria-label={brand.labels.share} onClick={onShare}>
+                  <button
+                    className="icon-button share-button"
+                    type="button"
+                    aria-label={brand.labels.share}
+                    onClick={onShare}
+                  >
                     <svg aria-hidden="true" viewBox="0 0 18 20">
                       <circle cx="13.5" cy="4.5" r="2.9" />
                       <circle cx="4.5" cy="10" r="2.9" />
@@ -161,13 +184,14 @@ export function BrandShell({
                       <path d="m11.1 6-4.1 2.6M7 11.4l4.1 2.6" />
                     </svg>
                   </button>
-                ) : <span className="app-header__spacer" aria-hidden="true" />}
+                ) : (
+                  <span className="app-header__spacer" aria-hidden="true" />
+                )}
               </>
             )}
           </header>
 
           <main className="shell-content">{children}</main>
-
         </div>
         {modal}
       </div>

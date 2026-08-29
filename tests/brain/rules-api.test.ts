@@ -12,12 +12,14 @@ type Outcome = { data?: unknown; error?: { code?: string } | null; status?: numb
  * .select / .single / .maybeSingle. Modelling only the ones already in use
  * would make a new method look broken for the wrong reason.
  */
-function client(outcomes: {
-  rpc?: Outcome
-  update?: Outcome
-  select?: Outcome
-  invoke?: { data?: unknown; error?: { context?: { status?: number } } | null }
-} = {}) {
+function client(
+  outcomes: {
+    rpc?: Outcome
+    update?: Outcome
+    select?: Outcome
+    invoke?: { data?: unknown; error?: { context?: { status?: number } } | null }
+  } = {},
+) {
   const rpcNames: string[] = []
   const rpcArgs: Record<string, unknown>[] = []
   const updates: Record<string, unknown>[] = []
@@ -39,7 +41,10 @@ function client(outcomes: {
       rpcNames.push(name)
       rpcArgs.push(args ?? {})
       return {
-        select: async (selected: string) => { columns.push(selected); return rpcResult },
+        select: async (selected: string) => {
+          columns.push(selected)
+          return rpcResult
+        },
         single: async () => rpcResult,
         maybeSingle: async () => rpcResult,
         then: (resolve: (value: Outcome) => unknown) => resolve(rpcResult),
@@ -50,12 +55,18 @@ function client(outcomes: {
         updates.push(values)
         const filter = {
           eq: () => filter,
-          select: (selected: string) => { columns.push(selected); return filter },
+          select: (selected: string) => {
+            columns.push(selected)
+            return filter
+          },
           maybeSingle: async () => updateResult,
         }
         return filter
       },
-      select: async (selected: string) => { columns.push(`${table}:${selected}`); return selectResult },
+      select: async (selected: string) => {
+        columns.push(`${table}:${selected}`)
+        return selectResult
+      },
     })),
   } as unknown as RulesClient
 
@@ -91,7 +102,10 @@ describe('expired sessions', () => {
   it('maps PostgREST PGRST301 to UNAUTHORIZED', async () => {
     const { api } = client({ rpc: { data: null, error: { code: 'PGRST301' }, status: 200 } })
 
-    await expect(api.listRules({ topicId: null })).rejects.toMatchObject({ code: 'UNAUTHORIZED', status: 401 })
+    await expect(api.listRules({ topicId: null })).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+      status: 401,
+    })
   })
 
   it('maps a bare HTTP 401 to UNAUTHORIZED even without the PostgREST code', async () => {
@@ -103,13 +117,18 @@ describe('expired sessions', () => {
   it('keeps a non-auth failure on its real status rather than a fabricated 500', async () => {
     const { api } = client({ rpc: { data: null, error: { code: 'PGRST116' }, status: 409 } })
 
-    await expect(api.listRules({ topicId: null })).rejects.toMatchObject({ code: 'REQUEST_FAILED', status: 409 })
+    await expect(api.listRules({ topicId: null })).rejects.toMatchObject({
+      code: 'REQUEST_FAILED',
+      status: 409,
+    })
   })
 
   it('maps a 401 from an edge function invocation too', async () => {
     const { api } = client({ invoke: { error: { context: { status: 401 } } } })
 
-    await expect(api.generateTips({ topicId: 'store' })).rejects.toMatchObject({ code: 'UNAUTHORIZED' })
+    await expect(api.generateTips({ topicId: 'store' })).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    })
   })
 })
 
@@ -123,8 +142,9 @@ describe('updates filtered to zero rows', () => {
     // This assertion used to ride on setStar, which is gone with the star. It
     // moves rather than disappearing: updateRule writes through the same
     // from().update().eq().select().maybeSingle() shape and fails the same way.
-    await expect(api.updateRule({ ruleId: 'rule-1', text: 'לחייך', kind: 'tip', topicId: 'store' }))
-      .rejects.toMatchObject({ code: 'REQUEST_FAILED', status: 404 })
+    await expect(
+      api.updateRule({ ruleId: 'rule-1', text: 'לחייך', kind: 'tip', topicId: 'store' }),
+    ).rejects.toMatchObject({ code: 'REQUEST_FAILED', status: 404 })
   })
 
   it('applies the same rule to an approval', async () => {
@@ -158,7 +178,12 @@ describe('what an update is allowed to write', () => {
     // fails the whole update at 42501. status is omitted because editing is not
     // a review decision: a pending rule stays pending after a correction.
     expect(updates[0]).toEqual({
-      text: 'חדש', kind: 'process', topic_id: 'live', sub_topic: null, polarity: null, response: null,
+      text: 'חדש',
+      kind: 'process',
+      topic_id: 'live',
+      sub_topic: null,
+      polarity: null,
+      response: null,
     })
     expect(updates[0]).not.toHaveProperty('normalized_text')
     expect(updates[0]).not.toHaveProperty('status')
@@ -195,7 +220,12 @@ describe('kpis', () => {
   it('converts bigint strings to numbers', async () => {
     const { api } = client({
       rpc: {
-        data: { knowledge_items: '120', quality_items: '30', previous_items: '10', recent_items: '15' },
+        data: {
+          knowledge_items: '120',
+          quality_items: '30',
+          previous_items: '10',
+          recent_items: '15',
+        },
         error: null,
       },
     })
@@ -275,8 +305,13 @@ describe('correcting a classification', () => {
   it('carries a case rule its response and polarity', async () => {
     const { api, updates } = client()
     await api.updateRule({
-      ruleId: 'rule-1', text: 'לקוחה מבקשת החזר בלי חשבונית', kind: 'case',
-      topicId: 'store', subTopic: 'החזרות', polarity: null, response: 'להציע זיכוי',
+      ruleId: 'rule-1',
+      text: 'לקוחה מבקשת החזר בלי חשבונית',
+      kind: 'case',
+      topicId: 'store',
+      subTopic: 'החזרות',
+      polarity: null,
+      response: 'להציע זיכוי',
     })
 
     expect(updates[0]).toMatchObject({ sub_topic: 'החזרות', response: 'להציע זיכוי', kind: 'case' })
@@ -288,7 +323,10 @@ describe('hunting for knowledge on the web', () => {
     const { api, invoked } = client()
     await api.huntExternal({ topicId: 'store', subTopic: 'חלון ראווה' })
 
-    expect(invoked[0]).toEqual({ name: 'hunt-external', body: { topicId: 'store', subTopic: 'חלון ראווה' } })
+    expect(invoked[0]).toEqual({
+      name: 'hunt-external',
+      body: { topicId: 'store', subTopic: 'חלון ראווה' },
+    })
   })
 
   it('hunts a whole topic when no sub-topic is named', async () => {
@@ -309,7 +347,9 @@ describe('hunting for knowledge on the web', () => {
   it('sends an expired session back to sign in', async () => {
     const { api } = client({ invoke: { error: { context: { status: 401 } } } })
 
-    await expect(api.huntExternal({ topicId: 'store' })).rejects.toMatchObject({ code: 'UNAUTHORIZED' })
+    await expect(api.huntExternal({ topicId: 'store' })).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    })
   })
 })
 
@@ -339,7 +379,9 @@ describe('processes that have been proven to work', () => {
 
 describe('the sub-topic catalog', () => {
   it('converts the bigint rule count to a number', async () => {
-    const { api } = client({ rpc: { data: [{ sub_topic: 'החזרות', rule_count: '14' }], error: null } })
+    const { api } = client({
+      rpc: { data: [{ sub_topic: 'החזרות', rule_count: '14' }], error: null },
+    })
 
     // postgrest-js hands bigint back as a string, for the same reason the KPI
     // columns arrive as strings. Rendering it unconverted sorts '9' above '14'.
@@ -363,7 +405,9 @@ describe('the sub-topic catalog', () => {
 
 describe('rating a rule', () => {
   it('lets the RPC supply the voter so no caller can get it wrong', async () => {
-    const { api, rpcArgs } = client({ rpc: { data: { rule_id: 'rule-1', is_like: true }, error: null } })
+    const { api, rpcArgs } = client({
+      rpc: { data: { rule_id: 'rule-1', is_like: true }, error: null },
+    })
     await api.setRuleVote({ ruleId: 'rule-1', isLike: true })
 
     expect(rpcArgs[0]).toEqual({ p_rule_id: 'rule-1', p_is_like: true })
@@ -372,15 +416,19 @@ describe('rating a rule', () => {
   it('returns the vote that was actually recorded', async () => {
     const { api } = client({ rpc: { data: { rule_id: 'rule-1', is_like: false }, error: null } })
 
-    await expect(api.setRuleVote({ ruleId: 'rule-1', isLike: false }))
-      .resolves.toEqual({ ruleId: 'rule-1', isLike: false })
+    await expect(api.setRuleVote({ ruleId: 'rule-1', isLike: false })).resolves.toEqual({
+      ruleId: 'rule-1',
+      isLike: false,
+    })
   })
 
   it('throws rather than returning a vote with no fields when the rule is hidden', async () => {
     const { api } = client({ rpc: { data: null, error: null } })
 
-    await expect(api.setRuleVote({ ruleId: 'rule-1', isLike: true }))
-      .rejects.toMatchObject({ code: 'REQUEST_FAILED', status: 404 })
+    await expect(api.setRuleVote({ ruleId: 'rule-1', isLike: true })).rejects.toMatchObject({
+      code: 'REQUEST_FAILED',
+      status: 404,
+    })
   })
 
   it('withdraws a vote without expecting a row back', async () => {
@@ -396,14 +444,22 @@ describe('rating a rule', () => {
   it('surfaces an expired session while withdrawing', async () => {
     const { api } = client({ rpc: { data: null, error: { code: 'PGRST301' } } })
 
-    await expect(api.clearRuleVote({ ruleId: 'rule-1' })).rejects.toMatchObject({ code: 'UNAUTHORIZED' })
+    await expect(api.clearRuleVote({ ruleId: 'rule-1' })).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    })
   })
 })
 
 describe('this person’s own votes', () => {
   it('returns a map so rendering a list is not a scan per row', async () => {
     const { api } = client({
-      select: { data: [{ rule_id: 'rule-1', is_like: true }, { rule_id: 'rule-2', is_like: false }], error: null },
+      select: {
+        data: [
+          { rule_id: 'rule-1', is_like: true },
+          { rule_id: 'rule-2', is_like: false },
+        ],
+        error: null,
+      },
     })
 
     const votes = await api.listMyVotes()
@@ -425,8 +481,12 @@ describe('knowledge submitted by a person in the tenant', () => {
   it('sends every axis so a submitted case carries its response', async () => {
     const { api, rpcNames, rpcArgs } = client({ rpc: { data: RULE, error: null } })
     await api.submitInternalRule({
-      topicId: 'store', text: 'לקוחה מבקשת החזר בלי חשבונית',
-      kind: 'case', subTopic: 'החזרות', polarity: null, response: 'להציע זיכוי',
+      topicId: 'store',
+      text: 'לקוחה מבקשת החזר בלי חשבונית',
+      kind: 'case',
+      subTopic: 'החזרות',
+      polarity: null,
+      response: 'להציע זיכוי',
     })
 
     expect(rpcNames[0]).toBe('submit_internal_rule')
@@ -444,7 +504,12 @@ describe('knowledge submitted by a person in the tenant', () => {
     const { api, rpcArgs } = client({ rpc: { data: RULE, error: null } })
     await api.submitInternalRule({ topicId: 'store', text: 'לחייך' })
 
-    expect(rpcArgs[0]).toMatchObject({ p_kind: 'tip', p_sub_topic: null, p_polarity: null, p_response: null })
+    expect(rpcArgs[0]).toMatchObject({
+      p_kind: 'tip',
+      p_sub_topic: null,
+      p_polarity: null,
+      p_response: null,
+    })
   })
 
   it('returns the saved rule, which is the only way the submitter sees it', async () => {
@@ -458,7 +523,8 @@ describe('knowledge submitted by a person in the tenant', () => {
   it('throws when nothing comes back rather than reporting a phantom save', async () => {
     const { api } = client({ rpc: { data: null, error: null } })
 
-    await expect(api.submitInternalRule({ topicId: 'store', text: 'לחייך' }))
-      .rejects.toMatchObject({ code: 'REQUEST_FAILED', status: 500 })
+    await expect(api.submitInternalRule({ topicId: 'store', text: 'לחייך' })).rejects.toMatchObject(
+      { code: 'REQUEST_FAILED', status: 500 },
+    )
   })
 })

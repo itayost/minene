@@ -16,8 +16,8 @@ export default async function globalSetup(config: FullConfig) {
 
   if (!email || !password || !baseURL) {
     throw new Error(
-      'The visual suite needs VIEWER_TEST_EMAIL and VIEWER_TEST_PASSWORD to sign in. '
-      + 'See the "Visual references" section of README.md.',
+      'The visual suite needs VIEWER_TEST_EMAIL and VIEWER_TEST_PASSWORD to sign in. ' +
+        'See the "Visual references" section of README.md.',
     )
   }
 

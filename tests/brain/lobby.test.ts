@@ -7,7 +7,8 @@ const rule = (id: string) => makeRule({ id, text: `חוק ${id}` })
 
 describe('loadAllPending', () => {
   it('pages until the cursor runs out, rather than stopping at the first page', async () => {
-    const listPendingRules = vi.fn()
+    const listPendingRules = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [rule('a')], nextCursor: { created_at: 'T', id: 'a' } })
       .mockResolvedValueOnce({ rows: [rule('b')], nextCursor: { created_at: 'T', id: 'b' } })
       .mockResolvedValueOnce({ rows: [rule('c')], nextCursor: null })
@@ -24,7 +25,8 @@ describe('loadAllPending', () => {
   })
 
   it('carries each page cursor into the next request', async () => {
-    const listPendingRules = vi.fn()
+    const listPendingRules = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [rule('a')], nextCursor: { created_at: 'T1', id: 'a' } })
       .mockResolvedValueOnce({ rows: [], nextCursor: null })
 
@@ -36,8 +38,10 @@ describe('loadAllPending', () => {
   it('returns nothing when the queue is empty', async () => {
     const listPendingRules = vi.fn().mockResolvedValue({ rows: [], nextCursor: null })
 
-    await expect(loadAllPending({ listPendingRules } as unknown as RulesApi))
-      .resolves.toEqual({ rows: [], hasMore: false })
+    await expect(loadAllPending({ listPendingRules } as unknown as RulesApi)).resolves.toEqual({
+      rows: [],
+      hasMore: false,
+    })
   })
 
   it('stops at the cap and says the queue did not end there', async () => {
@@ -45,7 +49,8 @@ describe('loadAllPending', () => {
     // for a 600-rule queue on every page load, and then every id in one in(...)
     // filter whose URL a proxy refuses.
     const listPendingRules = vi.fn().mockResolvedValue({
-      rows: [rule('a')], nextCursor: { created_at: 'T', id: 'a' },
+      rows: [rule('a')],
+      nextCursor: { created_at: 'T', id: 'a' },
     })
 
     const { hasMore } = await loadAllPending({ listPendingRules } as unknown as RulesApi)

@@ -23,7 +23,13 @@ type FocusRef = { current: { focus: () => void } | null }
  * re-focuses for the new one. A boolean would not change across that swap and
  * the effect would not re-run.
  */
-export function BottomSheet({ openKey, label, onDismiss, initialFocusRef, children }: {
+export function BottomSheet({
+  openKey,
+  label,
+  onDismiss,
+  initialFocusRef,
+  children,
+}: {
   openKey: string | null
   label: string
   onDismiss: () => void

@@ -1,7 +1,7 @@
-import { randomUUID } from 'node:crypto';
-import { DEFAULT_RULES, initialState, type RuleConfig } from './rules';
-import { targetReply } from './target';
-import { applyTargetReply, persuaderTurn } from './turn';
+import { randomUUID } from 'node:crypto'
+import { DEFAULT_RULES, initialState, type RuleConfig } from './rules'
+import { targetReply } from './target'
+import { applyTargetReply, persuaderTurn } from './turn'
 import type {
   ConversationState,
   PersuasionPlan,
@@ -9,7 +9,7 @@ import type {
   RuleViolation,
   TargetPersona,
   Turn,
-} from './types';
+} from './types'
 
 /**
  * A conversation between two parties: the persuader, which works by the rules, and
@@ -18,52 +18,52 @@ import type {
  */
 
 export interface SimulationInput {
-  plan: PersuasionPlan;
-  persona: TargetPersona;
-  rules?: RuleConfig;
+  plan: PersuasionPlan
+  persona: TargetPersona
+  rules?: RuleConfig
 }
 
 export type SimulationEvent =
   | { type: 'turn'; turn: Turn; state: ConversationState }
   | { type: 'stopped'; reason: string }
-  | { type: 'done'; run: Run };
+  | { type: 'done'; run: Run }
 
 export async function* runSimulation(input: SimulationInput): AsyncGenerator<SimulationEvent> {
-  const { plan, persona, rules = DEFAULT_RULES } = input;
-  const turns: Turn[] = [];
-  let state = initialState();
-  let stopReason: string | null = null;
+  const { plan, persona, rules = DEFAULT_RULES } = input
+  const turns: Turn[] = []
+  let state = initialState()
+  let stopReason: string | null = null
 
   // The greeting is a turn but not a persuasion attempt, so allow one extra round.
   for (let i = 0; i < rules.maxInteractions + 1; i += 1) {
     const p = await persuaderTurn(plan, turns, state, rules, {
       name: persona.name,
       role: persona.role,
-    });
-    turns.push(p.turn);
-    state = p.state;
-    yield { type: 'turn', turn: p.turn, state };
+    })
+    turns.push(p.turn)
+    state = p.state
+    yield { type: 'turn', turn: p.turn, state }
 
     if (p.stopped.stop) {
-      stopReason = p.stopped.reason;
-      break;
+      stopReason = p.stopped.reason
+      break
     }
 
-    const reply = await targetReply(persona, plan, turns);
-    const t = applyTargetReply(reply, turns, state, rules);
-    turns.push(t.turn);
-    state = t.state;
-    yield { type: 'turn', turn: t.turn, state };
+    const reply = await targetReply(persona, plan, turns)
+    const t = applyTargetReply(reply, turns, state, rules)
+    turns.push(t.turn)
+    state = t.state
+    yield { type: 'turn', turn: t.turn, state }
 
     if (t.stopped.stop) {
-      stopReason = t.stopped.reason;
-      break;
+      stopReason = t.stopped.reason
+      break
     }
   }
 
-  if (stopReason) yield { type: 'stopped', reason: stopReason };
+  if (stopReason) yield { type: 'stopped', reason: stopReason }
 
-  const violations: RuleViolation[] = turns.flatMap((t) => t.violations ?? []);
+  const violations: RuleViolation[] = turns.flatMap((t) => t.violations ?? [])
   const finalState: ConversationState = {
     ...state,
     outcome:
@@ -72,7 +72,7 @@ export async function* runSimulation(input: SimulationInput): AsyncGenerator<Sim
         : state.fatigue >= rules.fatigueThreshold
           ? 'stopped_fatigue'
           : 'deferred',
-  };
+  }
 
   yield {
     type: 'done',
@@ -87,5 +87,5 @@ export async function* runSimulation(input: SimulationInput): AsyncGenerator<Sim
       state: finalState,
       violations,
     },
-  };
+  }
 }

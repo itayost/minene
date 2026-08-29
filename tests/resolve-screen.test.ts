@@ -8,19 +8,28 @@ describe('resolveScreen', () => {
   })
 
   it('resolves a known subject to its chooser', () => {
-    expect(resolveScreen(demoBrand, ['multiple'], null))
-      .toEqual({ kind: 'menu', subjectId: 'multiple' })
+    expect(resolveScreen(demoBrand, ['multiple'], null)).toEqual({
+      kind: 'menu',
+      subjectId: 'multiple',
+    })
   })
 
   it('resolves a known group to the viewer at the first page', () => {
-    expect(resolveScreen(demoBrand, ['multiple', 'group-one'], null))
-      .toEqual({ kind: 'viewer', subjectId: 'multiple', groupId: 'group-one', pageIndex: 0 })
+    expect(resolveScreen(demoBrand, ['multiple', 'group-one'], null)).toEqual({
+      kind: 'viewer',
+      subjectId: 'multiple',
+      groupId: 'group-one',
+      pageIndex: 0,
+    })
   })
 
   it('resolves a known tool', () => {
     const toolId = demoBrand.tools[0]!.id
-    expect(resolveScreen(demoBrand, ['tools', toolId], null))
-      .toEqual({ kind: 'tool', toolId, subPath: [] })
+    expect(resolveScreen(demoBrand, ['tools', toolId], null)).toEqual({
+      kind: 'tool',
+      toolId,
+      subPath: [],
+    })
   })
 
   it('rejects an unknown subject', () => {
@@ -75,37 +84,58 @@ describe('parentHref', () => {
   })
 
   it('returns the chooser from a viewer whose subject has several groups', () => {
-    const screen = { kind: 'viewer', subjectId: 'multiple', groupId: 'group-one', pageIndex: 0 } as const
+    const screen = {
+      kind: 'viewer',
+      subjectId: 'multiple',
+      groupId: 'group-one',
+      pageIndex: 0,
+    } as const
     expect(parentHref(demoBrand, screen)).toBe('/demo/multiple')
   })
 
   it('returns the brand root from a viewer whose subject has one group', () => {
-    const screen = { kind: 'viewer', subjectId: 'single', groupId: 'only-group', pageIndex: 0 } as const
+    const screen = {
+      kind: 'viewer',
+      subjectId: 'single',
+      groupId: 'only-group',
+      pageIndex: 0,
+    } as const
     expect(parentHref(demoBrand, screen)).toBe('/demo')
   })
 
   it('returns the brand root from a tool', () => {
-    expect(parentHref(demoBrand, { kind: 'tool', toolId: demoBrand.tools[0]!.id, subPath: [] })).toBe('/demo')
+    expect(
+      parentHref(demoBrand, { kind: 'tool', toolId: demoBrand.tools[0]!.id, subPath: [] }),
+    ).toBe('/demo')
   })
 })
 
 describe('tool subtrees', () => {
   it('resolves a tool sub-screen to that tool, carrying the rest of the path', () => {
     const toolId = demoBrand.tools[0]!.id
-    expect(resolveScreen(demoBrand, ['tools', toolId, 'lobby'], null))
-      .toEqual({ kind: 'tool', toolId, subPath: ['lobby'] })
+    expect(resolveScreen(demoBrand, ['tools', toolId, 'lobby'], null)).toEqual({
+      kind: 'tool',
+      toolId,
+      subPath: ['lobby'],
+    })
   })
 
   it('carries a deeper sub-path too', () => {
     const toolId = demoBrand.tools[0]!.id
-    expect(resolveScreen(demoBrand, ['tools', toolId, 'rules', '123'], null))
-      .toEqual({ kind: 'tool', toolId, subPath: ['rules', '123'] })
+    expect(resolveScreen(demoBrand, ['tools', toolId, 'rules', '123'], null)).toEqual({
+      kind: 'tool',
+      toolId,
+      subPath: ['rules', '123'],
+    })
   })
 
   it('resolves the tool root with an empty sub-path', () => {
     const toolId = demoBrand.tools[0]!.id
-    expect(resolveScreen(demoBrand, ['tools', toolId], null))
-      .toEqual({ kind: 'tool', toolId, subPath: [] })
+    expect(resolveScreen(demoBrand, ['tools', toolId], null)).toEqual({
+      kind: 'tool',
+      toolId,
+      subPath: [],
+    })
   })
 
   it('still rejects an unknown tool however deep the path', () => {
@@ -114,8 +144,9 @@ describe('tool subtrees', () => {
 
   it('returns the tool root as the parent of a sub-screen', () => {
     const toolId = demoBrand.tools[0]!.id
-    expect(parentHref(demoBrand, { kind: 'tool', toolId, subPath: ['lobby'] }))
-      .toBe(`/demo/tools/${toolId}`)
+    expect(parentHref(demoBrand, { kind: 'tool', toolId, subPath: ['lobby'] })).toBe(
+      `/demo/tools/${toolId}`,
+    )
   })
 
   it('returns the brand root as the parent of the tool root', () => {

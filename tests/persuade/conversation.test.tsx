@@ -11,11 +11,19 @@ vi.mock('next/navigation', () => ({
 const { Conversation } = await import('../../src/persuade/Conversation')
 
 const ASSIGNMENT = {
-  id: 'a1', ruleId: 'r1', assigneeId: 'p1', status: 'open' as const,
-  dueOn: null, createdAt: '2026-08-25T09:00:00Z',
+  id: 'a1',
+  ruleId: 'r1',
+  assigneeId: 'p1',
+  status: 'open' as const,
+  dueOn: null,
+  createdAt: '2026-08-25T09:00:00Z',
   rule: {
-    id: 'r1', text: 'לקיים תדריך של 4 דקות בפתיחה, כל יום.',
-    topicId: 'briefing', kind: 'process', subTopic: null, response: null,
+    id: 'r1',
+    text: 'לקיים תדריך של 4 דקות בפתיחה, כל יום.',
+    topicId: 'briefing',
+    kind: 'process',
+    subTopic: null,
+    response: null,
   },
 }
 
@@ -34,13 +42,24 @@ const persuaderApi = {
  * shared a misunderstanding the route never agreed to. These helpers exist so
  * the mock cannot drift from `Turn` and `ConversationState` again.
  */
-const turn = (role: 'persuader' | 'target', text: string, interaction = 1) =>
-  ({ role, text, interaction })
+const turn = (role: 'persuader' | 'target', text: string, interaction = 1) => ({
+  role,
+  text,
+  interaction,
+})
 
 const state = (over: Record<string, unknown> = {}) => ({
-  interaction: 1, rung: 1, blockers: [], signals: {}, fatigue: 0,
-  outcome: 'open', askStated: true, identityStated: true,
-  startTimeSet: false, followUpAnnounced: false, ...over,
+  interaction: 1,
+  rung: 1,
+  blockers: [],
+  signals: {},
+  fatigue: 0,
+  outcome: 'open',
+  askStated: true,
+  identityStated: true,
+  startTimeSet: false,
+  followUpAnnounced: false,
+  ...over,
 })
 
 const setup = () => {
@@ -70,8 +89,12 @@ describe('the conversation', () => {
   it('opens by asking the engine for the first move', async () => {
     setup()
 
-    await waitFor(() => expect(persuaderApi.openConversation)
-      .toHaveBeenCalledWith(expect.objectContaining({ assignmentId: 'a1' }), expect.anything()))
+    await waitFor(() =>
+      expect(persuaderApi.openConversation).toHaveBeenCalledWith(
+        expect.objectContaining({ assignmentId: 'a1' }),
+        expect.anything(),
+      ),
+    )
     expect(await screen.findByText('רותי, רוצה לבקש ממך דבר אחד.')).toBeVisible()
   })
 
@@ -115,7 +138,10 @@ describe('the conversation', () => {
     // claims is structural.
     const said = await screen.findByText('אין לי זמן לזה בבוקר.')
     expect(said).toHaveAttribute('data-from', 'target')
-    expect(screen.getByText('ארבע דקות ביום הן עשרים בשבוע.')).toHaveAttribute('data-from', 'persuader')
+    expect(screen.getByText('ארבע דקות ביום הן עשרים בשבוע.')).toHaveAttribute(
+      'data-from',
+      'persuader',
+    )
   })
 
   it('says the engine failed rather than looking like it is still thinking', async () => {
@@ -134,7 +160,8 @@ describe('the conversation', () => {
  */
 describe('while the answer is still being written', () => {
   /** A reply that reports progress before it resolves, the way the real one does. */
-  const streaming = (chunks: string[], result: unknown) =>
+  const streaming =
+    (chunks: string[], result: unknown) =>
     async (_body: unknown, watch?: { onPreparing?: () => void; onDelta?: (s: string) => void }) => {
       watch?.onPreparing?.()
       let soFar = ''
@@ -147,7 +174,9 @@ describe('while the answer is still being written', () => {
 
   it('shows the message growing instead of a spinner', async () => {
     let release: (() => void) | undefined
-    const held = new Promise<void>((resolve) => { release = resolve })
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
 
     persuaderApi.openConversation.mockImplementation(
       async (_body: unknown, watch?: { onDelta?: (s: string) => void }) => {
@@ -171,8 +200,7 @@ describe('while the answer is still being written', () => {
     // survives the result would show the message twice.
     expect(await screen.findByText('רותי, רוצה לבקש ממך דבר אחד.')).toBeVisible()
     await waitFor(() => expect(screen.queryByText('רותי, רוצה לבקש')).toBeNull())
-    expect(screen.queryByText('רותי, רוצה לבקש ממך דבר אחד.'))
-      .not.toHaveAttribute('data-writing')
+    expect(screen.queryByText('רותי, רוצה לבקש ממך דבר אחד.')).not.toHaveAttribute('data-writing')
   })
 
   it('says it is preparing on the first conversation about an assignment', async () => {
@@ -193,14 +221,16 @@ describe('while the answer is still being written', () => {
   })
 
   it('puts her own message up before the request comes back', async () => {
-    persuaderApi.reply.mockImplementation(streaming(['ארבע דקות'], {
-      turns: [
-        turn('persuader', 'רותי, רוצה לבקש ממך דבר אחד.'),
-        turn('target', 'אין לי זמן', 2),
-        turn('persuader', 'ארבע דקות ביום הן עשרים בשבוע.', 2),
-      ],
-      state: state({ interaction: 2 }),
-    }))
+    persuaderApi.reply.mockImplementation(
+      streaming(['ארבע דקות'], {
+        turns: [
+          turn('persuader', 'רותי, רוצה לבקש ממך דבר אחד.'),
+          turn('target', 'אין לי זמן', 2),
+          turn('persuader', 'ארבע דקות ביום הן עשרים בשבוע.', 2),
+        ],
+        state: state({ interaction: 2 }),
+      }),
+    )
 
     const user = setup()
     await screen.findByText('רותי, רוצה לבקש ממך דבר אחד.')
@@ -214,7 +244,9 @@ describe('while the answer is still being written', () => {
 
   it('will not let her close the conversation mid-answer', async () => {
     let release: (() => void) | undefined
-    const held = new Promise<void>((resolve) => { release = resolve })
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
     persuaderApi.reply.mockImplementation(async () => {
       await held
       return { turns: [turn('persuader', 'ארבע דקות ביום.')], state: state() }

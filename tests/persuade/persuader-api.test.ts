@@ -44,19 +44,29 @@ beforeEach(() => {
   getSession.mockResolvedValue({ data: { session: { access_token: 'token' } } })
 })
 
-afterEach(() => { vi.unstubAllGlobals() })
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('reading the engine stream', () => {
   it('reports the message so far, not the fragment', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => streamed([
-      line({ type: 'delta', text: 'רותי, ' }),
-      line({ type: 'delta', text: 'רוצה לבקש ' }),
-      line({ type: 'delta', text: 'דבר אחד.' }),
-      line(RESULT),
-    ])))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        streamed([
+          line({ type: 'delta', text: 'רותי, ' }),
+          line({ type: 'delta', text: 'רוצה לבקש ' }),
+          line({ type: 'delta', text: 'דבר אחד.' }),
+          line(RESULT),
+        ]),
+      ),
+    )
 
     const seen: string[] = []
-    await createPersuaderApi().openConversation({ assignmentId: 'a1' }, { onDelta: (s) => seen.push(s) })
+    await createPersuaderApi().openConversation(
+      { assignmentId: 'a1' },
+      { onDelta: (s) => seen.push(s) },
+    )
 
     // Cumulative, because a component that appends fragments has to hold a
     // buffer and clear it at exactly the right moment -- and the right moment is
@@ -68,9 +78,12 @@ describe('reading the engine stream', () => {
     const whole = line({ type: 'delta', text: 'ארבע דקות' }) + line(RESULT)
     const cut = Math.floor(whole.length / 3)
 
-    vi.stubGlobal('fetch', vi.fn(async () => streamed([
-      whole.slice(0, cut), whole.slice(cut, cut * 2), whole.slice(cut * 2),
-    ])))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        streamed([whole.slice(0, cut), whole.slice(cut, cut * 2), whole.slice(cut * 2)]),
+      ),
+    )
 
     const result = await createPersuaderApi().openConversation({ assignmentId: 'a1' })
 
@@ -80,19 +93,28 @@ describe('reading the engine stream', () => {
   })
 
   it('throws on an error event instead of returning a half conversation', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => streamed([
-      line({ type: 'delta', text: 'מת' }),
-      line({ type: 'error', message: 'לא הצלחנו לבנות תוכנית לשיחה הזאת.' }),
-    ])))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        streamed([
+          line({ type: 'delta', text: 'מת' }),
+          line({ type: 'error', message: 'לא הצלחנו לבנות תוכנית לשיחה הזאת.' }),
+        ]),
+      ),
+    )
 
     // An error that arrives mid-stream is still an error. Returned as a field,
     // some caller eventually forgets to check it and posts the half state back.
-    await expect(createPersuaderApi().openConversation({ assignmentId: 'a1' }))
-      .rejects.toThrow('לא הצלחנו לבנות תוכנית לשיחה הזאת.')
+    await expect(createPersuaderApi().openConversation({ assignmentId: 'a1' })).rejects.toThrow(
+      'לא הצלחנו לבנות תוכנית לשיחה הזאת.',
+    )
   })
 
   it('fails when the stream ends without a result', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => streamed([line({ type: 'delta', text: 'חצי' })])))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => streamed([line({ type: 'delta', text: 'חצי' })])),
+    )
 
     // A dropped connection is not a conversation anyone can continue from, and
     // returning what arrived would send a truncated turn list back on the next
@@ -101,10 +123,14 @@ describe('reading the engine stream', () => {
   })
 
   it('still turns a 401 into a sign-in, before it reads a byte', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => streamed([], 401)))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => streamed([], 401)),
+    )
 
-    await expect(createPersuaderApi().openConversation({ assignmentId: 'a1' }))
-      .rejects.toMatchObject({ status: 401 })
+    await expect(
+      createPersuaderApi().openConversation({ assignmentId: 'a1' }),
+    ).rejects.toMatchObject({ status: 401 })
   })
 
   it('sends the assignment and never a plan', async () => {

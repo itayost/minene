@@ -17,7 +17,13 @@ type ViewerClientProps = {
   hasExplicitPage: boolean
 }
 
-export function ViewerClient({ brand, subjectId, group, pageIndex, hasExplicitPage }: ViewerClientProps) {
+export function ViewerClient({
+  brand,
+  subjectId,
+  group,
+  pageIndex,
+  hasExplicitPage,
+}: ViewerClientProps) {
   const router = useRouter()
   const { read, remember } = useProgress(brand.id)
   const { register } = useShareTarget()
@@ -39,7 +45,17 @@ export function ViewerClient({ brand, subjectId, group, pageIndex, hasExplicitPa
 
     const target = Math.max(0, Math.min(group.pages.length - 1, remembered))
     if (target !== pageIndex) router.replace(groupHref(brand.id, subjectId, group.id, target))
-  }, [brand.id, entryKey, group.id, group.pages.length, hasExplicitPage, pageIndex, read, router, subjectId])
+  }, [
+    brand.id,
+    entryKey,
+    group.id,
+    group.pages.length,
+    hasExplicitPage,
+    pageIndex,
+    read,
+    router,
+    subjectId,
+  ])
 
   // The header counter lives in the shell, which is rendered by the layout and
   // so has no page of its own to count. The position is reported to it here.

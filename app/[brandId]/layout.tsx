@@ -47,7 +47,10 @@ export async function generateViewport({ params }: BrandParams): Promise<Viewpor
   }
 }
 
-export default async function BrandLayout({ children, params }: BrandParams & { children: ReactNode }) {
+export default async function BrandLayout({
+  children,
+  params,
+}: BrandParams & { children: ReactNode }) {
   const { brandId } = await params
   const { brand } = await requireBrand(brandId)
 

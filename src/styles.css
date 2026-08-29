@@ -1295,16 +1295,10 @@ a:focus-visible {
   }
 }
 
-
-
-
 @media (max-width: 350px) {
   .cockpit {
     padding-inline: 14px;
   }
-
-
-
 
   /* The grid is two columns everywhere now, so the narrow case only has to
      take the pressure off the type. */

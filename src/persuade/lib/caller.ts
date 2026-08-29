@@ -1,4 +1,4 @@
-import { supabase, isStorageConfigured } from './supabase';
+import { supabase, isStorageConfigured } from './supabase'
 
 /**
  * Who is asking.
@@ -15,12 +15,12 @@ import { supabase, isStorageConfigured } from './supabase';
  */
 
 export interface Caller {
-  userId: string;
-  tenantId: string;
+  userId: string
+  tenantId: string
   /** 'owner' | 'staff' -- the permissions level, not the job role. */
-  role: string;
-  jobRoleId: string | null;
-  displayName: string | null;
+  role: string
+  jobRoleId: string | null
+  displayName: string | null
 }
 
 /**
@@ -34,14 +34,14 @@ export interface Caller {
  */
 export async function resolveCaller(authorization: string): Promise<Caller | null> {
   try {
-    if (!isStorageConfigured()) return null;
+    if (!isStorageConfigured()) return null
 
-    const token = authorization.replace(/^Bearer\s+/i, '').trim();
-    if (!token) return null;
+    const token = authorization.replace(/^Bearer\s+/i, '').trim()
+    if (!token) return null
 
-    const client = supabase();
-    const { data, error } = await client.auth.getUser(token);
-    if (error || !data.user) return null;
+    const client = supabase()
+    const { data, error } = await client.auth.getUser(token)
+    if (error || !data.user) return null
 
     // A profile row is what carries the tenant. An auth.users row without one
     // resolves to no tenant, and is therefore refused rather than defaulted --
@@ -50,8 +50,8 @@ export async function resolveCaller(authorization: string): Promise<Caller | nul
       .from('profiles')
       .select('tenant_id, role, job_role_id, display_name')
       .eq('id', data.user.id)
-      .maybeSingle();
-    if (!profile) return null;
+      .maybeSingle()
+    if (!profile) return null
 
     return {
       userId: data.user.id,
@@ -59,9 +59,9 @@ export async function resolveCaller(authorization: string): Promise<Caller | nul
       role: profile.role,
       jobRoleId: profile.job_role_id,
       displayName: profile.display_name,
-    };
+    }
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -88,13 +88,13 @@ export async function loadActionableAssignment(
     .from('assignments')
     .select('tenant_id, assignee_id')
     .eq('id', assignmentId)
-    .maybeSingle();
-  if (!data) return null;
+    .maybeSingle()
+  if (!data) return null
 
-  if (data.tenant_id !== caller.tenantId) return null;
-  const permitted = data.assignee_id === caller.userId || caller.role === 'owner';
+  if (data.tenant_id !== caller.tenantId) return null
+  const permitted = data.assignee_id === caller.userId || caller.role === 'owner'
   // The assignee is returned rather than merely checked, because the
   // conversation is evidence about THEM and not about whoever is driving it. A
   // manager watching does not make the run a record of the manager.
-  return permitted ? { assigneeId: data.assignee_id } : null;
+  return permitted ? { assigneeId: data.assignee_id } : null
 }

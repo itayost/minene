@@ -47,9 +47,8 @@ const unauthorized = () => new RulesApiError('UNAUTHORIZED', 401, 'ההרשאה 
  * failed" is not. Replacing it with a generic message threw away the diagnosis.
  */
 async function refused(response: { status: number; json: () => Promise<unknown> }) {
-  const fallback = response.status === 403
-    ? 'רק בעלים יכול להריץ סימולציה.'
-    : 'הרצת הסימולציה נכשלה.'
+  const fallback =
+    response.status === 403 ? 'רק בעלים יכול להריץ סימולציה.' : 'הרצת הסימולציה נכשלה.'
   const said = await response.json().then(
     (body) => (body as { error?: unknown })?.error,
     () => undefined,
@@ -82,7 +81,8 @@ export async function streamSimulation(
 
   if (response.status === 401) throw unauthorized()
   if (!response.ok) throw await refused(response)
-  if (!response.body) throw new RulesApiError('REQUEST_FAILED', response.status, 'הרצת הסימולציה נכשלה.')
+  if (!response.body)
+    throw new RulesApiError('REQUEST_FAILED', response.status, 'הרצת הסימולציה נכשלה.')
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()

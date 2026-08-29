@@ -2,18 +2,25 @@ import { describe, expect, it } from 'vitest'
 import { buildBank, blockersIn } from '../../src/persuade/bank'
 import type { Run } from '../../src/persuade/engine/types'
 
-const run = ({ outcome = 'agreed', category = null, argument = null, grade = 70, blockers = [] }: {
+const run = ({
+  outcome = 'agreed',
+  category = null,
+  argument = null,
+  grade = 70,
+  blockers = [],
+}: {
   outcome?: string
   category?: string | null
   argument?: string | null
   grade?: number
   blockers?: string[]
-} = {}) => ({
-  id: `r-${Math.random()}`,
-  state: { outcome, blockers, interaction: 3 },
-  violations: [],
-  ...(category ? { score: { winningCategory: category, winningArgument: argument, grade } } : {}),
-}) as unknown as Run
+} = {}) =>
+  ({
+    id: `r-${Math.random()}`,
+    state: { outcome, blockers, interaction: 3 },
+    violations: [],
+    ...(category ? { score: { winningCategory: category, winningArgument: argument, grade } } : {}),
+  }) as unknown as Run
 
 describe('the bank, derived rather than stored', () => {
   it('counts only the arguments that actually won', () => {
@@ -70,7 +77,9 @@ describe('what stopped the conversations', () => {
   })
 
   it('counts a blocker once per conversation, however often it recurred', () => {
-    const blockers = blockersIn([run({ outcome: 'agreed', blockers: ['overloaded', 'overloaded'] })])
+    const blockers = blockersIn([
+      run({ outcome: 'agreed', blockers: ['overloaded', 'overloaded'] }),
+    ])
 
     // Otherwise a single stubborn conversation outvotes ten straightforward
     // ones, and the ranking measures repetition rather than incidence.

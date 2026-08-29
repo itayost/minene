@@ -2,20 +2,27 @@ import { describe, expect, it } from 'vitest'
 import { computeRates } from '../../src/persuade/engine/rates'
 import type { Run } from '../../src/persuade/engine/types'
 
-const run = ({ outcome = 'refused', executed = null, blockers = [], interaction = 3, category = null }: {
+const run = ({
+  outcome = 'refused',
+  executed = null,
+  blockers = [],
+  interaction = 3,
+  category = null,
+}: {
   outcome?: string
   executed?: 'yes' | 'no' | 'partial' | null
   blockers?: string[]
   interaction?: number
   category?: string | null
-} = {}) => ({
-  id: `r-${Math.random()}`,
-  personaId: 'rona',
-  state: { outcome, blockers, interaction },
-  violations: [],
-  ...(executed ? { followUp: { report: { executed } } } : {}),
-  ...(category ? { score: { winningCategory: category } } : {}),
-}) as unknown as Run
+} = {}) =>
+  ({
+    id: `r-${Math.random()}`,
+    personaId: 'rona',
+    state: { outcome, blockers, interaction },
+    violations: [],
+    ...(executed ? { followUp: { report: { executed } } } : {}),
+    ...(category ? { score: { winningCategory: category } } : {}),
+  }) as unknown as Run
 
 describe('the two rates, and why they never merge', () => {
   it('keeps the denominators apart', () => {

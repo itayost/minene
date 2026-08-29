@@ -14,9 +14,10 @@ const doc = (overrides: Partial<BrainDocument> = {}): BrainDocument => ({
   ...overrides,
 })
 
-const listing = (rows: BrainDocument[]) => ({
-  listRecentDocuments: async () => ({ rows, hasMore: false }),
-} as never)
+const listing = (rows: BrainDocument[]) =>
+  ({
+    listRecentDocuments: async () => ({ rows, hasMore: false }),
+  }) as never
 
 const render_ = (rows: BrainDocument[]) =>
   render(<DocumentsList documentsApi={listing(rows)} onError={vi.fn()} reloadToken={0} />)

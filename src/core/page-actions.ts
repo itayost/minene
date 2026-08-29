@@ -65,14 +65,22 @@ function errorFrom(error: unknown) {
 }
 
 /** Shares the image when possible, followed by URL and clipboard fallbacks. */
-export async function sharePage(context: PageActionContext, injectedApis = browserActionApis()): Promise<'file' | 'url' | 'copied'> {
+export async function sharePage(
+  context: PageActionContext,
+  injectedApis = browserActionApis(),
+): Promise<'file' | 'url' | 'copied'> {
   const description = actionDescription(context)
   let lastError: Error | undefined
 
   try {
     const blob = await fetchPage(context.page, injectedApis)
     const image = new File([blob], pageFilename(context), { type: blob.type || 'image/png' })
-    const fileData: ShareData = { files: [image], title: description, text: description, url: context.currentUrl }
+    const fileData: ShareData = {
+      files: [image],
+      title: description,
+      text: description,
+      url: context.currentUrl,
+    }
 
     if (injectedApis.canShare?.(fileData) && injectedApis.share) {
       await injectedApis.share(fileData)
@@ -104,7 +112,10 @@ export async function sharePage(context: PageActionContext, injectedApis = brows
 }
 
 /** Downloads the current image and always releases the temporary object URL. */
-export async function downloadPage(context: PageActionContext, injectedApis = browserActionApis()): Promise<void> {
+export async function downloadPage(
+  context: PageActionContext,
+  injectedApis = browserActionApis(),
+): Promise<void> {
   const blob = await fetchPage(context.page, injectedApis)
   const objectUrl = injectedApis.createObjectURL(blob)
 
@@ -125,7 +136,8 @@ export function whatsappUrl(context: PageActionContext) {
 /** Opens synchronously so blocking is observable, then severs the opener before external navigation. */
 export function openExternalWindow(
   url: string,
-  openWindow: OpenExternalWindow = (initialUrl, target, features) => window.open(initialUrl, target, features),
+  openWindow: OpenExternalWindow = (initialUrl, target, features) =>
+    window.open(initialUrl, target, features),
 ): ExternalWindowResult {
   const popup = openWindow('about:blank', '_blank')
   if (popup === null) return 'blocked'

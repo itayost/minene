@@ -1,16 +1,39 @@
-import { generateObject, streamObject } from 'ai';
-import { z } from 'zod';
-import { callOptions, model } from '../lib/model';
-import { historyForModel, persuaderSystemPrompt, type Recipient } from './prompts';
-import { checkTurn, DEFAULT_RULES, detectOutcome, fatigueScore, nextRung, shouldStop, type RuleConfig } from './rules';
-import type { ConversationState, PersuasionPlan, RuleViolation, Rung, Turn } from './types';
+import { generateObject, streamObject } from 'ai'
+import { z } from 'zod'
+import { callOptions, model } from '../lib/model'
+import { historyForModel, persuaderSystemPrompt, type Recipient } from './prompts'
+import {
+  checkTurn,
+  DEFAULT_RULES,
+  detectOutcome,
+  fatigueScore,
+  nextRung,
+  shouldStop,
+  type RuleConfig,
+} from './rules'
+import type { ConversationState, PersuasionPlan, RuleViolation, Rung, Turn } from './types'
 
 const BLOCKER_IDS = [
-  'no_why', 'no_price', 'overloaded', 'dont_know_how', 'thinks_already_doing',
-  'vague_definition', 'disagrees', 'afraid', 'low_confidence', 'low_energy',
-  'overwhelmed', 'agrees_no_action', 'repeated_no_action', 'refuses_role',
-  'unclear_request', 'wants_autonomy', 'skeptical', 'wants_to_quit', 'none',
-] as const;
+  'no_why',
+  'no_price',
+  'overloaded',
+  'dont_know_how',
+  'thinks_already_doing',
+  'vague_definition',
+  'disagrees',
+  'afraid',
+  'low_confidence',
+  'low_energy',
+  'overwhelmed',
+  'agrees_no_action',
+  'repeated_no_action',
+  'refuses_role',
+  'unclear_request',
+  'wants_autonomy',
+  'skeptical',
+  'wants_to_quit',
+  'none',
+] as const
 
 const turnSchema = z.object({
   blocker: z.enum(BLOCKER_IDS).describe('מה עוצר אותו עכשיו, לפי מה שהוא כתב'),
@@ -44,15 +67,15 @@ const turnSchema = z.object({
     autonomyNeed: z.enum(['low', 'medium', 'high', 'unknown']),
     respondsToNumbers: z.boolean().nullable(),
   }),
-});
+})
 
 export interface TurnResult {
-  turn: Turn;
-  state: ConversationState;
-  stopped: { stop: boolean; reason: string | null };
+  turn: Turn
+  state: ConversationState
+  stopped: { stop: boolean; reason: string | null }
 }
 
-type TurnObject = z.infer<typeof turnSchema>;
+type TurnObject = z.infer<typeof turnSchema>
 
 /** Everything the two entry points below share: the state the move is made from, and the call. */
 function turnRequest(
@@ -62,12 +85,12 @@ function turnRequest(
   rules: RuleConfig,
   recipient: Recipient | null,
 ) {
-  const targetTurns = turns.filter((t) => t.role === 'target');
+  const targetTurns = turns.filter((t) => t.role === 'target')
   const workingState: ConversationState = {
     ...state,
     fatigue: fatigueScore(targetTurns),
     rung: turns.length === 0 ? 1 : nextRung(state, rules),
-  };
+  }
 
   return {
     workingState,
@@ -75,7 +98,11 @@ function turnRequest(
       model: model('persuader'),
       schema: turnSchema,
       system: persuaderSystemPrompt(
-        plan, workingState, turns.some((t) => t.role === 'persuader'), rules, recipient,
+        plan,
+        workingState,
+        turns.some((t) => t.role === 'persuader'),
+        rules,
+        recipient,
       ),
       messages:
         turns.length === 0
@@ -83,7 +110,7 @@ function turnRequest(
           : historyForModel(turns),
       ...callOptions('persuader'),
     },
-  };
+  }
 }
 
 /** One persuader move: diagnose, choose a tool, speak, then get graded by the rule engine. */
@@ -94,14 +121,12 @@ export async function persuaderTurn(
   rules: RuleConfig = DEFAULT_RULES,
   recipient: Recipient | null = null,
 ): Promise<TurnResult> {
-  const { workingState, call } = turnRequest(plan, turns, state, rules, recipient);
-  const { object } = await generateObject(call);
-  return gradeTurn(object, plan, turns, workingState, rules);
+  const { workingState, call } = turnRequest(plan, turns, state, rules, recipient)
+  const { object } = await generateObject(call)
+  return gradeTurn(object, plan, turns, workingState, rules)
 }
 
-export type TurnEvent =
-  | { type: 'delta'; text: string }
-  | { type: 'done'; result: TurnResult };
+export type TurnEvent = { type: 'delta'; text: string } | { type: 'done'; result: TurnResult }
 
 /**
  * The same move, emitted as it is written.
@@ -124,15 +149,15 @@ export async function* streamPersuaderTurn(
   rules: RuleConfig = DEFAULT_RULES,
   recipient: Recipient | null = null,
 ): AsyncGenerator<TurnEvent> {
-  const { workingState, call } = turnRequest(plan, turns, state, rules, recipient);
-  const { partialObjectStream, object } = streamObject(call);
+  const { workingState, call } = turnRequest(plan, turns, state, rules, recipient)
+  const { partialObjectStream, object } = streamObject(call)
 
-  let sent = 0;
+  let sent = 0
   for await (const partial of partialObjectStream) {
-    const message = partial.message;
-    if (typeof message !== 'string' || message.length <= sent) continue;
-    yield { type: 'delta', text: message.slice(sent) };
-    sent = message.length;
+    const message = partial.message
+    if (typeof message !== 'string' || message.length <= sent) continue
+    yield { type: 'delta', text: message.slice(sent) }
+    sent = message.length
   }
 
   // Awaited after the stream is drained, never instead of it: this promise is
@@ -140,7 +165,7 @@ export async function* streamPersuaderTurn(
   // reply through that streamed beautifully and carried no blocker, no ask flag
   // and no commitment reading -- the fields every downstream decision is made
   // from.
-  yield { type: 'done', result: gradeTurn(await object, plan, turns, workingState, rules) };
+  yield { type: 'done', result: gradeTurn(await object, plan, turns, workingState, rules) }
 }
 
 /** The deterministic half: rule check, interaction accounting, outcome reading. */
@@ -151,7 +176,7 @@ function gradeTurn(
   workingState: ConversationState,
   rules: RuleConfig,
 ): TurnResult {
-  const isGreetingTurn = !turns.some((t) => t.role === 'persuader');
+  const isGreetingTurn = !turns.some((t) => t.role === 'persuader')
   const violations: RuleViolation[] = checkTurn(object.message, {
     plan,
     state: workingState,
@@ -160,11 +185,11 @@ function gradeTurn(
     statesAsk: object.statesAsk,
     argumentsUsed: object.argumentsUsed,
     askedForDecision: object.asksForDecision,
-  });
+  })
 
   // The opener buys goodwill, it does not spend one of the four attempts.
-  const isPersuasionAttempt = workingState.askStated || object.statesAsk;
-  const interaction = isPersuasionAttempt ? workingState.interaction + 1 : workingState.interaction;
+  const isPersuasionAttempt = workingState.askStated || object.statesAsk
+  const interaction = isPersuasionAttempt ? workingState.interaction + 1 : workingState.interaction
 
   const turn: Turn = {
     role: 'persuader',
@@ -174,20 +199,20 @@ function gradeTurn(
     blocker: object.blocker,
     tools: object.tools,
     violations,
-  };
+  }
 
   // Keyword matching catches the obvious "סגור". The model catches "אם אתה בודק, אז
   // בסדר" -- a yes wearing the clothes of a fatigue marker. Neither may fire before
   // the ask exists, and a counter-offer is not an agreement to the ask.
-  const hasCounterpartReplied = turns.some((t) => t.role === 'target');
-  const canReadOutcome = workingState.askStated && hasCounterpartReplied;
+  const hasCounterpartReplied = turns.some((t) => t.role === 'target')
+  const canReadOutcome = workingState.askStated && hasCounterpartReplied
   const readOutcome: ConversationState['outcome'] = !canReadOutcome
     ? workingState.outcome
     : object.counterpartCommitted
       ? 'agreed'
       : object.counterpartRefused
         ? 'refused'
-        : workingState.outcome;
+        : workingState.outcome
 
   const newState: ConversationState = {
     ...workingState,
@@ -202,9 +227,9 @@ function gradeTurn(
     identityStated: workingState.identityStated || object.statesIdentity,
     startTimeSet: workingState.startTimeSet || object.setsStartTime,
     followUpAnnounced: workingState.followUpAnnounced || object.announcesFollowUp,
-  };
+  }
 
-  return { turn, state: newState, stopped: shouldStop(newState, rules) };
+  return { turn, state: newState, stopped: shouldStop(newState, rules) }
 }
 
 /** Fold a counterpart reply into the state: outcome, fatigue, interaction bookkeeping. */
@@ -214,13 +239,13 @@ export function applyTargetReply(
   state: ConversationState,
   rules: RuleConfig = DEFAULT_RULES,
 ): { turn: Turn; state: ConversationState; stopped: { stop: boolean; reason: string | null } } {
-  const turn: Turn = { role: 'target', text, interaction: state.interaction };
-  const allTargetTurns = [...turns.filter((t) => t.role === 'target'), turn];
-  const outcome = detectOutcome(text);
+  const turn: Turn = { role: 'target', text, interaction: state.interaction }
+  const allTargetTurns = [...turns.filter((t) => t.role === 'target'), turn]
+  const outcome = detectOutcome(text)
   const newState: ConversationState = {
     ...state,
     fatigue: fatigueScore(allTargetTurns),
     outcome: outcome === 'open' ? state.outcome : outcome,
-  };
-  return { turn, state: newState, stopped: shouldStop(newState, rules) };
+  }
+  return { turn, state: newState, stopped: shouldStop(newState, rules) }
 }

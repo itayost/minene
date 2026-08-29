@@ -1,5 +1,5 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Run } from '../engine/types';
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Run } from '../engine/types'
 
 /**
  * Where a simulation belongs in the matrix.
@@ -8,15 +8,15 @@ import type { Run } from '../engine/types';
  * a persona and a role is already a cell, and forcing a need would invent one.
  */
 export interface SimulationCell {
-  industry: string;
-  jobRoleId: string | null;
-  need?: string | null;
+  industry: string
+  jobRoleId: string | null
+  need?: string | null
 }
 
 export interface StoredSimulation {
-  id: string;
-  cell: { industry: string; jobRoleId: string | null };
-  run: Run;
+  id: string
+  cell: { industry: string; jobRoleId: string | null }
+  run: Run
 }
 
 /**
@@ -26,22 +26,23 @@ export interface StoredSimulation {
  * buildBank keys off `run.score?.winningCategory`, so a bank assembled from
  * rows that never carried a score comes back empty however many were scored.
  */
-const SIMULATION_COLUMNS = 'id,industry,job_role_id,need,persona_id,plan,turns,state,outcome,score,created_at';
+const SIMULATION_COLUMNS =
+  'id,industry,job_role_id,need,persona_id,plan,turns,state,outcome,score,created_at'
 
 interface SimulationRow {
-  id: string;
-  industry: string;
-  job_role_id: string | null;
-  persona_id: string | null;
-  plan: Run['plan'];
-  turns: Run['turns'] | null;
-  state: Run['state'];
-  score: Run['score'] | null;
-  created_at: string;
+  id: string
+  industry: string
+  job_role_id: string | null
+  persona_id: string | null
+  plan: Run['plan']
+  turns: Run['turns'] | null
+  state: Run['state']
+  score: Run['score'] | null
+  created_at: string
 }
 
 const toStored = (row: SimulationRow): StoredSimulation => {
-  const turns = row.turns ?? [];
+  const turns = row.turns ?? []
   return {
     id: row.id,
     cell: { industry: row.industry, jobRoleId: row.job_role_id },
@@ -59,8 +60,8 @@ const toStored = (row: SimulationRow): StoredSimulation => {
       violations: turns.flatMap((t) => t.violations ?? []),
       ...(row.score ? { score: row.score } : {}),
     },
-  };
-};
+  }
+}
 
 export function createSimulationsStore(client: SupabaseClient) {
   return {
@@ -86,9 +87,9 @@ export function createSimulationsStore(client: SupabaseClient) {
         // Explicitly null rather than omitted: null means "not yet scored",
         // which is a different fact from a column that was never written.
         score: run.score ?? null,
-      });
+      })
 
-      if (error) throw new Error(`שמירת הסימולציה נכשלה: ${error.message}`);
+      if (error) throw new Error(`שמירת הסימולציה נכשלה: ${error.message}`)
     },
 
     async listSimulations(limit = 500): Promise<StoredSimulation[]> {
@@ -96,10 +97,10 @@ export function createSimulationsStore(client: SupabaseClient) {
         .from('simulations')
         .select(SIMULATION_COLUMNS)
         .order('created_at', { ascending: false })
-        .limit(limit);
+        .limit(limit)
 
-      if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`);
-      return ((data ?? []) as SimulationRow[]).map(toStored);
+      if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
+      return ((data ?? []) as SimulationRow[]).map(toStored)
     },
-  };
+  }
 }

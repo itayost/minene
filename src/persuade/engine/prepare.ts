@@ -1,9 +1,9 @@
-import { generateObject } from 'ai';
-import { z } from 'zod';
-import { callOptions, model } from '../lib/model';
-import { ARGUMENT_LABELS, RUNG_LABELS } from './knowledge';
-import { formatAmmunition, strengthFromLikePct, type Ammunition } from './ammunition';
-import type { Argument, PersuasionPlan } from './types';
+import { generateObject } from 'ai'
+import { z } from 'zod'
+import { callOptions, model } from '../lib/model'
+import { ARGUMENT_LABELS, RUNG_LABELS } from './knowledge'
+import { formatAmmunition, strengthFromLikePct, type Ammunition } from './ammunition'
+import type { Argument, PersuasionPlan } from './types'
 
 /**
  * Stage 0. Nothing is said to the counterpart before this exists.
@@ -35,7 +35,7 @@ const argumentSchema = z.object({
     .number()
     .nullable()
     .describe('מספר החוק שממנו נלקח הטיעון, או null אם ניסחת אותו בעצמך'),
-});
+})
 
 const planSchema = z.object({
   topic: z.string(),
@@ -60,19 +60,17 @@ const planSchema = z.object({
     .min(3)
     .max(6)
     .describe('התנגדויות צפויות ותשובה קצרה לכל אחת'),
-  escalation: z
-    .array(z.object({ rung: z.number().min(1).max(5), message: z.string() }))
-    .length(5),
+  escalation: z.array(z.object({ rung: z.number().min(1).max(5), message: z.string() })).length(5),
   stopPoint: z.string().describe('מתי מפסיקים לשכנע ומה עושים אז'),
   successCriteria: z.string().describe('איך נדע שזה באמת קרה בעולם'),
-});
+})
 
 export interface PrepareInput {
-  id: string;
-  topic: string;
-  targetDescription: string;
-  onBehalfOf: { name: string; title: string; mandate: string } | null;
-  goal: string;
+  id: string
+  topic: string
+  targetDescription: string
+  onBehalfOf: { name: string; title: string; mandate: string } | null
+  goal: string
   /**
    * What the business already knows about this ask, retrieved from eran-task.
    *
@@ -81,7 +79,7 @@ export interface PrepareInput {
    * and no knowledge base behind it. When it IS present the plan stops being
    * invented and starts being assembled.
    */
-  ammunition?: Ammunition | null;
+  ammunition?: Ammunition | null
 }
 
 /**
@@ -101,23 +99,24 @@ export function applyMeasuredStrength(
   args: Argument[],
   ammunition: Ammunition | null | undefined,
 ): Argument[] {
-  if (!ammunition) return args;
-  const byNumber = new Map(ammunition.arguments.map((a) => [a.ruleNumber, a]));
+  if (!ammunition) return args
+  const byNumber = new Map(ammunition.arguments.map((a) => [a.ruleNumber, a]))
 
   return args.map((argument) => {
-    const source = argument.sourceRuleNumber == null ? undefined : byNumber.get(argument.sourceRuleNumber);
+    const source =
+      argument.sourceRuleNumber == null ? undefined : byNumber.get(argument.sourceRuleNumber)
     // An argument the model wrote itself, or one citing a rule that is not in
     // the payload, keeps the model's own estimate. There is nothing better to
     // replace it with, and inventing a neutral score would discard a real
     // judgement in favour of a made-up one.
-    if (!source || source.likePct === null) return argument;
+    if (!source || source.likePct === null) return argument
 
     return {
       ...argument,
       strength: strengthFromLikePct(source.likePct),
       why: source.evidence ?? argument.why,
-    };
-  });
+    }
+  })
 }
 
 /**
@@ -136,11 +135,11 @@ export function applyMeasuredStrength(
  * keyed by, and sorted because the payload's order is the RPC's business.
  */
 export function measuredInputs(input: PrepareInput): string {
-  if (!input.ammunition) return '';
+  if (!input.ammunition) return ''
   return input.ammunition.arguments
     .map((a) => `${a.ruleNumber}:${a.likePct ?? ''}:${a.evidence ?? ''}`)
     .sort()
-    .join('|');
+    .join('|')
 }
 
 /**
@@ -155,10 +154,10 @@ export function measuredInputs(input: PrepareInput): string {
 export function preparePrompt(input: PrepareInput): { system: string; prompt: string } {
   const categories = Object.entries(ARGUMENT_LABELS)
     .map(([k, v]) => `${k} = ${v}`)
-    .join(', ');
+    .join(', ')
   const rungs = Object.entries(RUNG_LABELS)
     .map(([k, v]) => `${k} = ${v}`)
-    .join(', ');
+    .join(', ')
 
   // Two genuinely different jobs, so two different instructions rather than one
   // hedged instruction that covers both badly. Without a knowledge base this is
@@ -171,7 +170,7 @@ export function preparePrompt(input: PrepareInput): { system: string; prompt: st
 - לכל טיעון שלקחת מחוק, החזר את מספר החוק ב-sourceRuleNumber. לטיעון שניסחת בעצמך החזר null.
 - הדירוג של טיעון שנלקח מחוק נקבע מהמדידה בארגון ולא ממך. תן אומדן, הוא יוחלף.
 - הבקשה כבר נוסחה ואושרה. אל תנסח אותה מחדש, רק פרק אותה לשדות.`
-    : '';
+    : ''
 
   return {
     system: `אתה מכין שיחת שכנוע לפני שהיא מתחילה. אתה לא כותב את השיחה, אתה כותב את התחמושת.
@@ -198,11 +197,11 @@ ${
 
 ${input.ammunition ? `\n${formatAmmunition(input.ammunition)}\n` : ''}
 הכן את תוכנית השכנוע.`,
-  };
+  }
 }
 
 export async function preparePlan(input: PrepareInput): Promise<PersuasionPlan> {
-  const { system, prompt } = preparePrompt(input);
+  const { system, prompt } = preparePrompt(input)
 
   const { object } = await generateObject({
     model: model('planner'),
@@ -210,7 +209,7 @@ export async function preparePlan(input: PrepareInput): Promise<PersuasionPlan> 
     system,
     prompt,
     ...callOptions('planner'),
-  });
+  })
 
   return {
     ...object,
@@ -221,5 +220,5 @@ export async function preparePlan(input: PrepareInput): Promise<PersuasionPlan> 
       rung: Math.min(Math.max(Math.round(e.rung), 1), 5) as 1 | 2 | 3 | 4 | 5,
       message: e.message,
     })),
-  } as PersuasionPlan;
+  } as PersuasionPlan
 }

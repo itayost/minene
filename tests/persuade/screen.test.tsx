@@ -11,15 +11,27 @@ vi.mock('../../src/auth/supabase-browser', () => ({ createBrowserSupabase: () =>
 
 const api = vi.hoisted(() => ({ listOpenAssignments: vi.fn(), settleAssignment: vi.fn() }))
 vi.mock('../../src/persuade/assignments-api', async (o) => ({
-  ...(await o<Record<string, unknown>>()), createAssignmentsApi: () => api,
+  ...(await o<Record<string, unknown>>()),
+  createAssignmentsApi: () => api,
 }))
 
 const { PersuadeClient } = await import('../../app/[brandId]/tools/persuade/persuade-client')
 
 const assignment = (over = {}) => ({
-  id: 'a1', ruleId: 'r1', assigneeId: 'p1', status: 'open',
-  dueOn: null, createdAt: '2026-08-25T09:00:00Z',
-  rule: { id: 'r1', text: 'לקיים תדריך של 4 דקות בפתיחה, כל יום.', topicId: 'briefing', kind: 'process', subTopic: null, response: null },
+  id: 'a1',
+  ruleId: 'r1',
+  assigneeId: 'p1',
+  status: 'open',
+  dueOn: null,
+  createdAt: '2026-08-25T09:00:00Z',
+  rule: {
+    id: 'r1',
+    text: 'לקיים תדריך של 4 דקות בפתיחה, כל יום.',
+    topicId: 'briefing',
+    kind: 'process',
+    subTopic: null,
+    response: null,
+  },
   ...over,
 })
 
@@ -53,8 +65,10 @@ describe('what has been asked of me', () => {
 
   it('gives an owner one link to the lab, and a staff member none', async () => {
     render(<PersuadeClient brandId="minene" role="owner" />)
-    expect(await screen.findByRole('link', { name: /מעבדה/ }))
-      .toHaveAttribute('href', '/minene/tools/persuade/lab')
+    expect(await screen.findByRole('link', { name: /מעבדה/ })).toHaveAttribute(
+      'href',
+      '/minene/tools/persuade/lab',
+    )
 
     cleanup()
     render(<PersuadeClient brandId="minene" role="staff" />)
@@ -73,8 +87,11 @@ describe('reporting what actually happened', () => {
     await user.click(within(row).getByRole('button', { name: /דיווח ביצוע/ }))
     await user.click(await screen.findByRole('button', { name: 'בוצע' }))
 
-    await waitFor(() => expect(api.settleAssignment)
-      .toHaveBeenCalledWith(expect.objectContaining({ assignmentId: 'a1', status: 'done' })))
+    await waitFor(() =>
+      expect(api.settleAssignment).toHaveBeenCalledWith(
+        expect.objectContaining({ assignmentId: 'a1', status: 'done' }),
+      ),
+    )
   })
 
   it('records a partial as not done', async () => {
@@ -87,7 +104,10 @@ describe('reporting what actually happened', () => {
     await user.click(await screen.findByRole('button', { name: /חלקית/ }))
 
     // Otherwise the measurement drifts upward one generous rounding at a time.
-    await waitFor(() => expect(api.settleAssignment)
-      .toHaveBeenCalledWith(expect.objectContaining({ status: 'not_done' })))
+    await waitFor(() =>
+      expect(api.settleAssignment).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'not_done' }),
+      ),
+    )
   })
 })

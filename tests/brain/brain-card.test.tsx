@@ -4,7 +4,11 @@ import { BrainCard } from '../../src/brain/BrainCard'
 
 describe('the one card', () => {
   it('renders as a list item when it is one of many', () => {
-    render(<ul><BrainCard as="li">לחייך</BrainCard></ul>)
+    render(
+      <ul>
+        <BrainCard as="li">לחייך</BrainCard>
+      </ul>,
+    )
 
     expect(screen.getByRole('listitem')).toHaveTextContent('לחייך')
   })
@@ -27,14 +31,23 @@ describe('the one card', () => {
 
   it('keeps the head, the body, the meta and the actions in reading order', () => {
     const { container } = render(
-      <BrainCard actions={<button type="button">אישור</button>} head={<span>#12</span>} meta={<span>טיפ</span>}>
+      <BrainCard
+        actions={<button type="button">אישור</button>}
+        head={<span>#12</span>}
+        meta={<span>טיפ</span>}
+      >
         לחייך
       </BrainCard>,
     )
 
-    const classes = [...(container.firstElementChild?.children ?? [])].map((child) => child.className)
+    const classes = [...(container.firstElementChild?.children ?? [])].map(
+      (child) => child.className,
+    )
     expect(classes).toEqual([
-      'brain-card__head', 'brain-card__body', 'brain-card__meta', 'brain-card__actions',
+      'brain-card__head',
+      'brain-card__body',
+      'brain-card__meta',
+      'brain-card__actions',
     ])
   })
 })

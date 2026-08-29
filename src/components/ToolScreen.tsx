@@ -13,7 +13,9 @@ type ToolScreenProps = {
 export function ToolScreen({ tool, actionHref }: ToolScreenProps) {
   return (
     <section className="tool-screen" aria-labelledby={`tool-${tool.id}`}>
-      <h1 className="visually-hidden" id={`tool-${tool.id}`}>{tool.label}</h1>
+      <h1 className="visually-hidden" id={`tool-${tool.id}`}>
+        {tool.label}
+      </h1>
       {tool.note ? <p className="tool-note">{tool.note}</p> : null}
       <ul className="tool-list" role="list">
         {tool.items.map((item, index) => (
@@ -25,7 +27,9 @@ export function ToolScreen({ tool, actionHref }: ToolScreenProps) {
       </ul>
 
       {tool.action && actionHref ? (
-        <Link className="tool-action" href={actionHref}>{tool.action.label}</Link>
+        <Link className="tool-action" href={actionHref}>
+          {tool.action.label}
+        </Link>
       ) : null}
     </section>
   )

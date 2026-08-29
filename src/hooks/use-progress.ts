@@ -4,7 +4,9 @@ import { useCallback } from 'react'
 import { progressEntryKey, readProgress, writeProgress, type ProgressMap } from '../core/progress'
 
 const unavailableStorage: Storage = {
-  get length() { return 0 },
+  get length() {
+    return 0
+  },
   clear: () => undefined,
   getItem: () => null,
   key: () => null,
@@ -31,13 +33,16 @@ function browserStorage(): Storage {
 export function useProgress(brandId: string) {
   const read = useCallback((): ProgressMap => readProgress(browserStorage(), brandId), [brandId])
 
-  const remember = useCallback((subjectId: string, groupId: string, pageIndex: number) => {
-    const storage = browserStorage()
-    writeProgress(storage, brandId, {
-      ...readProgress(storage, brandId),
-      [progressEntryKey(subjectId, groupId)]: pageIndex,
-    })
-  }, [brandId])
+  const remember = useCallback(
+    (subjectId: string, groupId: string, pageIndex: number) => {
+      const storage = browserStorage()
+      writeProgress(storage, brandId, {
+        ...readProgress(storage, brandId),
+        [progressEntryKey(subjectId, groupId)]: pageIndex,
+      })
+    },
+    [brandId],
+  )
 
   return { read, remember }
 }
