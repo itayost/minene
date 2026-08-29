@@ -2,6 +2,7 @@ import { generateText } from 'ai'
 import { callOptions, model } from '../lib/model'
 import { historyForTarget, targetSystemPrompt } from './prompts'
 import type { PersuasionPlan, TargetPersona, Turn } from './types'
+import type { WorldState } from './world'
 
 /**
  * The simulated counterpart. Personas live in public.persuasion_personas, seeded
@@ -13,10 +14,11 @@ export async function targetReply(
   persona: TargetPersona,
   plan: PersuasionPlan,
   turns: Turn[],
+  world: WorldState | null = null,
 ): Promise<string> {
   const { text } = await generateText({
     model: model('target'),
-    system: targetSystemPrompt(persona, plan),
+    system: targetSystemPrompt(persona, plan, world),
     messages: historyForTarget(turns),
     ...callOptions('target'),
   })
