@@ -100,7 +100,15 @@ export function applyMeasuredStrength(
   ammunition: Ammunition | null | undefined,
 ): Argument[] {
   if (!ammunition) return args
-  const byNumber = new Map(ammunition.arguments.map((a) => [a.ruleNumber, a]))
+  // Unnumbered knowledge is excluded from the lookup rather than keyed by null.
+  // Nothing can match it -- sourceRuleNumber null short-circuits above -- and a
+  // map holding a null key would silently collapse every unnumbered argument
+  // from brain2spark's book into one entry.
+  const byNumber = new Map(
+    ammunition.arguments
+      .filter((a): a is typeof a & { ruleNumber: number } => a.ruleNumber !== null)
+      .map((a) => [a.ruleNumber, a]),
+  )
 
   return args.map((argument) => {
     const source =

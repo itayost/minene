@@ -15,7 +15,15 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface AmmunitionArgument {
   ruleId: string
-  ruleNumber: number
+  /**
+   * Null when the knowledge did not come from a numbered rule.
+   *
+   * eran-task numbers every rule per tenant, and the number is how a manager
+   * refers to one out loud. brain2spark's book has no equivalent -- a book_tip
+   * is a title and a body under a chapter -- so a payload sourced from there
+   * carries null rather than a fabricated number. See the citation helper below.
+   */
+  ruleNumber: number | null
   text: string
   subTopic: string | null
   /** Percentage of the people who rated this rule who said it works. Null when nobody has. */
@@ -36,7 +44,7 @@ export interface Ammunition {
   }
   ask: {
     ruleId: string
-    ruleNumber: number
+    ruleNumber: number | null
     text: string
     response: string | null
     kind: string
@@ -46,10 +54,10 @@ export interface Ammunition {
   assignee: { id: string; jobRoleId: string | null; jobRoleName: string | null }
   arguments: AmmunitionArgument[]
   objections: { situation: string; response: string; likePct: number | null }[]
-  howTo: { ruleNumber: number; text: string; likePct: number | null; voteCount: number }[]
+  howTo: { ruleNumber: number | null; text: string; likePct: number | null; voteCount: number }[]
   dosAndDonts: {
-    do: { ruleNumber: number; text: string; likePct: number | null }[]
-    dont: { ruleNumber: number; text: string; likePct: number | null }[]
+    do: { ruleNumber: number | null; text: string; likePct: number | null }[]
+    dont: { ruleNumber: number | null; text: string; likePct: number | null }[]
   }
   history: {
     timesAssigned: number
@@ -102,6 +110,17 @@ export function strengthFromLikePct(likePct: number): number {
 
 const bullet = (text: string) => `- ${text}`
 
+/**
+ * How a piece of knowledge is cited to the model.
+ *
+ * "חוק 12" is a real reference a manager can look up. "חוק 0" is not, and that
+ * is what an unnumbered source used to render as -- a fabricated law number
+ * under a heading that tells the model this was already approved by the
+ * business. Unnumbered knowledge is cited by its text alone.
+ */
+const cite = (ruleNumber: number | null, text: string) =>
+  ruleNumber === null ? text : `[חוק ${ruleNumber}] ${text}`
+
 const rated = (text: string, likePct: number | null) =>
   bullet(likePct === null ? `${text} (טרם דורג)` : `${text} (${likePct}% מהמדרגים אמרו שזה עובד)`)
 
@@ -117,9 +136,9 @@ export function formatAmmunition(ammunition: Ammunition): string {
   const sections: string[] = []
 
   sections.push(`## הבקשה, כפי שהעסק כבר ניסח ואישר אותה
-חוק ${ammunition.ask.ruleNumber}: ${ammunition.ask.text}${
-    ammunition.ask.response ? `\nהתגובה המומלצת: ${ammunition.ask.response}` : ''
-  }`)
+${ammunition.ask.ruleNumber === null ? '' : `חוק ${ammunition.ask.ruleNumber}: `}${ammunition.ask.text}${
+  ammunition.ask.response ? `\nהתגובה המומלצת: ${ammunition.ask.response}` : ''
+}`)
 
   if (ammunition.assignee.jobRoleName) {
     sections.push(`## התפקיד של מי שמולנו\n${ammunition.assignee.jobRoleName}`)
@@ -129,7 +148,7 @@ export function formatAmmunition(ammunition: Ammunition): string {
     sections.push(`## טיעונים שכבר קיימים בארגון
 השתמש באלה. אל תמציא טיעונים חדשים כשיש כאן מתאים.
 ${ammunition.arguments
-  .map((a) => `- [חוק ${a.ruleNumber}] ${a.text}${a.evidence ? ` — ${a.evidence}` : ' — טרם דורג'}`)
+  .map((a) => `- ${cite(a.ruleNumber, a.text)}${a.evidence ? ` — ${a.evidence}` : ' — טרם דורג'}`)
   .join('\n')}`)
   }
 
