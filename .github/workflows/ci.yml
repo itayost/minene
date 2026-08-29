@@ -1,0 +1,52 @@
+name: CI
+
+# No database service, deliberately. brain-backend's equivalent workflow runs a
+# Postgres container per run and was paused in August to stay inside a $10/month
+# Actions budget -- an enforcement mechanism that is switched off enforces
+# nothing. Everything here runs against the checkout alone, so it stays cheap
+# enough to leave on.
+#
+# Triggered on pushes to main as well as pull requests, because that is how this
+# repo actually works: branches are merged locally and pushed, so a PR-only
+# trigger would almost never fire.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Format and lint
+        run: pnpm exec biome ci .
+
+      - name: Types
+        run: pnpm exec tsc --noEmit
+
+      - name: Tests
+        run: pnpm test:run
+
+      # Last because it is the slowest, so a type or test failure reports first.
+      - name: Production build
+        run: pnpm exec next build

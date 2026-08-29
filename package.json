@@ -10,10 +10,14 @@
     "validate:brands": "tsx scripts/validate-brands.ts",
     "test": "vitest",
     "test:run": "vitest run",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "ci": "biome ci . && tsc --noEmit && vitest run",
     "build": "pnpm validate:brands && tsc --noEmit && next build",
     "check": "pnpm test:run && pnpm build",
     "visual:reference": "echo 'Frozen. These references were captured from the Vite build, which no longer exists: Task 5 deleted it, and the shell controls are now anchors rather than buttons, so click mode can no longer reproduce them. They were produced with: VIEWER_MODE=click playwright test --update-snapshots. They cannot be regenerated, so an overwrite can only be recovered with git restore tests/visual/__snapshots__. Use pnpm visual:verify to compare against them.' && exit 1",
-    "visual:verify": "VIEWER_MODE=url playwright test"
+    "visual:verify": "VIEWER_MODE=url playwright test",
+    "prepare": "husky"
   },
   "packageManager": "pnpm@10.34.5",
   "type": "module",
