@@ -21,9 +21,11 @@ export default async function LabPage({ params }: LabParams) {
 
   if (session.role !== 'owner') notFound()
 
-  // Read here rather than through an endpoint: both are committed files under
-  // content/, so a route to list them would be a network hop to read the same
-  // JSON this render already has on disk.
+  // Read here rather than through an endpoint. This is a server component with
+  // the service key already in hand, so a route to list them would be a network
+  // hop to make the same two queries this render can make directly -- and it
+  // would put the persona list behind an endpoint that has to re-establish who
+  // is allowed to see it.
   const [personas, plans] = await Promise.all([listPersonaOptions(), loadPlans()])
 
   return <LabClient personas={personas} plans={plans} />

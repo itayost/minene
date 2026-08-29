@@ -4,8 +4,9 @@ import { historyForTarget, targetSystemPrompt } from './prompts'
 import type { PersuasionPlan, TargetPersona, Turn } from './types'
 
 /**
- * The simulated counterpart. Personas live in content/personas and are drawn from the
- * simulations in the source conversation, so runs replay failure modes found by hand.
+ * The simulated counterpart. Personas live in public.persuasion_personas, seeded
+ * from the ones drawn out of the source conversation, so runs replay failure
+ * modes that were found by hand.
  */
 
 export async function targetReply(
