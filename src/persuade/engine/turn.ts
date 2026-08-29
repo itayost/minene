@@ -199,6 +199,9 @@ function gradeTurn(
     blocker: object.blocker,
     tools: object.tools,
     violations,
+    // Kept whole so a run can become a training example of the turn the engine
+    // actually asks for, rather than of its message alone.
+    output: object as unknown as Record<string, unknown>,
   }
 
   // Keyword matching catches the obvious "סגור". The model catches "אם אתה בודק, אז

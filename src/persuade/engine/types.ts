@@ -141,6 +141,22 @@ export interface Turn {
   blocker?: BlockerId
   tools?: string[]
   violations?: RuleViolation[]
+  /**
+   * The model's complete structured answer for this turn.
+   *
+   * `text` is one of fourteen fields the persuader returns, and the other
+   * thirteen were being thrown away: the diagnosis, the flags the state machine
+   * reads, the signals. That was fine while a turn was only ever replayed to a
+   * human, and wrong the moment these runs became training data -- an example
+   * built from `text` alone can only teach a text completion, not the structured
+   * turn production actually asks for.
+   *
+   * Optional because it is written only where it survives: simulations store
+   * turns as jsonb and keep it, while conversation_turns is columnar and drops
+   * it, which is the right split -- a real conversation has no reason to carry
+   * a training artefact.
+   */
+  output?: Record<string, unknown>
 }
 
 export interface RuleViolation {
