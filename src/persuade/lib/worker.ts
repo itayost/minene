@@ -72,7 +72,19 @@ async function runsToday(client: SupabaseClient): Promise<number> {
  * `attempts` each time, so a job that fails for a real reason stops being
  * retried by a person looking at `attempts`, not by a silent loop.
  */
-export async function tick(client: SupabaseClient, batchSize = 3): Promise<WorkerReport> {
+/**
+ * Batch size is the real ceiling on volume, not the size of the cell space.
+ *
+ * Three per hourly tick is 72 runs a day against a space of 324 worlds times
+ * personas times plans -- so the loop would take months to see each cell once
+ * and could never see one twice. Six is measured rather than guessed: three
+ * runs took 125 seconds against production, so six sits around 250s inside a
+ * maxDuration of 800 with room for a slow one.
+ *
+ * The daily cap still governs. Six an hour is 144 a day, under the 200 default,
+ * so raising throughput does not quietly raise spend past the ceiling.
+ */
+export async function tick(client: SupabaseClient, batchSize = 6): Promise<WorkerReport> {
   const today = await runsToday(client)
   if (today >= DAILY_RUN_CAP) {
     return { claimed: 0, completed: 0, failed: 0, stopped: `תקרה יומית: ${today}/${DAILY_RUN_CAP}` }
