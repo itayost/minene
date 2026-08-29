@@ -11,6 +11,7 @@
     "validate:lab": "tsx scripts/validate-lab-content.ts",
     "export:dataset": "tsx scripts/export-dataset.ts",
     "report:techniques": "tsx scripts/technique-report.ts",
+    "report:experiment": "tsx scripts/experiment-report.ts",
     "test": "vitest",
     "test:run": "vitest run",
     "lint": "biome check .",
