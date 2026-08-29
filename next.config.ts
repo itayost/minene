@@ -15,22 +15,19 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ['127.0.0.1'],
 
   /**
-   * The persuasion engine reads its personas and plans from disk at request
-   * time -- `readdir(path.join(process.cwd(), 'content', kind))` -- which is a
-   * fully dynamic path. Next's output file tracing follows imports, and it
-   * cannot see a directory named by a string, so `content/` would be left out
-   * of the deployed function and every simulation would throw ENOENT in
-   * production while working perfectly on a laptop.
+   * `outputFileTracingIncludes` for `content/**` used to live here.
    *
-   * The lab page reads the same directory to fill its persona and plan pickers,
-   * and it is a separate function from the routes -- so it needs its own entry
-   * here. Without it the screen renders empty selects in production and there
-   * is nothing to run.
+   * The engine read its personas and plans with
+   * `readdir(path.join(process.cwd(), 'content', kind))` -- a path built from a
+   * string, which Next's tracing cannot follow, so the directory had to be
+   * named explicitly or every simulation threw ENOENT in production while
+   * working on a laptop.
+   *
+   * They are rows now (public.persuasion_personas, public.persuasion_lab_plans),
+   * nothing reads that directory at runtime, and config for a file nobody opens
+   * is worse than no config: it says the deployment depends on something it
+   * does not.
    */
-  outputFileTracingIncludes: {
-    '/api/persuade/**': ['./content/**/*'],
-    '/[brandId]/tools/persuade/lab': ['./content/**/*'],
-  },
 }
 
 export default nextConfig

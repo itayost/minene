@@ -8,6 +8,7 @@
     "dev": "next dev",
     "start": "next start",
     "validate:brands": "tsx scripts/validate-brands.ts",
+    "validate:lab": "tsx scripts/validate-lab-content.ts",
     "test": "vitest",
     "test:run": "vitest run",
     "lint": "biome check .",
