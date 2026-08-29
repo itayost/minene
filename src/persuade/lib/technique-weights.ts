@@ -57,7 +57,13 @@ export function propose(
   const rated = reports.filter((r) => r.winPct !== null)
   if (rated.length === 0) return []
 
-  const average = rated.reduce((sum, r) => sum + (r.winPct ?? 0), 0) / rated.length
+  // Pooled by runs, not one winPct per technique averaged flat: a technique
+  // with a thousand runs and one with two must not count equally toward what
+  // "the peers" did, or a lucky pair of runs sets the bar for reports built on
+  // real evidence.
+  const totalRuns = rated.reduce((sum, r) => sum + r.runs, 0)
+  const totalWins = rated.reduce((sum, r) => sum + r.wins, 0)
+  const average = totalRuns === 0 ? 0 : (totalWins / totalRuns) * 100
 
   return rated.map((report) => {
     const win = report.winPct ?? 0
