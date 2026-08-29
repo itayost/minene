@@ -10,9 +10,9 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
-import type { RuleConfig } from '../src/persuade/engine/rules'
-import type { Run, RunScore } from '../src/persuade/engine/types'
-import { buildDataset, type SourceRun, toJsonl } from '../src/persuade/lib/dataset'
+import type { Recipient } from '../src/persuade/engine/prompts'
+import { getPersona } from '../src/persuade/lib/content'
+import { buildDataset, sourceRunsFromRows, toJsonl } from '../src/persuade/lib/dataset'
 
 function env(): { url: string; key: string } {
   try {
@@ -54,25 +54,25 @@ async function main(): Promise<void> {
   if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
 
   const rows = data ?? []
-  const sources: SourceRun[] = rows.map((row) => ({
-    run: {
-      id: row.id,
-      createdAt: row.created_at,
-      planId: row.plan?.id ?? '',
-      personaId: row.persona_id,
-      plan: row.plan,
-      persona: null,
-      turns: row.turns ?? [],
-      state: row.state,
-      violations: (row.turns ?? []).flatMap((t: Run['turns'][number]) => t.violations ?? []),
-    } as Run,
-    score: (row.score ?? null) as RunScore | null,
-    rules: (row.rules ?? null) as RuleConfig | null,
-    // The persona is named to the engine by role, and the stored run keeps only
-    // its key. Passing null is honest: a replayed prompt that invented a name
-    // would differ from the one the model actually saw.
-    persona: null,
-  }))
+
+  // runSimulation always hands the persuader the real persona as its
+  // recipient, so the replay needs the same name and role back -- not the
+  // key alone. Resolved once per distinct persona rather than per row, since
+  // a sweep runs the same few personas thousands of times.
+  const personaIds = [...new Set(rows.map((r) => r.persona_id).filter((id) => id !== null))]
+  const personas = new Map<string, Recipient>()
+  for (const id of personaIds) {
+    try {
+      const persona = await getPersona(id)
+      personas.set(id, { name: persona.name, role: persona.role })
+    } catch {
+      // A persona a very old run pointed at can be gone entirely. The
+      // example still exports; it just states no recipient, same as a row
+      // that never carried one.
+    }
+  }
+
+  const sources = sourceRunsFromRows(rows, personas)
 
   const { examples, rejected } = buildDataset(sources, { minGrade, requireCleanTurns })
 

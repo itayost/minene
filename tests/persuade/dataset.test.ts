@@ -4,7 +4,7 @@
 import { describe, expect, test } from 'vitest'
 import { DEFAULT_RULES } from '../../src/persuade/engine/rules'
 import type { Run, RunScore, Turn } from '../../src/persuade/engine/types'
-import { buildDataset, type SourceRun } from '../../src/persuade/lib/dataset'
+import { buildDataset, type SourceRun, sourceRunsFromRows } from '../../src/persuade/lib/dataset'
 import { TEST_PLAN } from './helpers'
 
 const output = (over: Record<string, unknown> = {}) => ({
@@ -160,6 +160,35 @@ describe('the prompt each example replays', () => {
 
     const second = examples[1]!.messages
     expect(second.some((m) => m.role === 'user' && m.content === 'אין לי זמן')).toBe(true)
+  })
+})
+
+describe('resolving the recipient the persuader actually saw', () => {
+  const row = (personaId: string | null) => ({
+    id: 'r1',
+    created_at: '2026-08-29T10:00:00Z',
+    plan: TEST_PLAN,
+    persona_id: personaId,
+    turns: [persuader(), target('סגור')],
+    state: run([]).state,
+    score: score(90),
+    rules: DEFAULT_RULES,
+  })
+
+  test('carries the persona through to the replayed prompt', () => {
+    // runSimulation always hands the persuader the real recipient, turn by
+    // turn -- never null -- so the replayed prompt has to say so too, or it
+    // is training on a system message that contradicts the answer beside it.
+    const personas = new Map([['adi', { name: 'עדי', role: 'מנהלת חנות' }]])
+    const { examples } = buildDataset(sourceRunsFromRows([row('adi')], personas))
+
+    expect(examples[0]!.messages[0]!.content).toContain('עדי, מנהלת חנות')
+    expect(examples[0]!.messages[0]!.content).not.toContain('לא נמסר לך מי מולך')
+  })
+
+  test('falls back to no recipient only when the row itself carries none', () => {
+    const { examples } = buildDataset(sourceRunsFromRows([row(null)], new Map()))
+    expect(examples[0]!.messages[0]!.content).toContain('לא נמסר לך מי מולך')
   })
 })
 
