@@ -54,3 +54,38 @@ describe('turning runs into a matrix', () => {
     expect(new Set(cells.map((c) => c.industry))).toEqual(new Set(['אופנה']))
   })
 })
+
+describe('runs that carry no role', () => {
+  const sim = (industry: string, jobRoleId: string | null, outcome: string) =>
+    ({
+      id: `${industry}-${jobRoleId}-${outcome}-${Math.random()}`,
+      cell: { industry, jobRoleId },
+      run: { state: { outcome } },
+    }) as never
+
+  it('gets its own column instead of vanishing', () => {
+    // A sweep of the world space is tenant-free by design and public.roles is
+    // per-tenant, so those runs carry no role id. They used to match no column
+    // and disappear -- seven of eleven runs were invisible the first time this
+    // was looked at, which is the worst way for a measurement screen to be
+    // wrong: a smaller number, shown confidently.
+    const cells = matrixFrom(
+      [
+        sim('retail', 'r1', 'agreed'),
+        sim('retail', null, 'agreed'),
+        sim('retail', null, 'refused'),
+      ],
+      [{ id: 'r1', name: 'מנהל חנות' }],
+    )
+
+    expect(cells.reduce((n, c) => n + c.runs, 0)).toBe(3)
+    const unassigned = cells.find((c) => c.jobRoleId === null)
+    expect(unassigned?.runs).toBe(2)
+    expect(unassigned?.persuasionRate).toBe(50)
+  })
+
+  it('is absent when every run records a role', () => {
+    const cells = matrixFrom([sim('retail', 'r1', 'agreed')], [{ id: 'r1', name: 'מנהל חנות' }])
+    expect(cells.every((c) => c.jobRoleId !== null)).toBe(true)
+  })
+})

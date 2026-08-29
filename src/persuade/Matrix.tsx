@@ -2,7 +2,15 @@
 
 export type MatrixCell = {
   industry: string
-  jobRoleId: string
+  /**
+   * Null for runs recorded against no role.
+   *
+   * A sweep of the world space is tenant-free by design, and public.roles is
+   * per-tenant -- so a lab run cannot borrow a role id without crossing the
+   * boundary that makes this matrix shareable. Those runs get their own column
+   * rather than being dropped from the grid.
+   */
+  jobRoleId: string | null
   jobRoleName: string
   runs: number
   /**
