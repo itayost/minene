@@ -36,6 +36,7 @@ export interface ExperimentSpec {
   /** Every arm runs against every one of these. */
   pairs: { personaKey: string; planKey: string }[]
   industry?: string
+  segment?: string | null
   jobRoleId?: string | null
   need?: string | null
   /** How many times each (arm, pair) combination runs. */
@@ -48,6 +49,8 @@ export interface QueuedJob {
   persona_key: string
   plan_key: string
   industry: string
+  /** The finer label under the industry. Free text; the industry is the key. */
+  segment: string | null
   job_role_id: string | null
   need: string | null
   rules: RuleConfig
@@ -73,6 +76,7 @@ export function planExperiment(spec: ExperimentSpec): QueuedJob[] {
           persona_key: pair.personaKey,
           plan_key: pair.planKey,
           industry: spec.industry ?? 'retail',
+          segment: spec.segment ?? null,
           job_role_id: spec.jobRoleId ?? null,
           need: spec.need ?? null,
           rules: arm.rules,
@@ -177,6 +181,7 @@ export interface SweepSpec {
   planKeys: string[]
   rules?: RuleConfig
   industry?: string
+  segment?: string | null
   jobRoleId?: string | null
   /** How many world cells to take this time. */
   cells?: number
@@ -218,6 +223,7 @@ export function planSweep(spec: SweepSpec): QueuedJob[] {
           persona_key: personaKey,
           plan_key: planKey,
           industry: spec.industry ?? 'retail',
+          segment: spec.segment ?? null,
           job_role_id: spec.jobRoleId ?? null,
           need: cell.reason,
           rules: spec.rules ?? DEFAULT_RULES,

@@ -33,6 +33,7 @@ export interface JobRow {
   persona_key: string
   plan_key: string
   industry: string
+  segment: string | null
   job_role_id: string | null
   need: string | null
   rules: RuleConfig
@@ -139,6 +140,11 @@ export async function runJob(client: SupabaseClient, job: JobRow): Promise<strin
       industry: job.industry,
       job_role_id: job.job_role_id,
       need: job.need,
+      // Copied out of the plan rather than left in the jsonb: grouping runs by
+      // subject should not mean digging through a blob, and the plan frozen
+      // into this run can drift from the library plan behind it afterwards.
+      topic: plan.topic,
+      segment: job.segment ?? null,
       persona_id: persona.id,
       plan: run.plan,
       turns: run.turns,
