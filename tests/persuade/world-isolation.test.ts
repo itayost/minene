@@ -15,6 +15,7 @@ const world = buildWorld({
   workload: 'crushing',
   reason: 'low_confidence',
   pressureResponse: 'withdraws',
+  disposition: 'rational',
 })
 
 /**
@@ -86,9 +87,49 @@ describe('the persuader cannot see the world', () => {
 
 describe('the space of worlds', () => {
   it('enumerates every combination, so coverage is a fact rather than a hope', () => {
-    // 3 motivations x 3 workloads x 6 reasons x 3 pressure responses.
-    expect(worldCells()).toHaveLength(162)
-    expect(new Set(worldCells().map((c) => JSON.stringify(c))).size).toBe(162)
+    // 3 motivations x 3 workloads x 6 reasons x 3 pressure responses x 2
+    // dispositions.
+    expect(worldCells()).toHaveLength(324)
+    expect(new Set(worldCells().map((c) => JSON.stringify(c))).size).toBe(324)
+  })
+
+  it('lets disposition change what it would take, not just what is printed', () => {
+    // An axis that does not change how the person behaves is noise added to
+    // every cell. A rational person wants the number; an emotional one wants
+    // to know what it means for them.
+    const base = { motivation: 'medium', workload: 'normal', reason: 'no_value' } as const
+    const rational = buildWorld({ ...base, pressureResponse: 'withdraws', disposition: 'rational' })
+    const emotional = buildWorld({
+      ...base,
+      pressureResponse: 'withdraws',
+      disposition: 'emotional',
+    })
+
+    expect(rational.agreesWhen).toContain('numbers_shown')
+    expect(rational.agreesWhen).not.toContain('personal_benefit_named')
+    expect(emotional.agreesWhen).toContain('personal_benefit_named')
+  })
+
+  it('makes an emotional counterpart require being heard first', () => {
+    // Strictly one condition harder, and real rather than a bug: being heard
+    // is the cost of persuading someone who takes it personally.
+    const emotional = buildWorld({
+      motivation: 'medium',
+      workload: 'normal',
+      reason: 'forgot',
+      pressureResponse: 'withdraws',
+      disposition: 'emotional',
+    })
+    const rational = buildWorld({
+      motivation: 'medium',
+      workload: 'normal',
+      reason: 'forgot',
+      pressureResponse: 'withdraws',
+      disposition: 'rational',
+    })
+
+    expect(emotional.agreesWhen).toContain('acknowledged_the_load')
+    expect(emotional.agreesWhen.length).toBeGreaterThan(rational.agreesWhen.length)
   })
 
   it('couples the win condition to the reason, so a world is coherent', () => {
@@ -96,15 +137,17 @@ describe('the space of worlds', () => {
     // see the value needs the value named, and no amount of reminding touches
     // them. Crossing the dimensions freely would produce worlds where the
     // winning move has nothing to do with the problem.
-    expect(buildWorld({ ...worldCells()[0]!, reason: 'forgot' }).agreesWhen).toEqual([
-      'ask_made_small',
-    ])
-    expect(buildWorld({ ...worldCells()[0]!, reason: 'no_value' }).agreesWhen).toEqual([
-      'personal_benefit_named',
-    ])
-    expect(buildWorld({ ...worldCells()[0]!, reason: 'disagrees' }).agreesWhen).toEqual([
-      'asked_for_their_way',
-    ])
+    // Held at one disposition so this checks the reason coupling alone --
+    // disposition rewrites the result afterwards and has its own tests.
+    const cell = { ...worldCells()[0]!, disposition: 'rational' as const }
+    expect(buildWorld({ ...cell, reason: 'forgot' }).agreesWhen).toEqual(['ask_made_small'])
+    expect(buildWorld({ ...cell, reason: 'disagrees' }).agreesWhen).toEqual(['asked_for_their_way'])
+    // no_value asks for the value to be named; for a rational counterpart that
+    // is a number rather than a feeling.
+    expect(buildWorld({ ...cell, reason: 'no_value' }).agreesWhen).toEqual(['numbers_shown'])
+    expect(
+      buildWorld({ ...cell, reason: 'no_value', disposition: 'emotional' }).agreesWhen,
+    ).toContain('personal_benefit_named')
   })
 
   it('is reproducible: the same cell is always the same world', () => {
@@ -120,6 +163,7 @@ describe('the space of worlds', () => {
         workload: 'light',
         reason: 'forgot',
         pressureResponse: 'withdraws',
+        disposition: 'rational',
       }),
     )
     const hard = personaInWorld(
@@ -129,6 +173,7 @@ describe('the space of worlds', () => {
         workload: 'crushing',
         reason: 'disagrees',
         pressureResponse: 'digs_in',
+        disposition: 'rational',
       }),
     )
 

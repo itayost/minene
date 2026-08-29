@@ -189,28 +189,54 @@ export interface SweepSpec {
   after?: number
 }
 
+const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b))
+
+/**
+ * The golden-ratio step for a space of n cells, adjusted to be coprime with n.
+ *
+ * Coprimality is the load-bearing part: without it the walk revisits a subset
+ * and never reaches the rest, so `planSweep` would silently stop covering the
+ * space. Searches outward from the ideal so the result stays as close to it as
+ * coprimality allows.
+ */
+export function goldenStride(n: number): number {
+  if (n <= 2) return 1
+  const ideal = Math.round(n / ((1 + Math.sqrt(5)) / 2))
+  for (let delta = 0; delta < n; delta += 1) {
+    for (const candidate of [ideal - delta, ideal + delta]) {
+      if (candidate > 0 && candidate < n && gcd(candidate, n) === 1) return candidate
+    }
+  }
+  return 1
+}
+
 export function planSweep(spec: SweepSpec): QueuedJob[] {
   const all = worldCells()
   const start = Math.max(0, spec.after ?? 0)
   const take = Math.min(Math.max(1, spec.cells ?? 10), all.length)
 
   /**
-   * Strided, not contiguous.
+   * Strided, not contiguous, and the stride is derived rather than chosen.
    *
-   * worldCells() nests pressure inside reason inside workload inside
-   * motivation, so consecutive cells differ only in the innermost dimension --
-   * the first ten are ten pressure-and-reason variations of one low-motivation,
-   * light-workload situation. A small sweep taking a contiguous block would
-   * therefore run ten near-identical worlds and call it coverage.
+   * worldCells() nests the axes, so consecutive cells differ only in the
+   * innermost one -- the first ten are ten variations of a single situation. A
+   * short contiguous sweep would run near-duplicates and call it coverage.
    *
-   * 37 is coprime with 162, so stepping by it visits every cell exactly once
-   * before repeating -- the walk still covers everything and `after` still
-   * resumes, but any short run of it spreads across all four dimensions.
+   * The stride is the golden-ratio step, round(n / phi), nudged to the nearest
+   * value coprime with n. Coprime means every cell is still visited exactly
+   * once before any repeats, so `after` resumes correctly and full coverage is
+   * unaffected; the golden ratio is the classic low-discrepancy choice, so any
+   * short run of it spreads across all axes rather than marching down one.
+   *
+   * Derived because it was hardcoded once and broke silently. 37 was tuned for
+   * 162 cells; adding one axis made it 324 and eight picks collapsed to two
+   * distinct reasons. The brief says more axes are coming, so a constant here
+   * is a constant that will be wrong again.
    */
-  const STRIDE = 37
+  const stride = goldenStride(all.length)
   const chosen: WorldCell[] = []
   for (let i = 0; i < take; i += 1) {
-    chosen.push(all[((start + i) * STRIDE) % all.length] as WorldCell)
+    chosen.push(all[((start + i) * stride) % all.length] as WorldCell)
   }
 
   const jobs: QueuedJob[] = []

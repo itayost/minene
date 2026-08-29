@@ -11,7 +11,13 @@ import type { ArgumentCategory, RunScore, Turn } from '../../src/persuade/engine
 import { buildWorld } from '../../src/persuade/engine/world'
 
 const world = (reason: Parameters<typeof buildWorld>[0]['reason']) =>
-  buildWorld({ motivation: 'medium', workload: 'normal', reason, pressureResponse: 'withdraws' })
+  buildWorld({
+    motivation: 'medium',
+    workload: 'normal',
+    reason,
+    pressureResponse: 'withdraws',
+    disposition: 'rational',
+  })
 
 const turns = (n: number): Turn[] =>
   Array.from({ length: n }, () => ({ role: 'persuader' as const, text: 'x', interaction: 1 }))

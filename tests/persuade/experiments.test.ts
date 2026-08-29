@@ -7,6 +7,7 @@ import { worldCells } from '../../src/persuade/engine/world'
 import { compareArms, type ExperimentRun, readiness } from '../../src/persuade/experiment-results'
 import {
   type ExperimentSpec,
+  goldenStride,
   messageLengthExperiment,
   planExperiment,
   planSweep,
@@ -218,6 +219,22 @@ describe('sweeping the world space', () => {
     expect(new Set(worlds.map((w) => w.reason)).size).toBeGreaterThan(2)
     expect(new Set(worlds.map((w) => w.workload)).size).toBeGreaterThan(1)
     expect(new Set(worlds.map((w) => w.motivation)).size).toBeGreaterThan(1)
+  })
+
+  test('derives a stride that stays coprime as axes are added', () => {
+    // The load-bearing property. A stride sharing a factor with the space
+    // revisits a subset and never reaches the rest, so a sweep would silently
+    // stop covering. Checked across sizes because the brief says more axes are
+    // coming and the stride has already been wrong once: 37 was tuned for 162
+    // cells, and one new axis made it 324.
+    for (const n of [162, 324, 648, 1296, 7680, 11520]) {
+      const s = goldenStride(n)
+      expect(s).toBeGreaterThan(0)
+      expect(s).toBeLessThan(n)
+      const seen = new Set<number>()
+      for (let i = 0; i < n; i += 1) seen.add((i * s) % n)
+      expect(seen.size).toBe(n)
+    }
   })
 
   test('visits every cell before repeating any', () => {

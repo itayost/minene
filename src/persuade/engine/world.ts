@@ -37,6 +37,20 @@ export type Reason =
 export type PressureResponse = 'digs_in' | 'complies_resentfully' | 'withdraws'
 
 /**
+ * What counts as a reason to them.
+ *
+ * The first of the axes the brief added, and chosen first on purpose: it is the
+ * one with a direct causal link to the thing this lab measures. Age and gender
+ * might correlate with something; disposition changes which argument lands,
+ * which is the dependent variable itself.
+ *
+ * It is load-bearing rather than decorative -- see CONDITIONS_BY_REASON and
+ * `applyDisposition` below. An axis that does not change how the person behaves
+ * is noise added to every cell.
+ */
+export type Disposition = 'rational' | 'emotional'
+
+/**
  * What it would actually take, as conditions rather than prose.
  *
  * Prose lets the simulator decide by feel, which is how two identical runs end
@@ -57,6 +71,7 @@ export interface WorldState {
   workload: Workload
   reason: Reason
   pressureResponse: PressureResponse
+  disposition: Disposition
   /** Minutes left in the shift. Time pressure is a real lever and a real excuse. */
   minutesLeft: number
   /** The specific fact only this person knows, phrased from the reason. */
@@ -76,6 +91,7 @@ const REASONS: Reason[] = [
   'did_partially',
 ]
 const PRESSURE: PressureResponse[] = ['digs_in', 'complies_resentfully', 'withdraws']
+const DISPOSITIONS: Disposition[] = ['rational', 'emotional']
 
 /**
  * What each reason actually takes, which is the whole point of the reason
@@ -122,12 +138,41 @@ export interface WorldCell {
   workload: Workload
   reason: Reason
   pressureResponse: PressureResponse
+  disposition: Disposition
+}
+
+/**
+ * How disposition rewrites what it would take.
+ *
+ * One rule, so it can be argued with: a rational person is moved by a number
+ * where an emotional one is moved by what it means for them, and an emotional
+ * person will not agree to anything until their situation has been
+ * acknowledged.
+ *
+ * That last clause makes emotional strictly harder -- one more condition to
+ * meet. Real rather than a bug: being heard first is the cost of persuading
+ * someone who takes it personally, and a lab where the axis changed nothing
+ * would be adding a dimension for the sake of it.
+ */
+export function applyDisposition(
+  conditions: readonly AgreeCondition[],
+  disposition: Disposition,
+): AgreeCondition[] {
+  const swapped = conditions.map((c) => {
+    if (disposition === 'rational' && c === 'personal_benefit_named') return 'numbers_shown'
+    if (disposition === 'emotional' && c === 'numbers_shown') return 'personal_benefit_named'
+    return c
+  })
+  if (disposition === 'emotional' && !swapped.includes('acknowledged_the_load')) {
+    return ['acknowledged_the_load', ...swapped]
+  }
+  return [...new Set(swapped)]
 }
 
 /**
  * Every distinct world, enumerated.
  *
- * 3 x 3 x 6 x 3 = 162. Enumerated rather than sampled so coverage is a fact
+ * 3 x 3 x 6 x 3 x 2 = 324. Enumerated rather than sampled so coverage is a fact
  * about the queue rather than a hope about a random seed: you can say which
  * cells have been run and which have not.
  */
@@ -137,7 +182,9 @@ export function worldCells(): WorldCell[] {
     for (const workload of WORKLOADS) {
       for (const reason of REASONS) {
         for (const pressureResponse of PRESSURE) {
-          cells.push({ motivation, workload, reason, pressureResponse })
+          for (const disposition of DISPOSITIONS) {
+            cells.push({ motivation, workload, reason, pressureResponse, disposition })
+          }
         }
       }
     }
@@ -154,7 +201,7 @@ export function buildWorld(cell: WorldCell): WorldState {
     ...cell,
     minutesLeft: minutesFor(cell.workload),
     hiddenTruth: HIDDEN_TRUTH_BY_REASON[cell.reason],
-    agreesWhen: CONDITIONS_BY_REASON[cell.reason],
+    agreesWhen: applyDisposition(CONDITIONS_BY_REASON[cell.reason], cell.disposition),
   }
 }
 
@@ -174,6 +221,11 @@ const PRESSURE_TEXT: Record<PressureResponse, string> = {
   digs_in: 'אם מפעילים עליך לחץ אתה מתעקש יותר, לא פחות.',
   complies_resentfully: 'אם לוחצים אתה מסכים, אבל בלי חשק, ואתה נותן לזה להישמע.',
   withdraws: 'אם לוחצים אתה מתקצר ומתחיל לענות ב"בסדר" ו"נראה".',
+}
+
+const DISPOSITION_TEXT: Record<Disposition, string> = {
+  rational: 'אתה משתכנע ממספרים ומעובדות. רגשות ונאומים לא עושים לך כלום.',
+  emotional: 'אתה משתכנע כשמישהו מבין אותך. מספרים לבד לא מזיזים לך.',
 }
 
 const CONDITION_TEXT: Record<AgreeCondition, string> = {
@@ -199,6 +251,7 @@ ${MOTIVATION_TEXT[world.motivation]}
 ${WORKLOAD_TEXT[world.workload]}
 נשארו לך ${world.minutesLeft} דקות עד סוף המשמרת.
 ${PRESSURE_TEXT[world.pressureResponse]}
+${DISPOSITION_TEXT[world.disposition]}
 
 ## האמת שרק אתה יודע
 ${world.hiddenTruth}
@@ -244,6 +297,7 @@ export function isWorldState(value: unknown): value is WorldState {
     WORKLOADS.includes(w.workload as Workload) &&
     REASONS.includes(w.reason as Reason) &&
     PRESSURE.includes(w.pressureResponse as PressureResponse) &&
+    DISPOSITIONS.includes(w.disposition as Disposition) &&
     typeof w.minutesLeft === 'number' &&
     typeof w.hiddenTruth === 'string' &&
     Array.isArray(w.agreesWhen) &&
