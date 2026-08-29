@@ -3,6 +3,7 @@ import type { RuleConfig } from '../engine/rules'
 import { scoreRun } from '../engine/score'
 import { runSimulation } from '../engine/simulation'
 import type { Run } from '../engine/types'
+import { isWorldState, personaInWorld, type WorldState } from '../engine/world'
 import { getPersona, getPlan } from './content'
 import { modelId } from './model'
 
@@ -35,6 +36,7 @@ export interface JobRow {
   job_role_id: string | null
   need: string | null
   rules: RuleConfig
+  world: WorldState | null
   attempts: number
 }
 
@@ -114,10 +116,17 @@ export async function tick(client: SupabaseClient, batchSize = 3): Promise<Worke
 
 /** One simulation, scored and stored. Returns the simulation id. */
 export async function runJob(client: SupabaseClient, job: JobRow): Promise<string> {
-  const [persona, plan] = await Promise.all([getPersona(job.persona_key), getPlan(job.plan_key)])
+  const [loaded, plan] = await Promise.all([getPersona(job.persona_key), getPlan(job.plan_key)])
+  // The world owns the circumstance, the secret and the win condition; the
+  // persona keeps its name, role and voice. Without a world the persona
+  // supplies all of it, which is how a hand-started run still behaves.
+  if (job.world !== null && !isWorldState(job.world)) {
+    throw new Error('העולם ששמור על העבודה אינו תקין')
+  }
+  const persona = job.world ? personaInWorld(loaded, job.world) : loaded
 
   let run: Run | null = null
-  for await (const event of runSimulation({ plan, persona, rules: job.rules })) {
+  for await (const event of runSimulation({ plan, persona, rules: job.rules, world: job.world })) {
     if (event.type === 'done') run = event.run
   }
   if (!run) throw new Error('הסימולציה הסתיימה בלי תוצאה')
@@ -141,6 +150,9 @@ export async function runJob(client: SupabaseClient, job: JobRow): Promise<strin
       rules: job.rules,
       experiment: job.experiment,
       variant: job.variant,
+      // Stored so the run is readable as evidence: a win means little without
+      // the world it was won in.
+      world: job.world,
       // A run is the output of a config AND the models that executed it.
       // Without this, swapping PERSUADER_MODEL makes every comparison spanning
       // the swap measure the model rather than the setting -- and still render

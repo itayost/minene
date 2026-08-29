@@ -10,6 +10,7 @@
     "validate:brands": "tsx scripts/validate-brands.ts",
     "validate:lab": "tsx scripts/validate-lab-content.ts",
     "export:dataset": "tsx scripts/export-dataset.ts",
+    "report:techniques": "tsx scripts/technique-report.ts",
     "test": "vitest",
     "test:run": "vitest run",
     "lint": "biome check .",
