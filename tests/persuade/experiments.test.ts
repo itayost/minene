@@ -208,6 +208,24 @@ describe('sweeping the world space', () => {
     expect(jobs.every((j) => j.experiment === null && j.variant === null)).toBe(true)
   })
 
+  test('spreads a short sweep across the dimensions, not down one of them', () => {
+    // worldCells nests pressure inside reason inside workload inside
+    // motivation, so a contiguous block of ten is ten variations of one
+    // situation. A sweep that narrow would report coverage it does not have.
+    const jobs = planSweep({ personaKeys: ['adi'], planKeys: ['p'], cells: 8 })
+    const worlds = jobs.map((j) => j.world!)
+
+    expect(new Set(worlds.map((w) => w.reason)).size).toBeGreaterThan(2)
+    expect(new Set(worlds.map((w) => w.workload)).size).toBeGreaterThan(1)
+    expect(new Set(worlds.map((w) => w.motivation)).size).toBeGreaterThan(1)
+  })
+
+  test('visits every cell before repeating any', () => {
+    const all = worldCells().length
+    const jobs = planSweep({ personaKeys: ['a'], planKeys: ['p'], cells: all })
+    expect(new Set(jobs.map((j) => JSON.stringify(j.world))).size).toBe(all)
+  })
+
   test('walks the enumeration rather than sampling it', () => {
     // Random sampling re-runs the easy cells and leaves holes nobody can name.
     // Walking means coverage is a fact you can state.

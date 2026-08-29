@@ -186,11 +186,27 @@ export interface SweepSpec {
 
 export function planSweep(spec: SweepSpec): QueuedJob[] {
   const all = worldCells()
-  const start = Math.max(0, spec.after ?? 0) % all.length
+  const start = Math.max(0, spec.after ?? 0)
   const take = Math.min(Math.max(1, spec.cells ?? 10), all.length)
 
+  /**
+   * Strided, not contiguous.
+   *
+   * worldCells() nests pressure inside reason inside workload inside
+   * motivation, so consecutive cells differ only in the innermost dimension --
+   * the first ten are ten pressure-and-reason variations of one low-motivation,
+   * light-workload situation. A small sweep taking a contiguous block would
+   * therefore run ten near-identical worlds and call it coverage.
+   *
+   * 37 is coprime with 162, so stepping by it visits every cell exactly once
+   * before repeating -- the walk still covers everything and `after` still
+   * resumes, but any short run of it spreads across all four dimensions.
+   */
+  const STRIDE = 37
   const chosen: WorldCell[] = []
-  for (let i = 0; i < take; i += 1) chosen.push(all[(start + i) % all.length] as WorldCell)
+  for (let i = 0; i < take; i += 1) {
+    chosen.push(all[((start + i) * STRIDE) % all.length] as WorldCell)
+  }
 
   const jobs: QueuedJob[] = []
   for (const cell of chosen) {
