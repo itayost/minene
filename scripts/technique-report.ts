@@ -82,7 +82,7 @@ async function main(): Promise<void> {
 
   for (const report of reports) {
     console.log(formatTechnique(report, minRuns))
-    console.log('\n' + '─'.repeat(52) + '\n')
+    console.log(`\n${'─'.repeat(52)}\n`)
   }
 }
 
