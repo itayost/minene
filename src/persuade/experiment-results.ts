@@ -13,6 +13,8 @@ export interface ExperimentRun {
   outcome: Outcome
   turns: Turn[]
   score: RunScore | null
+  /** The model id per role that produced the run. Null on rows predating it. */
+  models?: Record<string, string> | null
 }
 
 export interface ArmResult {
@@ -81,8 +83,30 @@ export function compareArms(runs: readonly ExperimentRun[]): ArmResult[] {
  * which test applies. A number presented as significant when nobody ran a test
  * is worse than no number.
  */
-export function readiness(arms: ArmResult[], minRunsPerArm = 10): string[] {
+export function readiness(
+  arms: ArmResult[],
+  minRunsPerArm = 10,
+  runs: readonly ExperimentRun[] = [],
+): string[] {
   const warnings: string[] = []
+
+  /**
+   * The check that invalidates everything else when it fires.
+   *
+   * Two arms run against different models are not two arms, they are two
+   * experiments. This is the failure that looks most like a result: a clean,
+   * large, confident difference that is entirely the model swap. Reported
+   * first because no other warning matters if this one is true.
+   */
+  const fingerprints = new Set(
+    runs.filter((r) => r.variant).map((r) => JSON.stringify(r.models ?? null)),
+  )
+  if (fingerprints.size > 1) {
+    warnings.push('הריצות רצו על יותר מצירוף מודלים אחד — ההשוואה מודדת את החלפת המודל')
+  }
+  if (fingerprints.has('null') && fingerprints.size === 1) {
+    warnings.push('לא נרשם אילו מודלים הריצו — אי אפשר לדעת אם כולן רצו על אותו דבר')
+  }
 
   if (arms.length < 2) {
     warnings.push('פחות משתי זרועות עם תוצאות — אין השוואה')

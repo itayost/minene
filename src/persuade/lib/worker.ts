@@ -4,6 +4,7 @@ import { scoreRun } from '../engine/score'
 import { runSimulation } from '../engine/simulation'
 import type { Run } from '../engine/types'
 import { getPersona, getPlan } from './content'
+import { modelId } from './model'
 
 /**
  * The loop that runs simulations without anybody clicking anything.
@@ -140,6 +141,15 @@ export async function runJob(client: SupabaseClient, job: JobRow): Promise<strin
       rules: job.rules,
       experiment: job.experiment,
       variant: job.variant,
+      // A run is the output of a config AND the models that executed it.
+      // Without this, swapping PERSUADER_MODEL makes every comparison spanning
+      // the swap measure the model rather than the setting -- and still render
+      // as a clean difference between two arms.
+      models: {
+        persuader: modelId('persuader'),
+        target: modelId('target'),
+        judge: modelId('judge'),
+      },
     })
     .select('id')
     .single()

@@ -84,13 +84,17 @@ describe('refusing an experiment that could not answer anything', () => {
   })
 })
 
+const SAME_MODELS = { persuader: 'gpt-5.5', target: 'gpt-5.4-mini', judge: 'gpt-5.5' }
+
 const run = (
   variant: string | null,
   outcome: string,
   grade: number | null,
   persuaderTurns: number,
+  models: Record<string, string> | null = SAME_MODELS,
 ): ExperimentRun => ({
   variant,
+  models,
   outcome: outcome as ExperimentRun['outcome'],
   turns: Array.from({ length: persuaderTurns }, () => ({
     role: 'persuader' as const,
@@ -160,6 +164,33 @@ describe('whether the comparison is worth reading yet', () => {
       ...Array.from({ length: 20 }, () => run('a', 'agreed', 80, 2)),
       ...Array.from({ length: 20 }, () => run('b', 'refused', 40, 4)),
     ]
-    expect(readiness(compareArms(runs))).toEqual([])
+    expect(readiness(compareArms(runs), 10, runs)).toEqual([])
+  })
+
+  test('refuses a comparison that spans a model change', () => {
+    // The failure that looks most like a result: a clean, large, confident
+    // difference between two arms that is entirely a model swap. Every other
+    // warning is about confidence; this one is about the comparison not being
+    // a comparison at all.
+    const runs = [
+      ...Array.from({ length: 20 }, () => run('a', 'agreed', 80, 2)),
+      ...Array.from({ length: 20 }, () =>
+        run('b', 'refused', 40, 4, {
+          persuader: 'gpt-5.4-mini',
+          target: 'gpt-5.4-mini',
+          judge: 'gpt-5.5',
+        }),
+      ),
+    ]
+
+    expect(readiness(compareArms(runs), 10, runs).join(' ')).toMatch(/החלפת המודל/)
+  })
+
+  test('says so when nothing recorded which models ran', () => {
+    const runs = [
+      ...Array.from({ length: 20 }, () => run('a', 'agreed', 80, 2, null)),
+      ...Array.from({ length: 20 }, () => run('b', 'refused', 40, 4, null)),
+    ]
+    expect(readiness(compareArms(runs), 10, runs).join(' ')).toMatch(/לא נרשם אילו מודלים/)
   })
 })
