@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { LOGIN_PATH } from './src/auth/paths'
 import { isSupabaseConfigured } from './src/auth/supabase-config'
 import { createMiddlewareSupabase } from './src/auth/supabase-middleware'

@@ -1,0 +1,9 @@
+#!/bin/sh
+# The suite, before anything leaves this machine. Deliberately not the
+# production build: CI covers that, and it is 30+ seconds nobody will wait for
+# on every push.
+
+pnpm test:run || {
+  echo "\n✖ Tests failed. Push blocked."
+  exit 1
+}

@@ -26,7 +26,11 @@ type ListState =
   | { status: 'ready'; rows: BrainDocument[]; hasMore: boolean }
   | { status: 'error'; message: string }
 
-export function DocumentsList({ documentsApi, onError, reloadToken }: {
+export function DocumentsList({
+  documentsApi,
+  onError,
+  reloadToken,
+}: {
   documentsApi: DocumentsApi
   /** Returns a message to display, or null when it has already redirected. */
   onError: (error: unknown) => string | null
@@ -34,11 +38,15 @@ export function DocumentsList({ documentsApi, onError, reloadToken }: {
 }) {
   const [state, setState] = useState<ListState>({ status: 'loading' })
 
+  // `reloadToken` is a trigger, not a read. A reload token that no longer causes
+  // a reload is a silent bug, which is what dropping it from the list would be.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deliberate trigger dependency
   useEffect(() => {
     let cancelled = false
     setState({ status: 'loading' })
 
-    documentsApi.listRecentDocuments()
+    documentsApi
+      .listRecentDocuments()
       .then(({ rows, hasMore }) => {
         if (!cancelled) setState({ status: 'ready', rows, hasMore })
       })
@@ -47,14 +55,18 @@ export function DocumentsList({ documentsApi, onError, reloadToken }: {
         if (!cancelled && message) setState({ status: 'error', message })
       })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [documentsApi, onError, reloadToken])
 
   if (state.status === 'error') {
     return (
       <section className="documents-list" aria-label="מסמכים שהועלו לאחרונה" dir="rtl">
         <h2>מסמכים שהועלו לאחרונה</h2>
-        <p className="documents-list__error" role="alert">{state.message}</p>
+        <p className="documents-list__error" role="alert">
+          {state.message}
+        </p>
       </section>
     )
   }
@@ -91,7 +103,11 @@ export function DocumentsList({ documentsApi, onError, reloadToken }: {
                 <dd>{STATUS_LABEL[doc.status] ?? doc.status}</dd>
               </div>
             </dl>
-            {doc.error ? <p className="documents-list__row-error" role="alert">{doc.error}</p> : null}
+            {doc.error ? (
+              <p className="documents-list__row-error" role="alert">
+                {doc.error}
+              </p>
+            ) : null}
           </li>
         ))}
       </ol>

@@ -1,16 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabase } from '../../../../../src/auth/supabase-browser'
 import { DocumentsList } from '../../../../../src/brain/DocumentsList'
 import { createDocumentsApi, type DocumentsClient } from '../../../../../src/brain/documents-api'
 import { KpiCards, type KpiState } from '../../../../../src/brain/KpiCards'
+import { type RuleDraft, RuleEditSheet } from '../../../../../src/brain/RuleEditSheet'
 import { createRolesApi, type RolesClient } from '../../../../../src/brain/roles-api'
-import { RuleEditSheet, type RuleDraft } from '../../../../../src/brain/RuleEditSheet'
 import { createRulesApi, type RulesApi, type RulesClient } from '../../../../../src/brain/rules-api'
 import { getTopic, RULE_TOPICS } from '../../../../../src/brain/topics'
-import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
 import type { Role, Rule, RuleKind } from '../../../../../src/brain/types'
+import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
 
 const FIRST_TOPIC_ID = RULE_TOPICS[0]?.id ?? 'live'
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -43,13 +43,16 @@ type Outcome =
 
 const KIND_LABELS: Record<RuleKind, string> = { tip: 'טיפ', process: 'תהליך', case: 'מקרה' }
 const kindLabel = (kind: RuleKind) => KIND_LABELS[kind] ?? 'טיפ'
-const sourceLabel = (source: string) => (
-  source === 'pdf' ? 'מתוך מסמך'
-    : source === 'conversation' ? 'מתוך שיחה'
-      : source === 'external' ? 'מהרשת'
-        : source === 'internal' ? 'הוגש בידי חבר צוות'
+const sourceLabel = (source: string) =>
+  source === 'pdf'
+    ? 'מתוך מסמך'
+    : source === 'conversation'
+      ? 'מתוך שיחה'
+      : source === 'external'
+        ? 'מהרשת'
+        : source === 'internal'
+          ? 'הוגש בידי חבר צוות'
           : 'נוצר אוטומטית'
-)
 
 /**
  * How many pages of the queue to pull before stopping.
@@ -74,7 +77,9 @@ const readableSize = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)}MB
  * reads as "this is the whole queue", and an owner who cannot find a rule they
  * know is pending would have no way to tell which it was.
  */
-export async function loadAllPending(rulesApi: RulesApi): Promise<{ rows: Rule[]; hasMore: boolean }> {
+export async function loadAllPending(
+  rulesApi: RulesApi,
+): Promise<{ rows: Rule[]; hasMore: boolean }> {
   const rows: Rule[] = []
   let cursor = null
   let pages = 0
@@ -90,9 +95,18 @@ export async function loadAllPending(rulesApi: RulesApi): Promise<{ rows: Rule[]
 }
 
 export function IngestClient({ tenantId }: { tenantId: string }) {
-  const documentsApi = useMemo(() => createDocumentsApi(createBrowserSupabase() as unknown as DocumentsClient), [])
-  const rulesApi = useMemo(() => createRulesApi(createBrowserSupabase() as unknown as RulesClient), [])
-  const rolesApi = useMemo(() => createRolesApi(createBrowserSupabase() as unknown as RolesClient), [])
+  const documentsApi = useMemo(
+    () => createDocumentsApi(createBrowserSupabase() as unknown as DocumentsClient),
+    [],
+  )
+  const rulesApi = useMemo(
+    () => createRulesApi(createBrowserSupabase() as unknown as RulesClient),
+    [],
+  )
+  const rolesApi = useMemo(
+    () => createRolesApi(createBrowserSupabase() as unknown as RolesClient),
+    [],
+  )
   const handleError = useApiErrorHandler()
 
   const [topicId, setTopicId] = useState(FIRST_TOPIC_ID)
@@ -149,15 +163,24 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
     }
   }, [handleError, rolesApi, rulesApi])
 
-  useEffect(() => { void loadQueue() }, [loadQueue])
+  useEffect(() => {
+    void loadQueue()
+  }, [loadQueue])
 
   useEffect(() => {
     let cancelled = false
-    rulesApi.loadKpis()
-      .then((kpis) => { if (!cancelled) setKpiState({ status: 'ready', ...kpis }) })
+    rulesApi
+      .loadKpis()
+      .then((kpis) => {
+        if (!cancelled) setKpiState({ status: 'ready', ...kpis })
+      })
       // A KPI failure must never blank the form or the queue beneath it.
-      .catch(() => { if (!cancelled) setKpiState({ status: 'error' }) })
-    return () => { cancelled = true }
+      .catch(() => {
+        if (!cancelled) setKpiState({ status: 'error' })
+      })
+    return () => {
+      cancelled = true
+    }
   }, [rulesApi])
 
   const switchMode = (next: Mode) => {
@@ -178,22 +201,31 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
     if (isHunt) {
       setOutcome({ phase: 'processing' })
       try {
-        const result = await rulesApi.huntExternal({ topicId, subTopic: subTopic.trim() || null }) as
-          { rules?: unknown[] } | null
+        const result = (await rulesApi.huntExternal({
+          topicId,
+          subTopic: subTopic.trim() || null,
+        })) as { rules?: unknown[] } | null
         const ruleCount = result?.rules?.length ?? 0
         setOutcome(ruleCount === 0 ? { phase: 'readyEmpty' } : { phase: 'ready', ruleCount })
         await loadQueue()
       } catch (failure) {
-        if (handleError(failure)) setOutcome({ phase: 'failed', message: 'החיפוש נכשל. נסי שוב מאוחר יותר.' })
+        if (handleError(failure))
+          setOutcome({ phase: 'failed', message: 'החיפוש נכשל. נסי שוב מאוחר יותר.' })
       }
       return
     }
 
     const invalid = isConversation
-      ? (conversation.text.trim() ? '' : 'יש להדביק את תוכן השיחה.')
-      : !file ? 'יש לבחור קובץ PDF להעלאה.'
-        : !isPdf(file) ? 'ניתן להעלות קבצי PDF בלבד.'
-          : file.size > MAX_UPLOAD_BYTES ? `הקובץ גדול מדי. הגודל המרבי הוא ${MAX_UPLOAD_BYTES / (1024 * 1024)}MB.` : ''
+      ? conversation.text.trim()
+        ? ''
+        : 'יש להדביק את תוכן השיחה.'
+      : !file
+        ? 'יש לבחור קובץ PDF להעלאה.'
+        : !isPdf(file)
+          ? 'ניתן להעלות קבצי PDF בלבד.'
+          : file.size > MAX_UPLOAD_BYTES
+            ? `הקובץ גדול מדי. הגודל המרבי הוא ${MAX_UPLOAD_BYTES / (1024 * 1024)}MB.`
+            : ''
     if (invalid) {
       setValidationError(invalid)
       return
@@ -204,7 +236,12 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
     let documentId: string
     try {
       const saved = isConversation
-        ? await documentsApi.saveConversation({ tenantId, topicId, title: conversation.title, text: conversation.text })
+        ? await documentsApi.saveConversation({
+            tenantId,
+            topicId,
+            title: conversation.title,
+            text: conversation.text,
+          })
         : await documentsApi.uploadDocument({ file: file as File, tenantId, topicId })
       documentId = saved.documentId
     } catch (failure) {
@@ -215,7 +252,7 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
 
     setOutcome({ phase: 'processing' })
     try {
-      const result = await documentsApi.extractRules(documentId) as { rules?: unknown[] } | null
+      const result = (await documentsApi.extractRules(documentId)) as { rules?: unknown[] } | null
       const ruleCount = result?.rules?.length ?? 0
       setOutcome(ruleCount === 0 ? { phase: 'readyEmpty' } : { phase: 'ready', ruleCount })
     } catch (failure) {
@@ -249,7 +286,11 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
         setQueue((current) => current.filter((row) => row.id !== rule.id))
       } catch (error) {
         if (handleError(error)) {
-          setQueueError(decision === 'approved' ? 'לא הצלחנו לאשר את החוק. נסי שוב.' : 'לא הצלחנו לדחות את החוק. נסי שוב.')
+          setQueueError(
+            decision === 'approved'
+              ? 'לא הצלחנו לאשר את החוק. נסי שוב.'
+              : 'לא הצלחנו לדחות את החוק. נסי שוב.',
+          )
         }
       }
     })
@@ -326,7 +367,11 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
             onChange={(event) => setTopicId(event.target.value)}
             value={topicId}
           >
-            {RULE_TOPICS.map((topic) => <option key={topic.id} value={topic.id}>{topic.title}</option>)}
+            {RULE_TOPICS.map((topic) => (
+              <option key={topic.id} value={topic.id}>
+                {topic.title}
+              </option>
+            ))}
           </select>
 
           {isHunt ? (
@@ -384,8 +429,7 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
                     lines, so the gap looked right while textContent -- which is
                     what the accessible name is computed from -- concatenated
                     them into "PDFלא". Whitespace-only text does not become a
-                    grid item, so nothing moves. */}
-                {' '}
+                    grid item, so nothing moves. */}{' '}
                 <span className="file-drop__state">
                   {file ? `${file.name} · ${readableSize(file.size)}` : 'לא נבחר קובץ'}
                 </span>
@@ -405,9 +449,15 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
             </>
           )}
 
-          {validationError ? <p className="upload-page__error" role="alert">{validationError}</p> : null}
+          {validationError ? (
+            <p className="upload-page__error" role="alert">
+              {validationError}
+            </p>
+          ) : null}
 
-          <button disabled={isBusy} type="submit">{isHunt ? 'חיפוש ברשת' : 'העלאה וחילוץ'}</button>
+          <button disabled={isBusy} type="submit">
+            {isHunt ? 'חיפוש ברשת' : 'העלאה וחילוץ'}
+          </button>
         </form>
 
         {outcome.phase === 'working' ? (
@@ -436,15 +486,23 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
           </p>
         ) : null}
         {outcome.phase === 'failed' ? (
-          <p className="upload-page__error" role="alert">{outcome.message}</p>
+          <p className="upload-page__error" role="alert">
+            {outcome.message}
+          </p>
         ) : null}
       </section>
 
       <section aria-label="חוקים הממתינים לאישור" className="approval-lobby" dir="rtl">
         <h2>ממתינים לאישור</h2>
         <p className="approval-lobby__count" role="status">{`${queue.length} חוקים ממתינים`}</p>
-        {queueError ? <p className="approval-lobby__error" role="alert">{queueError}</p> : null}
-        {queue.length === 0 ? <p className="approval-lobby__empty">אין כרגע חוקים הממתינים לאישור.</p> : null}
+        {queueError ? (
+          <p className="approval-lobby__error" role="alert">
+            {queueError}
+          </p>
+        ) : null}
+        {queue.length === 0 ? (
+          <p className="approval-lobby__empty">אין כרגע חוקים הממתינים לאישור.</p>
+        ) : null}
         {/* Never a silent cap: an owner who cannot find a rule they know is
             pending needs to be told the list stopped, not left to wonder. */}
         {queueHasMore ? (
@@ -512,14 +570,21 @@ export function IngestClient({ tenantId }: { tenantId: string }) {
         </ol>
       </section>
 
-      <DocumentsList documentsApi={documentsApi} onError={handleError} reloadToken={documentsVersion} />
+      <DocumentsList
+        documentsApi={documentsApi}
+        onError={handleError}
+        reloadToken={documentsVersion}
+      />
 
       {draft ? (
         <RuleEditSheet
           draft={draft}
           error={editError}
           isSaving={savingIds.has(draft.ruleId)}
-          onCancel={() => { setEditError(''); setDraft(null) }}
+          onCancel={() => {
+            setEditError('')
+            setDraft(null)
+          }}
           onChange={setDraft}
           onSave={() => void saveDraft()}
           roles={roles}

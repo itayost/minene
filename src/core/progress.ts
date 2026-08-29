@@ -11,7 +11,9 @@ export function progressStorageKey(brandId: string): string {
 }
 
 function isValidPageIndex(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value >= 0
+  return (
+    typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value >= 0
+  )
 }
 
 function sanitizeProgress(value: unknown): ProgressMap {

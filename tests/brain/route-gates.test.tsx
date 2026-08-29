@@ -4,14 +4,20 @@ import { mineneBrand } from '../../src/brands/minene'
 const nav = vi.hoisted(() => {
   class NotFoundSignal extends Error {}
   class RedirectSignal extends Error {
-    constructor(readonly to: string) { super(to) }
+    constructor(readonly to: string) {
+      super(to)
+    }
   }
   return { NotFoundSignal, RedirectSignal }
 })
 
 vi.mock('next/navigation', () => ({
-  notFound: () => { throw new nav.NotFoundSignal('not found') },
-  redirect: (to: string) => { throw new nav.RedirectSignal(to) },
+  notFound: () => {
+    throw new nav.NotFoundSignal('not found')
+  },
+  redirect: (to: string) => {
+    throw new nav.RedirectSignal(to)
+  },
 }))
 
 const role = vi.hoisted(() => ({ current: 'owner' as 'owner' | 'staff' }))
@@ -24,7 +30,9 @@ vi.mock('../../src/auth/require-brand', () => ({
   })),
 }))
 
-vi.mock('../../app/[brandId]/tools/brain/ingest/ingest-client', () => ({ IngestClient: () => null }))
+vi.mock('../../app/[brandId]/tools/brain/ingest/ingest-client', () => ({
+  IngestClient: () => null,
+}))
 vi.mock('../../app/[brandId]/tools/brain/book-client', () => ({ BookClient: () => null }))
 
 const { default: IngestPage } = await import('../../app/[brandId]/tools/brain/ingest/page')
@@ -52,14 +60,20 @@ describe('who reaches the ingest screen', () => {
 
 describe('the routes that were live before the restructure', () => {
   it('sends the old lobby to the screen that now holds the queue', async () => {
-    await expect(LobbyRedirect(params())).rejects.toMatchObject({ to: `/${mineneBrand.id}/tools/brain/ingest` })
+    await expect(LobbyRedirect(params())).rejects.toMatchObject({
+      to: `/${mineneBrand.id}/tools/brain/ingest`,
+    })
   })
 
   it('sends the old extract screen to the same place', async () => {
-    await expect(ExtractRedirect(params())).rejects.toMatchObject({ to: `/${mineneBrand.id}/tools/brain/ingest` })
+    await expect(ExtractRedirect(params())).rejects.toMatchObject({
+      to: `/${mineneBrand.id}/tools/brain/ingest`,
+    })
   })
 
   it('sends the old history to the book, whose list it was', async () => {
-    await expect(AdminRedirect(params())).rejects.toMatchObject({ to: `/${mineneBrand.id}/tools/brain` })
+    await expect(AdminRedirect(params())).rejects.toMatchObject({
+      to: `/${mineneBrand.id}/tools/brain`,
+    })
   })
 })

@@ -16,7 +16,8 @@ import { describe, expect, it } from 'vitest'
  * from the brand, through a token.
  */
 const ALLOWED = new Set([
-  '#fff', '#ffffff',
+  '#fff',
+  '#ffffff',
   // A mask's stops are alpha, not paint: #000 there means "keep this pixel",
   // and no brand colour would be more correct.
   '#000',
@@ -38,8 +39,9 @@ const brainCss = () => readFileSync(new URL('../../src/brain/brain.css', import.
 
 describe('the brain paints only in brand colours', () => {
   it('uses no hex outside the allowed set', () => {
-    const offenders = [...new Set(brainCss().match(HEX) ?? [])]
-      .filter((hex) => !ALLOWED.has(hex.toLowerCase()))
+    const offenders = [...new Set(brainCss().match(HEX) ?? [])].filter(
+      (hex) => !ALLOWED.has(hex.toLowerCase()),
+    )
 
     // Eleven off-brand colours sat here for a week because a var() fallback
     // never fires inside the shell: the brain rendered cool blue-grey on a warm
@@ -48,8 +50,7 @@ describe('the brain paints only in brand colours', () => {
   })
 
   it('derives every alpha colour from a token rather than from three numbers', () => {
-    const literals = (brainCss().match(FUNCTIONAL) ?? [])
-      .filter((call) => !call.includes('var(--'))
+    const literals = (brainCss().match(FUNCTIONAL) ?? []).filter((call) => !call.includes('var(--'))
 
     expect(literals).toEqual([])
   })

@@ -1,10 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { BottomSheet } from './BottomSheet'
 import type { RolesApi } from './roles-api'
-import { useApiErrorHandler } from './use-api-error'
 import type { Role } from './types'
+import { useApiErrorHandler } from './use-api-error'
 
 /**
  * The org chart, editable. public.roles is per-tenant and unconstrained by any
@@ -18,7 +18,13 @@ import type { Role } from './types'
  * a few times a year is a settings door, and a door opens over the page rather
  * than living in the middle of it.
  */
-export function RolesManager({ rolesApi, isOpen, onClose, roles, onRolesChanged }: {
+export function RolesManager({
+  rolesApi,
+  isOpen,
+  onClose,
+  roles,
+  onRolesChanged,
+}: {
   rolesApi: Pick<RolesApi, 'listRoles' | 'createRole' | 'deleteRole'>
   isOpen: boolean
   onClose: () => void
@@ -53,7 +59,9 @@ export function RolesManager({ rolesApi, isOpen, onClose, roles, onRolesChanged 
     }
   }, [handleError, onRolesChanged, rolesApi])
 
-  useEffect(() => { if (isOpen) void reload() }, [isOpen, reload])
+  useEffect(() => {
+    if (isOpen) void reload()
+  }, [isOpen, reload])
 
   const run = async (id: string, work: () => Promise<unknown>) => {
     setBusyId(id)
@@ -80,53 +88,64 @@ export function RolesManager({ rolesApi, isOpen, onClose, roles, onRolesChanged 
   }
 
   return (
-    <BottomSheet initialFocusRef={nameRef} label="תפקידים" onDismiss={onClose} openKey={isOpen ? 'roles' : null}>
+    <BottomSheet
+      initialFocusRef={nameRef}
+      label="תפקידים"
+      onDismiss={onClose}
+      openKey={isOpen ? 'roles' : null}
+    >
       <div className="roles-manager">
-      <h2 className="rule-edit-sheet__title">תפקידים</h2>
+        <h2 className="rule-edit-sheet__title">תפקידים</h2>
 
-      {/* States the consequence before the button is pressed. Deleting a role is
+        {/* States the consequence before the button is pressed. Deleting a role is
           not destructive here -- the rules it addressed revert to addressing
           everyone -- but "delete" reads as though it might be, and someone who
           believes it deletes rules will simply never fix a wrong role. */}
-      <p className="roles-manager__note">
-        מחיקת תפקיד אינה מוחקת חוקים. חוקים שהיו משויכים אליו יחזרו לחול על כל התפקידים.
-      </p>
+        <p className="roles-manager__note">
+          מחיקת תפקיד אינה מוחקת חוקים. חוקים שהיו משויכים אליו יחזרו לחול על כל התפקידים.
+        </p>
 
-      {error ? <p className="admin-error" role="alert">{error}</p> : null}
+        {error ? (
+          <p className="admin-error" role="alert">
+            {error}
+          </p>
+        ) : null}
 
-      <ul className="roles-manager__list">
-        {roles.map((role) => (
-          <li key={role.id}>
-            <span>{role.name}</span>
-            {/* Named, because the visible label repeats down the list. */}
-            <button
-              aria-label={`מחיקת התפקיד ${role.name}`}
-              disabled={busyId === role.id}
-              onClick={() => void run(role.id, () => rolesApi.deleteRole({ roleId: role.id }))}
-              type="button"
-            >
-              מחיקה
-            </button>
-          </li>
-        ))}
-      </ul>
+        <ul className="roles-manager__list">
+          {roles.map((role) => (
+            <li key={role.id}>
+              <span>{role.name}</span>
+              {/* Named, because the visible label repeats down the list. */}
+              <button
+                aria-label={`מחיקת התפקיד ${role.name}`}
+                disabled={busyId === role.id}
+                onClick={() => void run(role.id, () => rolesApi.deleteRole({ roleId: role.id }))}
+                type="button"
+              >
+                מחיקה
+              </button>
+            </li>
+          ))}
+        </ul>
 
-      {!isLoading && roles.length === 0 ? (
-        <p className="admin-empty">עדיין לא הוגדרו תפקידים.</p>
-      ) : null}
+        {!isLoading && roles.length === 0 ? (
+          <p className="admin-empty">עדיין לא הוגדרו תפקידים.</p>
+        ) : null}
 
-      <form className="roles-manager__add" onSubmit={(event) => void add(event)}>
-        <label htmlFor="new-role-name">תפקיד חדש</label>
-        <input
-          id="new-role-name"
-          maxLength={40}
-          onChange={(event) => setDraftName(event.target.value)}
-          ref={nameRef}
-          type="text"
-          value={draftName}
-        />
-        <button disabled={busyId === 'new'} type="submit">הוספה</button>
-      </form>
+        <form className="roles-manager__add" onSubmit={(event) => void add(event)}>
+          <label htmlFor="new-role-name">תפקיד חדש</label>
+          <input
+            id="new-role-name"
+            maxLength={40}
+            onChange={(event) => setDraftName(event.target.value)}
+            ref={nameRef}
+            type="text"
+            value={draftName}
+          />
+          <button disabled={busyId === 'new'} type="submit">
+            הוספה
+          </button>
+        </form>
       </div>
     </BottomSheet>
   )

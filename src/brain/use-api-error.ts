@@ -25,19 +25,23 @@ export function useApiErrorHandler(): (error: unknown) => string | null {
   const router = useRouter()
   const pathname = usePathname()
 
-  return useCallback((error: unknown): string | null => {
-    const isExpired = (error instanceof RulesApiError || error instanceof DocumentsApiError)
-      && error.code === 'UNAUTHORIZED'
+  return useCallback(
+    (error: unknown): string | null => {
+      const isExpired =
+        (error instanceof RulesApiError || error instanceof DocumentsApiError) &&
+        error.code === 'UNAUTHORIZED'
 
-    if (isExpired) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`)
-      return null
-    }
+      if (isExpired) {
+        router.replace(`/login?next=${encodeURIComponent(pathname)}`)
+        return null
+      }
 
-    if (error instanceof RulesApiError || error instanceof DocumentsApiError) {
-      return error.message
-    }
+      if (error instanceof RulesApiError || error instanceof DocumentsApiError) {
+        return error.message
+      }
 
-    return GENERIC_MESSAGE
-  }, [pathname, router])
+      return GENERIC_MESSAGE
+    },
+    [pathname, router],
+  )
 }

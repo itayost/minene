@@ -1,4 +1,4 @@
-import type { ArgumentCategory, BlockerId, Rates, Run } from './types';
+import type { ArgumentCategory, BlockerId, Rates, Run } from './types'
 
 /**
  * "Persuasion Rate: out of 100 conversations, how many said yes.
@@ -14,76 +14,77 @@ import type { ArgumentCategory, BlockerId, Rates, Run } from './types';
  * and reporting the first as 0% claims a total failure that has not happened.
  */
 function pct(numerator: number, denominator: number): number | null {
-  return denominator === 0 ? null : Math.round((numerator / denominator) * 100);
+  return denominator === 0 ? null : Math.round((numerator / denominator) * 100)
 }
 
 /** Same rule for an average: no runs is no answer, not zero. */
 function avg(total: number, count: number, places: number): number | null {
-  return count === 0 ? null : Number((total / count).toFixed(places));
+  return count === 0 ? null : Number((total / count).toFixed(places))
 }
 
 function agreedIn(run: Run): boolean {
-  return run.state.outcome === 'agreed';
+  return run.state.outcome === 'agreed'
 }
 
 /** Partial execution is not success: the model measures whether the agreed thing happened. */
 function executedIn(run: Run): boolean {
   // Only 'yes'. A partial settles as not done, or the measurement drifts
   // upward one generous rounding at a time.
-  return run.followUp?.report.executed === 'yes';
+  return run.followUp?.report.executed === 'yes'
 }
 
 export function computeRates(runs: Run[]): Rates {
-  const agreed = runs.filter(agreedIn);
-  const executed = agreed.filter(executedIn);
+  const agreed = runs.filter(agreedIn)
+  const executed = agreed.filter(executedIn)
 
-  const categories = new Map<ArgumentCategory, number>();
+  const categories = new Map<ArgumentCategory, number>()
   for (const run of agreed) {
-    const category = run.score?.winningCategory;
-    if (category) categories.set(category, (categories.get(category) ?? 0) + 1);
+    const category = run.score?.winningCategory
+    if (category) categories.set(category, (categories.get(category) ?? 0) + 1)
   }
 
   // A run with no persona is a real conversation with a real person, and it has
   // no place in a persona breakdown. personaId became nullable when real
   // conversations landed; dropping the nulls here is what keeps this cut
   // meaning "how each simulated counterpart behaved".
-  const personaIds = [...new Set(runs.map((r) => r.personaId))]
-    .filter((id): id is string => Boolean(id));
+  const personaIds = [...new Set(runs.map((r) => r.personaId))].filter((id): id is string =>
+    Boolean(id),
+  )
   const byPersona = personaIds.map((personaId) => {
-    const mine = runs.filter((r) => r.personaId === personaId);
-    const myAgreed = mine.filter(agreedIn);
+    const mine = runs.filter((r) => r.personaId === personaId)
+    const myAgreed = mine.filter(agreedIn)
     return {
       personaId,
       runs: mine.length,
       persuasionRate: pct(myAgreed.length, mine.length),
       executionRate: pct(myAgreed.filter(executedIn).length, myAgreed.length),
-    };
-  });
+    }
+  })
 
-  const blockers = new Map<BlockerId, { encountered: number; overcome: number }>();
+  const blockers = new Map<BlockerId, { encountered: number; overcome: number }>()
   for (const run of runs) {
     for (const blocker of new Set(run.state.blockers)) {
-      const entry = blockers.get(blocker) ?? { encountered: 0, overcome: 0 };
+      const entry = blockers.get(blocker) ?? { encountered: 0, overcome: 0 }
       blockers.set(blocker, {
         encountered: entry.encountered + 1,
         overcome: entry.overcome + (agreedIn(run) ? 1 : 0),
-      });
+      })
     }
   }
 
-  const violationCounts = new Map<string, number>();
+  const violationCounts = new Map<string, number>()
   for (const run of runs) {
     for (const violation of run.violations) {
-      violationCounts.set(violation.rule, (violationCounts.get(violation.rule) ?? 0) + 1);
+      violationCounts.set(violation.rule, (violationCounts.get(violation.rule) ?? 0) + 1)
     }
   }
 
-  const totalViolations = runs.reduce((sum, r) => sum + r.violations.length, 0);
+  const totalViolations = runs.reduce((sum, r) => sum + r.violations.length, 0)
   const criticalViolations = runs.reduce(
     (sum, r) => sum + r.violations.filter((v) => v.severity === 'critical').length,
     0,
-  );
-  const interactionsToYes = agreed.reduce((sum, r) => sum + r.state.interaction, 0);
+  )
+  const interactionsToYes = agreed.reduce((sum, r) => sum + r.state.interaction, 0)
 
   return {
     runs: runs.length,
@@ -109,5 +110,5 @@ export function computeRates(runs: Run[]): Rates {
       .map(([rule, count]) => ({ rule, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 8),
-  };
+  }
 }

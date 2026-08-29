@@ -1,19 +1,19 @@
-import { randomUUID } from 'node:crypto';
-import { NextResponse } from 'next/server';
-import type { BotConfig } from '../../../../src/persuade/engine/config';
-import { validateConfig } from '../../../../src/persuade/engine/config';
-import { DEFAULT_RULES, detectOutcome, initialState } from '../../../../src/persuade/engine/rules';
-import { applyTargetReply, streamPersuaderTurn } from '../../../../src/persuade/engine/turn';
-import type { ConversationState, Run, Turn } from '../../../../src/persuade/engine/types';
-import { assertModelAccessConfigured } from '../../../../src/persuade/lib/model';
-import { recordAsked } from '../../../../src/persuade/lib/assignments';
-import { resolveAccess } from '../../../../src/persuade/lib/access';
-import { loadAmmunition } from '../../../../src/persuade/engine/ammunition';
-import { createPlanStore, planFor } from '../../../../src/persuade/lib/plans';
-import { isStorageConfigured, supabase } from '../../../../src/persuade/lib/supabase';
-import { saveRun } from '../../../../src/persuade/lib/store';
+import { randomUUID } from 'node:crypto'
+import { NextResponse } from 'next/server'
+import { loadAmmunition } from '../../../../src/persuade/engine/ammunition'
+import type { BotConfig } from '../../../../src/persuade/engine/config'
+import { validateConfig } from '../../../../src/persuade/engine/config'
+import { DEFAULT_RULES, detectOutcome, initialState } from '../../../../src/persuade/engine/rules'
+import { applyTargetReply, streamPersuaderTurn } from '../../../../src/persuade/engine/turn'
+import type { ConversationState, Run, Turn } from '../../../../src/persuade/engine/types'
+import { resolveAccess } from '../../../../src/persuade/lib/access'
+import { recordAsked } from '../../../../src/persuade/lib/assignments'
+import { assertModelAccessConfigured } from '../../../../src/persuade/lib/model'
+import { createPlanStore, planFor } from '../../../../src/persuade/lib/plans'
+import { saveRun } from '../../../../src/persuade/lib/store'
+import { isStorageConfigured, supabase } from '../../../../src/persuade/lib/supabase'
 
-export const maxDuration = 300;
+export const maxDuration = 300
 
 interface ChatRequest {
   /**
@@ -25,18 +25,18 @@ interface ChatRequest {
    * The /rules page still sends its own, which is the entire point of that
    * page: turn a rule off there and it stops being enforced.
    */
-  config: Omit<BotConfig, 'rules'> & { rules?: BotConfig['rules'] };
-  turns: Turn[];
+  config: Omit<BotConfig, 'rules'> & { rules?: BotConfig['rules'] }
+  turns: Turn[]
   /**
    * Optional, for the same reason `rules` is: a caller opening a conversation
    * has no state yet, and constructing one would mean knowing what a rung and a
    * fatigue score are. Absent means "this is the first turn".
    */
-  state?: ConversationState;
+  state?: ConversationState
   /** The person's reply. Absent on the opening move. */
-  reply?: string;
+  reply?: string
   /** Set when the person ends the conversation. */
-  finish?: boolean;
+  finish?: boolean
   /**
    * The assignment this conversation is about, when there is one. Absent for a
    * conversation driven from the /rules page with no ask behind it.
@@ -46,7 +46,7 @@ interface ChatRequest {
    * a conversation was about nor which business it belonged to can be asserted
    * by whoever is driving it.
    */
-  assignmentId?: string;
+  assignmentId?: string
 }
 
 /**
@@ -57,9 +57,9 @@ interface ChatRequest {
  * "no plan" from here and the caller should not be able to tell them apart.
  */
 async function planForAssignment(assignmentId: string, tenantId: string) {
-  const client = supabase();
-  const ammunition = await loadAmmunition(client, assignmentId, tenantId);
-  if (!ammunition) return null;
+  const client = supabase()
+  const ammunition = await loadAmmunition(client, assignmentId, tenantId)
+  if (!ammunition) return null
 
   /**
    * Built once per assignment, not once per message.
@@ -88,7 +88,7 @@ async function planForAssignment(assignmentId: string, tenantId: string) {
     },
     createPlanStore(client),
     tenantId,
-  );
+  )
 }
 
 /**
@@ -107,35 +107,33 @@ async function planForAssignment(assignmentId: string, tenantId: string) {
  * including the paths that never touch a model, so the client has one reader
  * rather than a guess about which format is coming.
  */
-function ndjson(
-  produce: (emit: (event: unknown) => void) => Promise<void>,
-): Response {
-  const encoder = new TextEncoder();
+function ndjson(produce: (emit: (event: unknown) => void) => Promise<void>): Response {
+  const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
       const emit = (event: unknown) =>
-        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
       try {
-        await produce(emit);
+        await produce(emit)
       } catch (error) {
         // Emitted into the stream rather than thrown, because by this point the
         // response has already begun: the status line is long gone and a throw
         // would close the body mid-conversation, which the client cannot tell
         // apart from a network drop.
-        const message = error instanceof Error ? error.message : 'שגיאה לא ידועה';
-        emit({ type: 'error', message });
+        const message = error instanceof Error ? error.message : 'שגיאה לא ידועה'
+        emit({ type: 'error', message })
       } finally {
-        controller.close();
+        controller.close()
       }
     },
-  });
+  })
 
   return new Response(stream, {
     headers: {
       'Content-Type': 'application/x-ndjson; charset=utf-8',
       'Cache-Control': 'no-store',
     },
-  });
+  })
 }
 
 /**
@@ -148,25 +146,25 @@ function ndjson(
  * written instead of after it is finished.
  */
 export async function POST(req: Request) {
-  let request: ChatRequest;
+  let request: ChatRequest
   try {
-    request = (await req.json()) as ChatRequest;
+    request = (await req.json()) as ChatRequest
   } catch {
-    return NextResponse.json({ error: 'הבקשה לא נקראה.' }, { status: 400 });
+    return NextResponse.json({ error: 'הבקשה לא נקראה.' }, { status: 400 })
   }
 
-  const { config: rawConfig, turns, state: rawState, reply, finish, assignmentId } = request;
+  const { config: rawConfig, turns, state: rawState, reply, finish, assignmentId } = request
 
   // Before the model is touched: a refused caller must not be able to spend
   // tokens finding out they were refused. Before the stream opens, too, since
   // a refusal is the one answer here that has to arrive as a status.
-  const access = await resolveAccess(req.headers.get('authorization') ?? '', assignmentId);
+  const access = await resolveAccess(req.headers.get('authorization') ?? '', assignmentId)
   if (!access.ok) {
-    return NextResponse.json({ error: access.error }, { status: access.status });
+    return NextResponse.json({ error: access.error }, { status: access.status })
   }
 
   return ndjson(async (emit) => {
-    assertModelAccessConfigured();
+    assertModelAccessConfigured()
 
     /**
      * The plan comes from the assignment, not from the caller.
@@ -180,34 +178,34 @@ export async function POST(req: Request) {
      * A client-supplied plan would also be a client choosing which arguments
      * the bot may make, which is not a decision that belongs on that side.
      */
-    let config: BotConfig;
+    let config: BotConfig
     if (rawConfig?.plan) {
-      config = { ...rawConfig, rules: rawConfig.rules ?? DEFAULT_RULES };
+      config = { ...rawConfig, rules: rawConfig.rules ?? DEFAULT_RULES }
     } else if (assignmentId) {
       // Announced rather than waited out in silence. A cached plan makes this
       // step invisible, but the first conversation on an assignment still has
       // to build one, and that is the only slow moment left -- so the screen
       // gets to say which moment it is in.
-      emit({ type: 'preparing' });
-      const plan = await planForAssignment(assignmentId, access.context.tenantId);
-      if (!plan) throw new Error('לא הצלחנו לבנות תוכנית לשיחה הזאת.');
-      config = { plan, rules: DEFAULT_RULES } as BotConfig;
+      emit({ type: 'preparing' })
+      const plan = await planForAssignment(assignmentId, access.context.tenantId)
+      if (!plan) throw new Error('לא הצלחנו לבנות תוכנית לשיחה הזאת.')
+      config = { plan, rules: DEFAULT_RULES } as BotConfig
     } else {
-      throw new Error('חסרה תוכנית או משימה.');
+      throw new Error('חסרה תוכנית או משימה.')
     }
 
-    const state = rawState ?? initialState();
+    const state = rawState ?? initialState()
 
-    const problems = validateConfig(config);
-    if (problems.length > 0) throw new Error(problems.map((p) => p.message).join(' · '));
+    const problems = validateConfig(config)
+    if (problems.length > 0) throw new Error(problems.map((p) => p.message).join(' · '))
 
-    let workingTurns = turns;
-    let workingState = state;
+    let workingTurns = turns
+    let workingState = state
 
     if (reply?.trim()) {
-      const applied = applyTargetReply(reply.trim(), workingTurns, workingState, config.rules);
-      workingTurns = [...workingTurns, applied.turn];
-      workingState = applied.state;
+      const applied = applyTargetReply(reply.trim(), workingTurns, workingState, config.rules)
+      workingTurns = [...workingTurns, applied.turn]
+      workingState = applied.state
     }
 
     if (finish) {
@@ -225,11 +223,11 @@ export async function POST(req: Request) {
       // Read from what the counterpart actually said last, which is the only
       // evidence there is. An exchange with no reply from them at all cannot
       // have produced an agreement, so it stays open.
-      const lastFromTarget = [...workingTurns].reverse().find((t) => t.role === 'target');
+      const lastFromTarget = [...workingTurns].reverse().find((t) => t.role === 'target')
       workingState = {
         ...workingState,
         outcome: lastFromTarget ? detectOutcome(lastFromTarget.text) : 'open',
-      };
+      }
 
       const run: Run = {
         id: randomUUID(),
@@ -241,38 +239,41 @@ export async function POST(req: Request) {
         turns: workingTurns,
         state: workingState,
         violations: workingTurns.flatMap((t) => t.violations ?? []),
-      };
+      }
       // Both writes are swallowed on purpose, as the save always has been: a
       // storage failure must not turn a finished conversation into an error the
       // person sees after they have already had it. The conversation is the
       // thing that happened; the record of it is best-effort.
       if (isStorageConfigured()) {
-        await saveRun(run, access.context).catch(() => undefined);
+        await saveRun(run, access.context).catch(() => undefined)
         // Records that the ask was made. Deliberately does NOT settle the
         // assignment, whatever the outcome: agreement is not execution, and the
         // assignment stays open until somebody reports the thing actually
         // happened. See src/lib/assignments.ts.
         if (assignmentId) {
-          await recordAsked(supabase(), assignmentId, workingState).catch(() => undefined);
+          await recordAsked(supabase(), assignmentId, workingState).catch(() => undefined)
         }
       }
-      emit({ type: 'result', turns: workingTurns, state: workingState, run });
-      return;
+      emit({ type: 'result', turns: workingTurns, state: workingState, run })
+      return
     }
 
     for await (const event of streamPersuaderTurn(
-      config.plan, workingTurns, workingState, config.rules,
+      config.plan,
+      workingTurns,
+      workingState,
+      config.rules,
     )) {
       if (event.type === 'delta') {
-        emit(event);
-        continue;
+        emit(event)
+        continue
       }
       emit({
         type: 'result',
         turns: [...workingTurns, event.result.turn],
         state: event.result.state,
         stopped: event.result.stopped,
-      });
+      })
     }
-  });
+  })
 }

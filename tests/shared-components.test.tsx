@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { type ReactNode, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { BrandNotFound } from '../src/components/BrandNotFound'
 import { BrandShell } from '../src/components/BrandShell'
@@ -9,9 +9,9 @@ import { PageViewer } from '../src/components/PageViewer'
 import { ShareSheet } from '../src/components/ShareSheet'
 import { SubjectMenu } from '../src/components/SubjectMenu'
 import { ToolScreen } from '../src/components/ToolScreen'
-import { brandHref, groupHref, subjectHref } from '../src/core/hrefs'
-import type { BrowserActionApis, PageActionContext } from '../src/core/page-actions'
+import { groupHref, subjectHref } from '../src/core/hrefs'
 import { parentHref, type Screen } from '../src/core/navigation'
+import type { BrowserActionApis, PageActionContext } from '../src/core/page-actions'
 import { demoBrand } from './fixtures/demo-brand'
 
 type HarnessProps = {
@@ -26,26 +26,28 @@ function SharedComponentHarness({ initialScreen = { kind: 'home' }, modal }: Har
   // otherwise come from the URL, so the harness is handed one rather than
   // clicking its way there.
   const changePage = (pageIndex: number) => {
-    setCurrentScreen((current) => current.kind === 'viewer' ? { ...current, pageIndex } : current)
+    setCurrentScreen((current) => (current.kind === 'viewer' ? { ...current, pageIndex } : current))
   }
-  const subject = currentScreen.kind === 'menu'
-    ? demoBrand.subjects.find((candidate) => candidate.id === currentScreen.subjectId)
-    : undefined
-  const viewerGroup = currentScreen.kind === 'viewer'
-    ? demoBrand.subjects
-      .find((candidate) => candidate.id === currentScreen.subjectId)
-      ?.groups.find((candidate) => candidate.id === currentScreen.groupId)
-    : undefined
-  const tool = currentScreen.kind === 'tool'
-    ? demoBrand.tools.find((candidate) => candidate.id === currentScreen.toolId)
-    : undefined
+  const subject =
+    currentScreen.kind === 'menu'
+      ? demoBrand.subjects.find((candidate) => candidate.id === currentScreen.subjectId)
+      : undefined
+  const viewerGroup =
+    currentScreen.kind === 'viewer'
+      ? demoBrand.subjects
+          .find((candidate) => candidate.id === currentScreen.subjectId)
+          ?.groups.find((candidate) => candidate.id === currentScreen.groupId)
+      : undefined
+  const tool =
+    currentScreen.kind === 'tool'
+      ? demoBrand.tools.find((candidate) => candidate.id === currentScreen.toolId)
+      : undefined
 
   return (
     <BrandShell
       brand={demoBrand}
       screen={currentScreen}
       backHref={parentHref(demoBrand, currentScreen)}
-      homeHref={brandHref(demoBrand.id)}
       modal={modal}
       onShare={() => undefined}
     >
@@ -97,7 +99,9 @@ function ShareSheetHarness({ openWindow }: { openWindow?: typeof window.open } =
 
   return (
     <>
-      <button type="button" onClick={() => setIsOpen(true)}>Open page actions</button>
+      <button type="button" onClick={() => setIsOpen(true)}>
+        Open page actions
+      </button>
       {isOpen ? (
         <ShareSheet
           browserApis={browserApis}
@@ -134,8 +138,10 @@ describe('shared branded components', () => {
     render(<SharedComponentHarness initialScreen={{ kind: 'menu', subjectId: 'multiple' }} />)
 
     expect(screen.getByRole('heading', { name: 'Multiple subject' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Group two' }))
-      .toHaveAttribute('href', '/demo/multiple/group-two')
+    expect(screen.getByRole('link', { name: 'Group two' })).toHaveAttribute(
+      'href',
+      '/demo/multiple/group-two',
+    )
   })
 
   it('leaves the shell with a way back and no bottom nav', () => {
@@ -159,8 +165,10 @@ describe('shared branded components', () => {
       />,
     )
 
-    expect(screen.getByRole('link', { name: 'יצירת סרטון' }))
-      .toHaveAttribute('href', '/demo/cockpit/video')
+    expect(screen.getByRole('link', { name: 'יצירת סרטון' })).toHaveAttribute(
+      'href',
+      '/demo/cockpit/video',
+    )
   })
 
   it('shows no action on a tool that has none', () => {
@@ -170,18 +178,34 @@ describe('shared branded components', () => {
   })
 
   it('points the back link at the parent route of the current screen', () => {
-    render(<SharedComponentHarness
-      initialScreen={{ kind: 'viewer', subjectId: 'multiple', groupId: 'group-two', pageIndex: 0 }}
-    />)
+    render(
+      <SharedComponentHarness
+        initialScreen={{
+          kind: 'viewer',
+          subjectId: 'multiple',
+          groupId: 'group-two',
+          pageIndex: 0,
+        }}
+      />,
+    )
 
-    expect(screen.getByRole('link', { name: 'Return to previous screen' }))
-      .toHaveAttribute('href', '/demo/multiple')
+    expect(screen.getByRole('link', { name: 'Return to previous screen' })).toHaveAttribute(
+      'href',
+      '/demo/multiple',
+    )
   })
 
   it('presents the viewer screen with its header title and a share control', () => {
-    render(<SharedComponentHarness
-      initialScreen={{ kind: 'viewer', subjectId: 'multiple', groupId: 'group-two', pageIndex: 0 }}
-    />)
+    render(
+      <SharedComponentHarness
+        initialScreen={{
+          kind: 'viewer',
+          subjectId: 'multiple',
+          groupId: 'group-two',
+          pageIndex: 0,
+        }}
+      />,
+    )
 
     expect(screen.getByRole('img', { name: 'Group two page' })).toBeVisible()
     expect(screen.getByText('Group two · 1 / 1')).toBeVisible()
@@ -213,7 +237,9 @@ describe('shared branded components', () => {
   })
 
   it('renders the screen a tool route resolves to', () => {
-    render(<SharedComponentHarness initialScreen={{ kind: 'tool', toolId: 'notes', subPath: [] }} />)
+    render(
+      <SharedComponentHarness initialScreen={{ kind: 'tool', toolId: 'notes', subPath: [] }} />,
+    )
 
     expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
     expect(screen.getByText('Ideas to discuss')).toBeVisible()
@@ -221,7 +247,9 @@ describe('shared branded components', () => {
   })
 
   it('keeps tool items exposed as a list to assistive technologies', () => {
-    render(<SharedComponentHarness initialScreen={{ kind: 'tool', toolId: 'notes', subPath: [] }} />)
+    render(
+      <SharedComponentHarness initialScreen={{ kind: 'tool', toolId: 'notes', subPath: [] }} />,
+    )
 
     expect(screen.getByRole('list')).toHaveAttribute('role', 'list')
   })
@@ -251,9 +279,9 @@ describe('shared branded components', () => {
   })
 
   it('renders the modal beside the shell base and makes the base inert', () => {
-    const { container } = render(<SharedComponentHarness
-      modal={<div data-testid="test-modal">Page actions</div>}
-    />)
+    const { container } = render(
+      <SharedComponentHarness modal={<div data-testid="test-modal">Page actions</div>} />,
+    )
 
     const shell = container.querySelector('.brand-shell')
     const shellBase = container.querySelector('.brand-shell__base')
@@ -278,7 +306,10 @@ describe('shared branded components', () => {
 
     expect(screen.getByRole('heading', { name: 'Brand not found' })).toBeVisible()
     expect(screen.getByText(/missing-brand/)).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Go to the default brand' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'Go to the default brand' })).toHaveAttribute(
+      'href',
+      '/',
+    )
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
   })
 
@@ -342,7 +373,11 @@ describe('shared branded components', () => {
     const close = vi.fn()
     const popup = {
       opener: window,
-      location: { replace: () => { throw new Error('denied') } },
+      location: {
+        replace: () => {
+          throw new Error('denied')
+        },
+      },
       close,
     }
     render(<ShareSheetHarness openWindow={() => popup as unknown as Window} />)

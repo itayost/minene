@@ -39,6 +39,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="he" dir="rtl">
       <body>
+        {/* impeccableContract is a template literal defined at the top of this file:
+            a static HTML comment, build-time, with nothing user-supplied anywhere in it. */}
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static build-time constant */}
         <template dangerouslySetInnerHTML={{ __html: impeccableContract }} />
         {children}
       </body>

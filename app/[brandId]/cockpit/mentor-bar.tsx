@@ -4,20 +4,41 @@ import { useState } from 'react'
 
 /* Inline, like BrandShell's own icons: three glyphs are not worth a dependency. */
 const plusIcon = (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+  >
     <path d="M12 6v12M6 12h12" />
   </svg>
 )
 
 const micIcon = (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+  >
     <rect x="9" y="3" width="6" height="11" rx="3" />
     <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
   </svg>
 )
 
 const liveIcon = (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinejoin="round"
+  >
     <rect x="2" y="7" width="13" height="10" rx="2.5" />
     <path d="m15 11 6-3.5v9L15 13z" />
   </svg>
@@ -84,7 +105,11 @@ export function MentorBar() {
         </button>
       </div>
 
-      {notice ? <p className="mentor__notice" role="status">{notice}</p> : null}
+      {notice ? (
+        <p className="mentor__notice" role="status">
+          {notice}
+        </p>
+      ) : null}
     </section>
   )
 }

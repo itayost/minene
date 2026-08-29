@@ -18,9 +18,15 @@ vi.mock('../../src/persuade/lib/simulations', () => ({
   createSimulationsStore: () => ({ saveSimulation: engine.saveSimulation }),
 }))
 
-const RUN = { id: 'sim-1', plan: { id: 'briefings' }, turns: [], state: { outcome: 'agreed' }, violations: [] }
+const RUN = {
+  id: 'sim-1',
+  plan: { id: 'briefings' },
+  turns: [],
+  state: { outcome: 'agreed' },
+  violations: [],
+}
 vi.mock('../../src/persuade/engine/simulation', () => ({
-  async* runSimulation() {
+  async *runSimulation() {
     yield { type: 'turn', turn: { role: 'persuader', text: 'שלום', interaction: 1 }, state: {} }
     yield { type: 'done', run: RUN }
   },
@@ -29,13 +35,22 @@ vi.mock('../../src/persuade/engine/simulation', () => ({
 const { POST } = await import('../../app/api/persuade/simulate/route')
 
 const post = async () => {
-  const response = await POST(new Request('http://x/api/persuade/simulate', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer t' },
-    body: JSON.stringify({ config: {}, personaId: 'rona', cell: { industry: 'אופנה', jobRoleId: 'r1' } }),
-  }))
+  const response = await POST(
+    new Request('http://x/api/persuade/simulate', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t' },
+      body: JSON.stringify({
+        config: {},
+        personaId: 'rona',
+        cell: { industry: 'אופנה', jobRoleId: 'r1' },
+      }),
+    }),
+  )
   const text = await response.text()
-  return text.split('\n').filter(Boolean).map((line) => JSON.parse(line) as { type: string })
+  return text
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as { type: string })
 }
 
 beforeEach(() => {
@@ -57,14 +72,23 @@ describe('what the stream promises about the run being kept', () => {
     // early is indistinguishable from one made at the right moment.
     let release = () => {}
     engine.saveSimulation.mockImplementation(
-      () => new Promise<void>((resolve) => { release = () => resolve() }),
+      () =>
+        new Promise<void>((resolve) => {
+          release = () => resolve()
+        }),
     )
 
-    const response = await POST(new Request('http://x/api/persuade/simulate', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer t' },
-      body: JSON.stringify({ config: {}, personaId: 'rona', cell: { industry: 'אופנה', jobRoleId: 'r1' } }),
-    }))
+    const response = await POST(
+      new Request('http://x/api/persuade/simulate', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer t' },
+        body: JSON.stringify({
+          config: {},
+          personaId: 'rona',
+          cell: { industry: 'אופנה', jobRoleId: 'r1' },
+        }),
+      }),
+    )
     const reader = response.body!.getReader()
     const decoder = new TextDecoder()
     let seen = ''
@@ -85,7 +109,9 @@ describe('what the stream promises about the run being kept', () => {
     const pending = reader.read()
     const arrival = await Promise.race([
       pending.then(() => 'arrived'),
-      new Promise<'idle'>((resolve) => { setTimeout(() => resolve('idle'), 20) }),
+      new Promise<'idle'>((resolve) => {
+        setTimeout(() => resolve('idle'), 20)
+      }),
     ])
     expect(arrival).toBe('idle')
 

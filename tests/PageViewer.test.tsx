@@ -60,10 +60,18 @@ describe('PageViewer', () => {
   it('shows the selected page, page count, and accessible indicators', () => {
     renderViewer()
 
-    expect(screen.getByRole('img', { name: 'First welcome page' })).toHaveAttribute('src', '/pages/first.png')
+    expect(screen.getByRole('img', { name: 'First welcome page' })).toHaveAttribute(
+      'src',
+      '/pages/first.png',
+    )
     expect(screen.getByText('1 / 3')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Go to page 1 of 3' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('button', { name: 'Go to page 2 of 3' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('button', { name: 'Go to page 1 of 3' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(screen.getByRole('button', { name: 'Go to page 2 of 3' })).not.toHaveAttribute(
+      'aria-current',
+    )
   })
 
   it('gives every indicator a 44px hit area around its compact visual dot', () => {
@@ -121,8 +129,11 @@ describe('PageViewer', () => {
       </div>,
     )
 
-    expect(getComputedStyle(screen.getByRole('region', { name: 'Welcome guide page viewer' }))
-      .getPropertyValue('--screen-enter-x').trim()).toBe('8%')
+    expect(
+      getComputedStyle(screen.getByRole('region', { name: 'Welcome guide page viewer' }))
+        .getPropertyValue('--screen-enter-x')
+        .trim(),
+    ).toBe('8%')
   })
 
   it('requests the page selected with an indicator', async () => {
@@ -140,7 +151,12 @@ describe('PageViewer', () => {
     { direction: 'ltr' as const, pageIndex: 1, key: 'ArrowLeft', expected: 0 },
     { direction: 'rtl' as const, pageIndex: 1, key: 'ArrowLeft', expected: 2 },
     { direction: 'rtl' as const, pageIndex: 1, key: 'ArrowRight', expected: 0 },
-  ])('maps $key to the visual page direction in $direction', ({ direction, pageIndex, key, expected }) => {
+  ])('maps $key to the visual page direction in $direction', ({
+    direction,
+    pageIndex,
+    key,
+    expected,
+  }) => {
     const onPageChange = vi.fn()
     renderViewer({ direction, pageIndex, onPageChange })
 
@@ -285,7 +301,10 @@ describe('PageViewer', () => {
     expect(screen.getByText('First welcome page')).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Retry loading First welcome page' }))
     expect(screen.getByRole('progressbar', { name: 'Loading First welcome page' })).toBeVisible()
-    expect(screen.getByRole('img', { name: 'First welcome page' })).toHaveAttribute('src', '/pages/first.png')
+    expect(screen.getByRole('img', { name: 'First welcome page' })).toHaveAttribute(
+      'src',
+      '/pages/first.png',
+    )
   })
 
   // Server-rendered pages can finish loading before React attaches onLoad, and
@@ -337,9 +356,15 @@ describe('PageViewer', () => {
       />,
     )
 
-    expect(screen.getByRole('img', { name: 'Third welcome page' })).toHaveAttribute('src', '/pages/third.png')
+    expect(screen.getByRole('img', { name: 'Third welcome page' })).toHaveAttribute(
+      'src',
+      '/pages/third.png',
+    )
     expect(screen.getByText('3 / 3')).toBeVisible()
     expect(screen.getByRole('progressbar', { name: 'Loading Third welcome page' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Go to page 3 of 3' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('button', { name: 'Go to page 3 of 3' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   })
 })

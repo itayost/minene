@@ -60,15 +60,18 @@ describe('the cockpit', () => {
       await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }),
     )
 
-    const icons = [...container.querySelectorAll('.cockpit-tool img')]
-      .map((img) => decodeURIComponent(img.getAttribute('src') ?? ''))
+    const icons = [...container.querySelectorAll('.cockpit-tool img')].map((img) =>
+      decodeURIComponent(img.getAttribute('src') ?? ''),
+    )
 
     expect(icons).toHaveLength(CATALOG.length)
     for (const icon of icons) {
       expect(icon).toContain('/brands/minene/icons/home-tools/')
     }
     // Distinct, so no two cards are confusable at a glance.
-    expect(new Set(icons.map((i) => i.replace(/.*home-tools\//, '').split(/[?&]/)[0]))).toHaveLength(8)
+    expect(
+      new Set(icons.map((i) => i.replace(/.*home-tools\//, '').split(/[?&]/)[0])),
+    ).toHaveLength(8)
   })
 
   it('carries every destination the bottom nav used to', async () => {
@@ -88,12 +91,18 @@ describe('the cockpit', () => {
   it('names which card leads where', async () => {
     render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))
 
-    expect(screen.getByRole('link', { name: /הדרכה: סרטון, תמונה/ }))
-      .toHaveAttribute('href', `/${mineneBrand.id}/tools/campaign`)
-    expect(screen.getByRole('link', { name: /עידוד ושכנוע/ }))
-      .toHaveAttribute('href', `/${mineneBrand.id}/tools/persuade`)
-    expect(screen.getByRole('link', { name: /ספר ארגוני ומוח/ }))
-      .toHaveAttribute('href', `/${mineneBrand.id}/tools/brain`)
+    expect(screen.getByRole('link', { name: /הדרכה: סרטון, תמונה/ })).toHaveAttribute(
+      'href',
+      `/${mineneBrand.id}/tools/campaign`,
+    )
+    expect(screen.getByRole('link', { name: /עידוד ושכנוע/ })).toHaveAttribute(
+      'href',
+      `/${mineneBrand.id}/tools/persuade`,
+    )
+    expect(screen.getByRole('link', { name: /ספר ארגוני ומוח/ })).toHaveAttribute(
+      'href',
+      `/${mineneBrand.id}/tools/brain`,
+    )
 
     // The rest are buttons that say they are not connected, rather than links
     // to pages that do not exist.
@@ -121,7 +130,6 @@ describe('the cockpit', () => {
     await user.click(screen.getByRole('button', { name: /לנתח נתונים/ }))
     expect(screen.getByText(/הכלי הזה עדיין לא מחובר/)).toBeVisible()
   })
-
 
   it('closes with the mentor composer rather than a prompt with nowhere to answer', async () => {
     render(await CockpitPage({ params: Promise.resolve({ brandId: mineneBrand.id }) }))

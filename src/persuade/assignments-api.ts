@@ -14,11 +14,11 @@ const POSTGREST_JWT_EXPIRED = 'PGRST301'
 type PostgrestError = { code?: string | null }
 
 const unauthorized = () => new RulesApiError('UNAUTHORIZED', 401, 'ההרשאה פגה. נא להתחבר מחדש.')
-const failed = (status: number) => new RulesApiError('REQUEST_FAILED', status, 'לא הצלחנו להשלים את הבקשה')
+const failed = (status: number) =>
+  new RulesApiError('REQUEST_FAILED', status, 'לא הצלחנו להשלים את הבקשה')
 
-const mapError = (error: PostgrestError, status: number | undefined) => (
+const mapError = (error: PostgrestError, status: number | undefined) =>
   error.code === POSTGREST_JWT_EXPIRED || status === 401 ? unauthorized() : failed(status ?? 500)
-)
 
 export type AssignmentStatus = 'open' | 'done' | 'not_done'
 
@@ -47,13 +47,22 @@ export type Assignment = {
 }
 
 type RuleRow = {
-  id: string; text: string; topic_id: string; kind: string
-  sub_topic: string | null; response: string | null
+  id: string
+  text: string
+  topic_id: string
+  kind: string
+  sub_topic: string | null
+  response: string | null
 } | null
 
 type AssignmentRow = {
-  id: string; rule_id: string; assignee_id: string; status: AssignmentStatus
-  due_on: string | null; created_at: string; rules?: RuleRow
+  id: string
+  rule_id: string
+  assignee_id: string
+  status: AssignmentStatus
+  due_on: string | null
+  created_at: string
+  rules?: RuleRow
 }
 
 type Result<T> = { data: T | null; error: PostgrestError | null; status?: number }
@@ -68,19 +77,25 @@ type Query = {
 
 export type AssignmentsClient = {
   from: (table: string) => Query
-  rpc: (name: string, args?: Record<string, unknown>) => {
+  rpc: (
+    name: string,
+    args?: Record<string, unknown>,
+  ) => {
     maybeSingle: () => PromiseLike<Result<AssignmentRow>>
   } & PromiseLike<Result<unknown>>
 }
 
-const asRule = (row: RuleRow): AssignmentRule | null => (row ? {
-  id: row.id,
-  text: row.text,
-  topicId: row.topic_id,
-  kind: row.kind,
-  subTopic: row.sub_topic,
-  response: row.response,
-} : null)
+const asRule = (row: RuleRow): AssignmentRule | null =>
+  row
+    ? {
+        id: row.id,
+        text: row.text,
+        topicId: row.topic_id,
+        kind: row.kind,
+        subTopic: row.sub_topic,
+        response: row.response,
+      }
+    : null
 
 const asAssignment = (row: AssignmentRow): Assignment => ({
   id: row.id,
@@ -104,7 +119,9 @@ export function createAssignmentsApi(client: AssignmentsClient) {
      */
     async listOpenAssignments(): Promise<Assignment[]> {
       const { data, error, status } = await client
-        .from('assignments').select(WITH_RULE).eq('status', 'open')
+        .from('assignments')
+        .select(WITH_RULE)
+        .eq('status', 'open')
         .order('due_on', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true })
 
@@ -121,16 +138,26 @@ export function createAssignmentsApi(client: AssignmentsClient) {
      * who is calling, so a person reporting on themselves cannot be recorded as
      * a manager having observed them.
      */
-    async settleAssignment({ assignmentId, status, note = null }: {
+    async settleAssignment({
+      assignmentId,
+      status,
+      note = null,
+    }: {
       assignmentId: string
       status: Exclude<AssignmentStatus, 'open'>
       note?: string | null
     }): Promise<Assignment> {
-      const { data, error, status: httpStatus } = await client.rpc('settle_assignment', {
-        p_assignment_id: assignmentId,
-        p_status: status,
-        p_note: note,
-      }).maybeSingle()
+      const {
+        data,
+        error,
+        status: httpStatus,
+      } = await client
+        .rpc('settle_assignment', {
+          p_assignment_id: assignmentId,
+          p_status: status,
+          p_note: note,
+        })
+        .maybeSingle()
 
       if (error) throw mapError(error, httpStatus)
       if (!data) throw failed(404)

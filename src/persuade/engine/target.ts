@@ -1,7 +1,7 @@
-import { generateText } from 'ai';
-import { callOptions, model } from '../lib/model';
-import { historyForTarget, targetSystemPrompt } from './prompts';
-import type { PersuasionPlan, TargetPersona, Turn } from './types';
+import { generateText } from 'ai'
+import { callOptions, model } from '../lib/model'
+import { historyForTarget, targetSystemPrompt } from './prompts'
+import type { PersuasionPlan, TargetPersona, Turn } from './types'
 
 /**
  * The simulated counterpart. Personas live in content/personas and are drawn from the
@@ -18,6 +18,6 @@ export async function targetReply(
     system: targetSystemPrompt(persona, plan),
     messages: historyForTarget(turns),
     ...callOptions('target'),
-  });
-  return text.trim();
+  })
+  return text.trim()
 }

@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createAssignmentsApi, type AssignmentsClient } from '../../src/persuade/assignments-api'
+import { type AssignmentsClient, createAssignmentsApi } from '../../src/persuade/assignments-api'
 
 type Outcome = { data?: unknown; error?: { code?: string } | null; status?: number }
 
 function client(outcomes: Record<string, Outcome> = {}) {
-  const calls: { table: string; ordered: string[]; filters: [string, unknown][] } =
-    { table: '', ordered: [], filters: [] }
+  const calls: { table: string; ordered: string[]; filters: [string, unknown][] } = {
+    table: '',
+    ordered: [],
+    filters: [],
+  }
   const rpcArgs: Record<string, unknown>[] = []
   const result = (table: string) => outcomes[table] ?? { data: [], error: null }
 
@@ -14,8 +17,14 @@ function client(outcomes: Record<string, Outcome> = {}) {
       calls.table = table
       const q = {
         select: () => q,
-        eq: (col: string, val: unknown) => { calls.filters.push([col, val]); return q },
-        order: (col: string) => { calls.ordered.push(col); return q },
+        eq: (col: string, val: unknown) => {
+          calls.filters.push([col, val])
+          return q
+        },
+        order: (col: string) => {
+          calls.ordered.push(col)
+          return q
+        },
         insert: () => q,
         maybeSingle: async () => result(table),
         then: (resolve: (v: Outcome) => unknown) => resolve(result(table)),
@@ -35,8 +44,12 @@ function client(outcomes: Record<string, Outcome> = {}) {
 }
 
 const ROW = {
-  id: 'a1', rule_id: 'r1', assignee_id: 'p1', status: 'open',
-  due_on: null, created_at: '2026-08-25T09:00:00Z',
+  id: 'a1',
+  rule_id: 'r1',
+  assignee_id: 'p1',
+  status: 'open',
+  due_on: null,
+  created_at: '2026-08-25T09:00:00Z',
   rules: { id: 'r1', text: 'לקיים תדריך של 4 דקות', topic_id: 'briefing', kind: 'process' },
 }
 
@@ -94,7 +107,8 @@ describe('closing an assignment', () => {
   it('throws rather than returning an assignment with no fields', async () => {
     const { api } = client({ rpc: { data: null, error: null } })
 
-    await expect(api.settleAssignment({ assignmentId: 'a1', status: 'done' }))
-      .rejects.toMatchObject({ code: 'REQUEST_FAILED', status: 404 })
+    await expect(
+      api.settleAssignment({ assignmentId: 'a1', status: 'done' }),
+    ).rejects.toMatchObject({ code: 'REQUEST_FAILED', status: 404 })
   })
 })

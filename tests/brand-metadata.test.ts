@@ -17,6 +17,7 @@ vi.mock('../src/auth/require-brand', async () => {
     }),
   }
 })
+
 import { generateMetadata, generateViewport } from '../app/[brandId]/layout'
 import { mineneBrand } from '../src/brands/minene'
 
@@ -24,26 +25,34 @@ import { mineneBrand } from '../src/brands/minene'
 // so it now reaches the served HTML rather than being applied after hydration.
 describe('brand route metadata', () => {
   it('returns the brand title for a configured brand', async () => {
-    const metadata = await generateMetadata({ params: Promise.resolve({ brandId: mineneBrand.id }) })
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ brandId: mineneBrand.id }),
+    })
 
     expect(metadata).toEqual({ title: mineneBrand.title })
   })
 
   it('falls back to a generic title for an unknown brand', async () => {
-    const metadata = await generateMetadata({ params: Promise.resolve({ brandId: 'not-configured' }) })
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ brandId: 'not-configured' }),
+    })
 
     expect(metadata).toEqual({ title: 'Brand not found' })
   })
 
   it('publishes the brand background as the theme colour', async () => {
-    const viewport = await generateViewport({ params: Promise.resolve({ brandId: mineneBrand.id }) })
+    const viewport = await generateViewport({
+      params: Promise.resolve({ brandId: mineneBrand.id }),
+    })
 
     expect(viewport.themeColor).toBe(mineneBrand.theme.background)
     expect(viewport).toMatchObject({ width: 'device-width', initialScale: 1, viewportFit: 'cover' })
   })
 
   it('falls back to the default theme colour for an unknown brand', async () => {
-    const viewport = await generateViewport({ params: Promise.resolve({ brandId: 'not-configured' }) })
+    const viewport = await generateViewport({
+      params: Promise.resolve({ brandId: 'not-configured' }),
+    })
 
     expect(viewport.themeColor).toBe('#e9e9ee')
   })

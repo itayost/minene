@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -17,8 +17,6 @@ const ROLES: Role[] = [
   { id: 'role-1', name: 'מנהלת חנות', sortOrder: 10 },
   { id: 'role-2', name: 'מוכרת', sortOrder: 20 },
 ]
-
-
 
 /**
  * The catalogue is owned by the caller now, so the harness owns it too and
@@ -90,7 +88,9 @@ describe('the org chart, editable', () => {
 
   it('keeps the duplicate message, which is the one a person can act on', async () => {
     const { user } = roles({
-      createRole: vi.fn(async () => { throw new RulesApiError('DUPLICATE_ROLE', 409, 'כבר קיים תפקיד בשם הזה') }),
+      createRole: vi.fn(async () => {
+        throw new RulesApiError('DUPLICATE_ROLE', 409, 'כבר קיים תפקיד בשם הזה')
+      }),
     })
     await user.type(screen.getByLabelText('תפקיד חדש'), 'מוכרת')
     await user.click(screen.getByRole('button', { name: 'הוספה' }))

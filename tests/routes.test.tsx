@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { ReactNode } from 'react'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { mineneBrand } from '../src/brands/minene'
 import type { BrandManifest } from '../src/core/brand-types'
 import { demoBrand } from './fixtures/demo-brand'
@@ -144,48 +144,71 @@ describe('route bodies', () => {
   })
 
   test('an unknown brand is not found', async () => {
-    await expectNotFound(() => BrandHomePage({ params: Promise.resolve({ brandId: 'not-configured' }) }))
+    await expectNotFound(() =>
+      BrandHomePage({ params: Promise.resolve({ brandId: 'not-configured' }) }),
+    )
   })
 
   // A subject with exactly one group never showed a chooser before routing, so
   // its address stands for that group. This is the branch most of the real
   // manifest takes: five of its eight subjects hold a single group.
   test('a subject holding one group redirects to that group', async () => {
-    const target = await redirectTarget(() => subjectRoute.default({
-      params: Promise.resolve({ brandId: demoBrand.id, subjectId: 'single' }),
-    }))
+    const target = await redirectTarget(() =>
+      subjectRoute.default({
+        params: Promise.resolve({ brandId: demoBrand.id, subjectId: 'single' }),
+      }),
+    )
 
     expect(target).toBe('/demo/single/only-group')
   })
 
   test('the same redirect fires for a single-group subject of the real brand', async () => {
-    const target = await redirectTarget(() => subjectRoute.default({
-      params: Promise.resolve({ brandId: mineneBrand.id, subjectId: 'tasks' }),
-    }))
+    const target = await redirectTarget(() =>
+      subjectRoute.default({
+        params: Promise.resolve({ brandId: mineneBrand.id, subjectId: 'tasks' }),
+      }),
+    )
 
     expect(target).toBe('/minene/tasks/daily-tasks')
   })
 
   test('a subject holding several groups renders the chooser instead', async () => {
-    render(await subjectRoute.default({
-      params: Promise.resolve({ brandId: demoBrand.id, subjectId: 'multiple' }),
-    }))
+    render(
+      await subjectRoute.default({
+        params: Promise.resolve({ brandId: demoBrand.id, subjectId: 'multiple' }),
+      }),
+    )
 
     expect(screen.getByRole('heading', { name: 'Multiple subject' })).toBeVisible()
-    expect(screen.getByRole('link', { name: /Group one/ })).toHaveAttribute('href', '/demo/multiple/group-one')
-    expect(screen.getByRole('link', { name: /Group two/ })).toHaveAttribute('href', '/demo/multiple/group-two')
-    expect(screen.getByRole('link', { name: /Group three/ })).toHaveAttribute('href', '/demo/multiple/group-three')
+    expect(screen.getByRole('link', { name: /Group one/ })).toHaveAttribute(
+      'href',
+      '/demo/multiple/group-one',
+    )
+    expect(screen.getByRole('link', { name: /Group two/ })).toHaveAttribute(
+      'href',
+      '/demo/multiple/group-two',
+    )
+    expect(screen.getByRole('link', { name: /Group three/ })).toHaveAttribute(
+      'href',
+      '/demo/multiple/group-three',
+    )
   })
 
   test('an unknown subject is not found', async () => {
-    await expectNotFound(() => subjectRoute.default({
-      params: Promise.resolve({ brandId: demoBrand.id, subjectId: 'no-such-subject' }),
-    }))
+    await expectNotFound(() =>
+      subjectRoute.default({
+        params: Promise.resolve({ brandId: demoBrand.id, subjectId: 'no-such-subject' }),
+      }),
+    )
   })
 
   test('a group viewer renders the requested group', async () => {
     const tree = await viewerRoute.default({
-      params: Promise.resolve({ brandId: demoBrand.id, subjectId: 'multiple', groupId: 'group-two' }),
+      params: Promise.resolve({
+        brandId: demoBrand.id,
+        subjectId: 'multiple',
+        groupId: 'group-two',
+      }),
       searchParams: noQuery,
     })
     renderUnderShell(demoBrand, '/demo/multiple/group-two', tree)
@@ -210,33 +233,45 @@ describe('route bodies', () => {
   })
 
   test('an unknown group is not found', async () => {
-    await expectNotFound(() => viewerRoute.default({
-      params: Promise.resolve({ brandId: demoBrand.id, subjectId: 'multiple', groupId: 'no-such-group' }),
-      searchParams: noQuery,
-    }))
+    await expectNotFound(() =>
+      viewerRoute.default({
+        params: Promise.resolve({
+          brandId: demoBrand.id,
+          subjectId: 'multiple',
+          groupId: 'no-such-group',
+        }),
+        searchParams: noQuery,
+      }),
+    )
   })
 
   test('a tool screen renders the tool contents', async () => {
-    render(await toolRoute.default({
-      params: Promise.resolve({ brandId: demoBrand.id, toolId: 'notes' }),
-    }))
+    render(
+      await toolRoute.default({
+        params: Promise.resolve({ brandId: demoBrand.id, toolId: 'notes' }),
+      }),
+    )
 
     expect(screen.getByText('Ideas to discuss')).toBeVisible()
     expect(screen.getByText('First idea')).toBeVisible()
   })
 
   test('an unknown tool is not found', async () => {
-    await expectNotFound(() => toolRoute.default({
-      params: Promise.resolve({ brandId: demoBrand.id, toolId: 'no-such-tool' }),
-    }))
+    await expectNotFound(() =>
+      toolRoute.default({
+        params: Promise.resolve({ brandId: demoBrand.id, toolId: 'no-such-tool' }),
+      }),
+    )
   })
 
   // A subject is not reachable through the tools segment, and a tool is not
   // reachable as a subject, however similar the two addresses look.
   test('a subject identifier is not a tool identifier', async () => {
-    await expectNotFound(() => toolRoute.default({
-      params: Promise.resolve({ brandId: demoBrand.id, toolId: 'multiple' }),
-    }))
+    await expectNotFound(() =>
+      toolRoute.default({
+        params: Promise.resolve({ brandId: demoBrand.id, toolId: 'multiple' }),
+      }),
+    )
   })
 })
 
@@ -288,22 +323,40 @@ describe('every brand route is protected', () => {
 
     const calls: Array<[string, () => Promise<unknown>]> = [
       ['home', () => BrandHomePage({ params: Promise.resolve({ brandId: demoBrand.id }) })],
-      ['subject', () => subjectRoute.default({
-        params: Promise.resolve({ brandId: demoBrand.id, subjectId: 'multiple' }),
-      })],
-      ['viewer', () => viewerRoute.default({
-        params: Promise.resolve({ brandId: demoBrand.id, subjectId: 'multiple', groupId: 'group-one' }),
-        searchParams: Promise.resolve({}),
-      })],
-      ['tool', () => toolRoute.default({
-        params: Promise.resolve({ brandId: demoBrand.id, toolId: demoBrand.tools[0]!.id }),
-      })],
+      [
+        'subject',
+        () =>
+          subjectRoute.default({
+            params: Promise.resolve({ brandId: demoBrand.id, subjectId: 'multiple' }),
+          }),
+      ],
+      [
+        'viewer',
+        () =>
+          viewerRoute.default({
+            params: Promise.resolve({
+              brandId: demoBrand.id,
+              subjectId: 'multiple',
+              groupId: 'group-one',
+            }),
+            searchParams: Promise.resolve({}),
+          }),
+      ],
+      [
+        'tool',
+        () =>
+          toolRoute.default({
+            params: Promise.resolve({ brandId: demoBrand.id, toolId: demoBrand.tools[0]!.id }),
+          }),
+      ],
     ]
 
     for (const [name, run] of calls) {
       requireBrandMock.mockClear()
       await run().catch(() => undefined)
-      expect(requireBrandMock, `${name} route must call requireBrand`).toHaveBeenCalledWith(demoBrand.id)
+      expect(requireBrandMock, `${name} route must call requireBrand`).toHaveBeenCalledWith(
+        demoBrand.id,
+      )
     }
   })
 })

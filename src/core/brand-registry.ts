@@ -23,7 +23,9 @@ export function validateBrandRegistrations(registrations: readonly BrandRegistra
   return issues
 }
 
-export function buildBrandRegistry(registrations: readonly BrandRegistration[]): ReadonlyMap<string, BrandManifest> {
+export function buildBrandRegistry(
+  registrations: readonly BrandRegistration[],
+): ReadonlyMap<string, BrandManifest> {
   const issues = validateBrandRegistrations(registrations)
   if (issues.length > 0) throw new Error(`Invalid brand registry:\n- ${issues.join('\n- ')}`)
   return new Map(registrations)

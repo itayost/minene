@@ -15,11 +15,13 @@ vi.mock('../../src/auth/supabase-browser', () => ({
 
 const sims = vi.hoisted(() => ({ listSimulations: vi.fn() }))
 vi.mock('../../src/persuade/simulations-api', async (o) => ({
-  ...(await o<Record<string, unknown>>()), createSimulationsApi: () => sims,
+  ...(await o<Record<string, unknown>>()),
+  createSimulationsApi: () => sims,
 }))
 const roles = vi.hoisted(() => ({ listRoles: vi.fn() }))
 vi.mock('../../src/brain/roles-api', async (o) => ({
-  ...(await o<Record<string, unknown>>()), createRolesApi: () => roles,
+  ...(await o<Record<string, unknown>>()),
+  createRolesApi: () => roles,
 }))
 
 const { LabClient } = await import('../../app/[brandId]/tools/persuade/lab/lab-client')
@@ -36,23 +38,27 @@ beforeEach(() => {
   vi.clearAllMocks()
   sims.listSimulations.mockResolvedValue([])
   roles.listRoles.mockResolvedValue([{ id: 'r1', name: 'מנהלת חנות', sortOrder: 10 }])
-  vi.stubGlobal('fetch', vi.fn(async () => ({
-    ok: true,
-    body: {
-      getReader: () => {
-        const chunks = [
-          `${JSON.stringify({ type: 'done', run: { id: 's1' } })}\n`,
-          `${JSON.stringify({ type: 'saved', id: 's1' })}\n`,
-        ]
-        let i = 0
-        return {
-          read: async () => (i < chunks.length
-            ? { done: false, value: new TextEncoder().encode(chunks[i++]) }
-            : { done: true, value: undefined }),
-        }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({
+      ok: true,
+      body: {
+        getReader: () => {
+          const chunks = [
+            `${JSON.stringify({ type: 'done', run: { id: 's1' } })}\n`,
+            `${JSON.stringify({ type: 'saved', id: 's1' })}\n`,
+          ]
+          let i = 0
+          return {
+            read: async () =>
+              i < chunks.length
+                ? { done: false, value: new TextEncoder().encode(chunks[i++]) }
+                : { done: true, value: undefined },
+          }
+        },
       },
-    },
-  })))
+    })),
+  )
 })
 
 describe('the lab, before anything has been run', () => {

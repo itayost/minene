@@ -44,7 +44,7 @@ export type VideoBrief = {
   length: VideoLength
 }
 
-const label = <T,>(list: readonly Choice<T>[], id: T) =>
+const label = <T>(list: readonly Choice<T>[], id: T) =>
   list.find((choice) => choice.id === id)?.label ?? String(id)
 
 /** Reads a completed brief back to the reader in their own words. */

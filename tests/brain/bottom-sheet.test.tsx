@@ -21,11 +21,16 @@ function Harness({ onDismiss = vi.fn() }: { onDismiss?: () => void }) {
 
   return (
     <>
-      <button onClick={() => setOpenKey('rule-1')} type="button">פתיחה</button>
+      <button onClick={() => setOpenKey('rule-1')} type="button">
+        פתיחה
+      </button>
       <BottomSheet
         initialFocusRef={fieldRef}
         label="עריכת חוק"
-        onDismiss={() => { setOpenKey(null); onDismiss() }}
+        onDismiss={() => {
+          setOpenKey(null)
+          onDismiss()
+        }}
         openKey={openKey}
       >
         <input

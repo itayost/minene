@@ -24,16 +24,23 @@ const rulesApi = vi.hoisted(() => ({
   updateRule: vi.fn(),
   loadKpis: vi.fn(),
 }))
-const rolesApi = vi.hoisted(() => ({ listRoles: vi.fn(), listRuleRoles: vi.fn(), setRuleRoles: vi.fn() }))
+const rolesApi = vi.hoisted(() => ({
+  listRoles: vi.fn(),
+  listRuleRoles: vi.fn(),
+  setRuleRoles: vi.fn(),
+}))
 
 vi.mock('../../src/brain/documents-api', async (o) => ({
-  ...(await o<Record<string, unknown>>()), createDocumentsApi: () => documentsApi,
+  ...(await o<Record<string, unknown>>()),
+  createDocumentsApi: () => documentsApi,
 }))
 vi.mock('../../src/brain/rules-api', async (o) => ({
-  ...(await o<Record<string, unknown>>()), createRulesApi: () => rulesApi,
+  ...(await o<Record<string, unknown>>()),
+  createRulesApi: () => rulesApi,
 }))
 vi.mock('../../src/brain/roles-api', async (o) => ({
-  ...(await o<Record<string, unknown>>()), createRolesApi: () => rolesApi,
+  ...(await o<Record<string, unknown>>()),
+  createRolesApi: () => rolesApi,
 }))
 
 const { IngestClient } = await import('../../app/[brandId]/tools/brain/ingest/ingest-client')
@@ -48,7 +55,10 @@ beforeEach(() => {
   documentsApi.extractRules.mockResolvedValue({ rules: [{}, {}] })
   documentsApi.listRecentDocuments.mockResolvedValue({ rows: [], hasMore: false })
   rulesApi.huntExternal.mockResolvedValue({ rules: [] })
-  rulesApi.listPendingRules.mockResolvedValue({ rows: [makeRule({ text: 'לחייך' })], nextCursor: null })
+  rulesApi.listPendingRules.mockResolvedValue({
+    rows: [makeRule({ text: 'לחייך' })],
+    nextCursor: null,
+  })
   rulesApi.loadKpis.mockResolvedValue({ knowledgeItems: 135, qualityItems: 6, growthPercent: 13 })
   // updateRule returns the saved rule, and the screen swaps it into the queue
   // inside a state updater -- which runs outside the try/catch around the save.
@@ -90,9 +100,18 @@ describe('one screen for feeding the brain', () => {
 
     // Thirty-two rows of three identical outlined buttons is why draining this
     // queue is tiring, and why discarding work looked like keeping it.
-    expect(within(row).getByRole('button', { name: /אישור/ })).toHaveAttribute('data-weight', 'primary')
-    expect(within(row).getByRole('button', { name: /דחייה/ })).toHaveAttribute('data-weight', 'quiet')
-    expect(within(row).getByRole('button', { name: /עריכה/ })).toHaveAttribute('data-weight', 'quiet')
+    expect(within(row).getByRole('button', { name: /אישור/ })).toHaveAttribute(
+      'data-weight',
+      'primary',
+    )
+    expect(within(row).getByRole('button', { name: /דחייה/ })).toHaveAttribute(
+      'data-weight',
+      'quiet',
+    )
+    expect(within(row).getByRole('button', { name: /עריכה/ })).toHaveAttribute(
+      'data-weight',
+      'quiet',
+    )
   })
 
   it('says how much the brain knows, on the screen you teach it from', async () => {
@@ -112,8 +131,11 @@ describe('one screen for feeding the brain', () => {
     await user.click(screen.getByRole('tab', { name: 'חיפוש ברשת' }))
     await user.click(screen.getByRole('button', { name: 'חיפוש ברשת' }))
 
-    await waitFor(() => expect(rulesApi.huntExternal)
-      .toHaveBeenCalledWith(expect.objectContaining({ topicId: 'live' })))
+    await waitFor(() =>
+      expect(rulesApi.huntExternal).toHaveBeenCalledWith(
+        expect.objectContaining({ topicId: 'live' }),
+      ),
+    )
   })
 })
 
@@ -193,8 +215,11 @@ describe('a pending rule filed under a topic nobody recognises', () => {
     // updateRule always sends topic_id. Coercing an unknown topic to the first
     // one in the catalogue meant a reviewer who only fixed a typo rewrote the
     // rule's subject without ever seeing the change.
-    await waitFor(() => expect(rulesApi.updateRule)
-      .toHaveBeenCalledWith(expect.objectContaining({ topicId: 'retired-topic' })))
+    await waitFor(() =>
+      expect(rulesApi.updateRule).toHaveBeenCalledWith(
+        expect.objectContaining({ topicId: 'retired-topic' }),
+      ),
+    )
   })
 
   it('offers the unknown topic in the picker, so the reviewer can see it', async () => {
@@ -205,7 +230,9 @@ describe('a pending rule filed under a topic nobody recognises', () => {
     const user = setup()
     await user.click(await screen.findByRole('button', { name: 'עריכה: לחייך' }))
 
-    expect(screen.getByLabelText('נושא', { selector: '#rule-edit-topic' })).toHaveValue('retired-topic')
+    expect(screen.getByLabelText('נושא', { selector: '#rule-edit-topic' })).toHaveValue(
+      'retired-topic',
+    )
   })
 })
 

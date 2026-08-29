@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { measuredInputs, preparePlan, preparePrompt, type PrepareInput } from '../engine/prepare';
-import type { PersuasionPlan } from '../engine/types';
-import { modelId } from './model';
+import { createHash } from 'node:crypto'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { measuredInputs, type PrepareInput, preparePlan, preparePrompt } from '../engine/prepare'
+import type { PersuasionPlan } from '../engine/types'
+import { modelId } from './model'
 
 /**
  * The prepared plan, built once instead of once per message.
@@ -42,16 +42,16 @@ import { modelId } from './model';
  *     would ever notice.
  */
 export function planFingerprint(input: PrepareInput): string {
-  const { system, prompt } = preparePrompt(input);
-  const parts = [modelId('planner'), system, prompt, measuredInputs(input)];
+  const { system, prompt } = preparePrompt(input)
+  const parts = [modelId('planner'), system, prompt, measuredInputs(input)]
   // Joined on a character none of the parts can contain. Concatenated bare,
   // a prompt ending in one field's text would hash the same as the next field
   // beginning with it.
-  return createHash('sha256').update(parts.join('\u0000')).digest('hex');
+  return createHash('sha256').update(parts.join('\u0000')).digest('hex')
 }
 
 interface PlanRow {
-  plan: PersuasionPlan;
+  plan: PersuasionPlan
 }
 
 /**
@@ -62,27 +62,27 @@ interface PlanRow {
  * capacity limit is only here to stop a long-lived instance holding every plan
  * it has ever seen.
  */
-const MEMORY_LIMIT = 100;
-const memory = new Map<string, PersuasionPlan>();
+const MEMORY_LIMIT = 100
+const memory = new Map<string, PersuasionPlan>()
 
 const memoryKey = (tenantId: string, assignmentId: string, fingerprint: string) =>
-  `${tenantId}:${assignmentId}:${fingerprint}`;
+  `${tenantId}:${assignmentId}:${fingerprint}`
 
 function remember(key: string, plan: PersuasionPlan): void {
   // Delete-then-set moves an existing key to the end, so insertion order
   // becomes least-recently-used order and the eviction below drops the coldest
   // entry rather than the oldest one that is still in active use.
-  memory.delete(key);
-  memory.set(key, plan);
+  memory.delete(key)
+  memory.set(key, plan)
   if (memory.size > MEMORY_LIMIT) {
-    const coldest = memory.keys().next();
-    if (!coldest.done) memory.delete(coldest.value);
+    const coldest = memory.keys().next()
+    if (!coldest.done) memory.delete(coldest.value)
   }
 }
 
 /** Test seam, and the escape hatch for a deploy that needs to drop the cache. */
 export function clearPlanMemory(): void {
-  memory.clear();
+  memory.clear()
 }
 
 export function createPlanStore(client: SupabaseClient) {
@@ -101,12 +101,12 @@ export function createPlanStore(client: SupabaseClient) {
         .eq('tenant_id', tenantId)
         .eq('assignment_id', assignmentId)
         .eq('fingerprint', fingerprint)
-        .maybeSingle();
+        .maybeSingle()
 
       // A cache is not allowed to break the thing it accelerates. A read that
       // fails is a miss, and a miss costs a plan rather than a conversation.
-      if (error || !data) return null;
-      return (data as unknown as PlanRow).plan;
+      if (error || !data) return null
+      return (data as unknown as PlanRow).plan
     },
 
     async write(
@@ -124,15 +124,15 @@ export function createPlanStore(client: SupabaseClient) {
         .upsert(
           { tenant_id: tenantId, assignment_id: assignmentId, fingerprint, plan },
           { onConflict: 'assignment_id,fingerprint' },
-        );
+        )
       // Swallowed on purpose, as the run save is: failing to cache a plan must
       // not fail a conversation that has a perfectly good plan in hand.
-      if (error) return;
+      if (error) return
     },
-  };
+  }
 }
 
-export type PlanStore = ReturnType<typeof createPlanStore>;
+export type PlanStore = ReturnType<typeof createPlanStore>
 
 /**
  * The plan for one assignment: from memory, else from the table, else built.
@@ -147,27 +147,27 @@ export async function planFor(
   store: PlanStore | null,
   tenantId: string | null,
 ): Promise<PersuasionPlan> {
-  if (!store || !tenantId) return preparePlan(input);
+  if (!store || !tenantId) return preparePlan(input)
 
-  const assignmentId = input.id;
-  const fingerprint = planFingerprint(input);
-  const key = memoryKey(tenantId, assignmentId, fingerprint);
+  const assignmentId = input.id
+  const fingerprint = planFingerprint(input)
+  const key = memoryKey(tenantId, assignmentId, fingerprint)
 
-  const held = memory.get(key);
+  const held = memory.get(key)
   if (held) {
     // Re-inserted so a plan being used right now is the last thing evicted.
-    remember(key, held);
-    return held;
+    remember(key, held)
+    return held
   }
 
-  const stored = await store.read(assignmentId, tenantId, fingerprint);
+  const stored = await store.read(assignmentId, tenantId, fingerprint)
   if (stored) {
-    remember(key, stored);
-    return stored;
+    remember(key, stored)
+    return stored
   }
 
-  const built = await preparePlan(input);
-  remember(key, built);
-  await store.write(assignmentId, tenantId, fingerprint, built);
-  return built;
+  const built = await preparePlan(input)
+  remember(key, built)
+  await store.write(assignmentId, tenantId, fingerprint, built)
+  return built
 }

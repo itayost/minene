@@ -8,7 +8,9 @@ const nav = vi.hoisted(() => {
 })
 
 vi.mock('next/navigation', () => ({
-  notFound: () => { throw new nav.NotFoundSignal('not found') },
+  notFound: () => {
+    throw new nav.NotFoundSignal('not found')
+  },
 }))
 
 const role = vi.hoisted(() => ({ current: 'owner' as 'owner' | 'staff' }))

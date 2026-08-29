@@ -1,6 +1,6 @@
-import { chromium, type FullConfig } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
+import { chromium, type FullConfig } from '@playwright/test'
 
 export const STORAGE_STATE = 'tests/visual/.auth/state.json'
 
@@ -16,8 +16,8 @@ export default async function globalSetup(config: FullConfig) {
 
   if (!email || !password || !baseURL) {
     throw new Error(
-      'The visual suite needs VIEWER_TEST_EMAIL and VIEWER_TEST_PASSWORD to sign in. '
-      + 'See the "Visual references" section of README.md.',
+      'The visual suite needs VIEWER_TEST_EMAIL and VIEWER_TEST_PASSWORD to sign in. ' +
+        'See the "Visual references" section of README.md.',
     )
   }
 

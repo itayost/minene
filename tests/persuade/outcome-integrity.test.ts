@@ -4,7 +4,8 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-const route = () => readFileSync(new URL('../../app/api/persuade/chat/route.ts', import.meta.url), 'utf8')
+const route = () =>
+  readFileSync(new URL('../../app/api/persuade/chat/route.ts', import.meta.url), 'utf8')
 
 describe('what a conversation is allowed to claim about itself', () => {
   it('re-derives the outcome from the turns rather than trusting the body', () => {

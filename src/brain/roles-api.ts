@@ -20,7 +20,8 @@ type PostgrestError = { code?: string | null }
 type RoleRow = { id: string; name: string; sort_order: number }
 
 const unauthorized = () => new RulesApiError('UNAUTHORIZED', 401, 'ההרשאה פגה. נא להתחבר מחדש.')
-const failed = (status: number) => new RulesApiError('REQUEST_FAILED', status, 'לא הצלחנו להשלים את הבקשה')
+const failed = (status: number) =>
+  new RulesApiError('REQUEST_FAILED', status, 'לא הצלחנו להשלים את הבקשה')
 const duplicate = () => new RulesApiError('DUPLICATE_ROLE', 409, 'כבר קיים תפקיד בשם הזה')
 const emptyName = () => new RulesApiError('EMPTY_NAME', 400, 'נא להזין שם תפקיד')
 
@@ -85,7 +86,10 @@ export function createRolesApi(client: RolesClient) {
      */
     async listRoles(): Promise<Role[]> {
       const { data, error, status } = await client
-        .from('roles').select(ROLE_COLUMNS).order('sort_order').order('name')
+        .from('roles')
+        .select(ROLE_COLUMNS)
+        .order('sort_order')
+        .order('name')
       if (error) throw mapError(error, status)
       return (data ?? []).map(asRole)
     },
@@ -95,7 +99,13 @@ export function createRolesApi(client: RolesClient) {
      * precisely so this can exist: the two seeded roles are what one business
      * asked for, and the next one has assistant managers and stockroom staff.
      */
-    async createRole({ name, sortOrder = DEFAULT_SORT_ORDER }: { name: string; sortOrder?: number }): Promise<Role> {
+    async createRole({
+      name,
+      sortOrder = DEFAULT_SORT_ORDER,
+    }: {
+      name: string
+      sortOrder?: number
+    }): Promise<Role> {
       const normalized = normalizeRoleName(name)
       if (!normalized) throw emptyName()
 
@@ -103,14 +113,19 @@ export function createRolesApi(client: RolesClient) {
       // requires it to equal current_tenant_id(), so it has to be sent and the
       // only honest source for it is the caller's own profile row. One extra
       // round trip, on a call that happens when someone types a new role name.
-      const { data: profile, error: profileError, status: profileStatus } = await client
-        .from('profiles').select('tenant_id').maybeSingle<{ tenant_id: string }>()
+      const {
+        data: profile,
+        error: profileError,
+        status: profileStatus,
+      } = await client.from('profiles').select('tenant_id').maybeSingle<{ tenant_id: string }>()
       if (profileError) throw mapError(profileError, profileStatus)
       if (!profile) throw failed(403)
 
       const { data, error, status } = await client
-        .from('roles').insert({ tenant_id: profile.tenant_id, name: normalized, sort_order: sortOrder })
-        .select(ROLE_COLUMNS).maybeSingle<RoleRow>()
+        .from('roles')
+        .insert({ tenant_id: profile.tenant_id, name: normalized, sort_order: sortOrder })
+        .select(ROLE_COLUMNS)
+        .maybeSingle<RoleRow>()
       if (error) throw mapError(error, status)
       if (!data) throw failed(403)
       return asRole(data)
@@ -121,7 +136,11 @@ export function createRolesApi(client: RolesClient) {
       if (!normalized) throw emptyName()
 
       const { data, error, status } = await client
-        .from('roles').update({ name: normalized }).eq('id', roleId).select(ROLE_COLUMNS).maybeSingle<RoleRow>()
+        .from('roles')
+        .update({ name: normalized })
+        .eq('id', roleId)
+        .select(ROLE_COLUMNS)
+        .maybeSingle<RoleRow>()
       if (error) throw mapError(error, status)
       // RLS filtering an update to zero rows is a real outcome, not an auth
       // failure, and must not hand the caller a role with no fields.
@@ -146,11 +165,17 @@ export function createRolesApi(client: RolesClient) {
      * the join table encodes, and callers must treat a missing key and an empty
      * array the same way.
      */
-    async listRuleRoles({ ruleIds }: { ruleIds: readonly string[] }): Promise<Map<string, string[]>> {
+    async listRuleRoles({
+      ruleIds,
+    }: {
+      ruleIds: readonly string[]
+    }): Promise<Map<string, string[]>> {
       if (!ruleIds.length) return new Map()
 
       const { data, error, status } = await client
-        .from('rule_roles').select('rule_id,role_id').in('rule_id', ruleIds)
+        .from('rule_roles')
+        .select('rule_id,role_id')
+        .in('rule_id', ruleIds)
       if (error) throw mapError(error, status)
 
       const byRule = new Map<string, string[]>()
@@ -174,9 +199,17 @@ export function createRolesApi(client: RolesClient) {
      * key would reject anyway. Making it atomic needs an RPC, which is the right
      * fix the day this runs anywhere but a reviewer's own edit sheet.
      */
-    async setRuleRoles({ ruleId, roleIds }: { ruleId: string; roleIds: readonly string[] }): Promise<string[]> {
+    async setRuleRoles({
+      ruleId,
+      roleIds,
+    }: {
+      ruleId: string
+      roleIds: readonly string[]
+    }): Promise<string[]> {
       const { error: deleteError, status: deleteStatus } = await client
-        .from('rule_roles').delete().eq('rule_id', ruleId)
+        .from('rule_roles')
+        .delete()
+        .eq('rule_id', ruleId)
       if (deleteError) throw mapError(deleteError, deleteStatus)
 
       if (!roleIds.length) return []

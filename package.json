@@ -10,10 +10,14 @@
     "validate:brands": "tsx scripts/validate-brands.ts",
     "test": "vitest",
     "test:run": "vitest run",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "ci": "biome ci . && tsc --noEmit && vitest run",
     "build": "pnpm validate:brands && tsc --noEmit && next build",
     "check": "pnpm test:run && pnpm build",
     "visual:reference": "echo 'Frozen. These references were captured from the Vite build, which no longer exists: Task 5 deleted it, and the shell controls are now anchors rather than buttons, so click mode can no longer reproduce them. They were produced with: VIEWER_MODE=click playwright test --update-snapshots. They cannot be regenerated, so an overwrite can only be recovered with git restore tests/visual/__snapshots__. Use pnpm visual:verify to compare against them.' && exit 1",
-    "visual:verify": "VIEWER_MODE=url playwright test"
+    "visual:verify": "VIEWER_MODE=url playwright test",
+    "prepare": "husky"
   },
   "packageManager": "pnpm@10.34.5",
   "type": "module",
@@ -30,6 +34,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.8",
     "@playwright/test": "^1.62.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -38,6 +43,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
+    "husky": "9.1.7",
     "jsdom": "29.1.1",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",

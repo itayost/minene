@@ -21,8 +21,9 @@ const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8')
 function gridRuleBody(selector: string): string {
   // Anchored at a line start and required to be followed by the brace, so
   // `.cockpit` cannot match `.cockpit-tools`.
-  const bodies = [...css.matchAll(new RegExp(`^${selector}\\s*\\{([^}]*)\\}`, 'gm'))]
-    .map((m) => m[1] ?? '')
+  const bodies = [...css.matchAll(new RegExp(`^${selector}\\s*\\{([^}]*)\\}`, 'gm'))].map(
+    (m) => m[1] ?? '',
+  )
   const grid = bodies.find((body) => /display:\s*grid/.test(body))
   expect(grid, `no rule for ${selector} declares display: grid`).toBeDefined()
   return grid ?? ''
@@ -62,8 +63,9 @@ describe('the home screen stacks in a bounded column', () => {
 describe('the home fits the screen it is on', () => {
   /** Every body with this selector, since the property may be set in any of them. */
   function allBodies(selector: string): string {
-    const bodies = [...css.matchAll(new RegExp(`^${selector}\\s*\\{([^}]*)\\}`, 'gm'))]
-      .map((m) => m[1] ?? '')
+    const bodies = [...css.matchAll(new RegExp(`^${selector}\\s*\\{([^}]*)\\}`, 'gm'))].map(
+      (m) => m[1] ?? '',
+    )
     expect(bodies.length, `no rule for ${selector}`).toBeGreaterThan(0)
     return bodies.join('\n').replace(/\s+/g, ' ')
   }
@@ -77,7 +79,9 @@ describe('the home fits the screen it is on', () => {
   it('shares the leftover height between the four card rows', () => {
     // Content-sized rows add up to whatever the content wants. Fractional rows
     // divide what there is.
-    expect(allBodies('\\.cockpit-tools__grid')).toMatch(/grid-template-rows:\s*repeat\(\s*4\s*,\s*minmax\(\s*0/)
+    expect(allBodies('\\.cockpit-tools__grid')).toMatch(
+      /grid-template-rows:\s*repeat\(\s*4\s*,\s*minmax\(\s*0/,
+    )
   })
 
   it('lets a card be as short as its row', () => {

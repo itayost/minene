@@ -10,7 +10,7 @@ import type { PersuaderApi } from './persuader-api'
 /** The blocker that explains the most recent reply, or none. */
 const lastBlocker = (state: ConversationState): string | null => {
   const real = state.blockers.filter((b) => b !== 'none')
-  return real.length ? real[real.length - 1] ?? null : null
+  return real.length ? (real[real.length - 1] ?? null) : null
 }
 
 type Phase =
@@ -38,7 +38,11 @@ const WAITING: Partial<Record<Phase['kind'], string>> = {
  * phone: it has to cover the list without losing it. It inherits Escape, focus
  * on open and focus restored on close from the primitive the brain built.
  */
-export function Conversation({ assignment, persuaderApi, onClose }: {
+export function Conversation({
+  assignment,
+  persuaderApi,
+  onClose,
+}: {
   assignment: Assignment
   persuaderApi: PersuaderApi
   onClose: () => void
@@ -66,6 +70,9 @@ export function Conversation({ assignment, persuaderApi, onClose }: {
    * out of sight. Pinned to the bottom on every change, which is what a
    * messaging thread does and what makes a streamed reply readable at all.
    */
+  // `turns` and `draft` are triggers, not reads: the body never uses either, and
+  // a change to them is exactly what must re-run the scroll.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deliberate trigger dependencies
   useEffect(() => {
     const thread = threadRef.current
     if (thread) thread.scrollTop = thread.scrollHeight
@@ -75,11 +82,16 @@ export function Conversation({ assignment, persuaderApi, onClose }: {
     let cancelled = false
 
     const watch = {
-      onPreparing: () => { if (!cancelled) setPhase({ kind: 'preparing' }) },
-      onDelta: (soFar: string) => { if (!cancelled) setDraft(soFar) },
+      onPreparing: () => {
+        if (!cancelled) setPhase({ kind: 'preparing' })
+      },
+      onDelta: (soFar: string) => {
+        if (!cancelled) setDraft(soFar)
+      },
     }
 
-    persuaderApi.openConversation({ assignmentId: assignment.id }, watch)
+    persuaderApi
+      .openConversation({ assignmentId: assignment.id }, watch)
       .then((result) => {
         if (cancelled) return
         setDraft('')
@@ -92,10 +104,13 @@ export function Conversation({ assignment, persuaderApi, onClose }: {
         setDraft('')
         // A failure has to say so. A sheet that sits on "מתחילה" forever is
         // indistinguishable from a model taking its time, and the person waits.
-        if (handleError(error)) setPhase({ kind: 'failed', message: 'לא הצלחנו להתחיל את השיחה. נסי שוב.' })
+        if (handleError(error))
+          setPhase({ kind: 'failed', message: 'לא הצלחנו להתחיל את השיחה. נסי שוב.' })
       })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [assignment.id, handleError, persuaderApi])
 
   const send = async () => {
@@ -154,7 +169,8 @@ export function Conversation({ assignment, persuaderApi, onClose }: {
       setTurns(result.turns)
       setPhase({ kind: 'finished', outcome: result.state.outcome })
     } catch (error) {
-      if (handleError(error)) setPhase({ kind: 'failed', message: 'לא הצלחנו לסגור את השיחה. נסי שוב.' })
+      if (handleError(error))
+        setPhase({ kind: 'failed', message: 'לא הצלחנו לסגור את השיחה. נסי שוב.' })
     }
   }
 
@@ -192,16 +208,23 @@ export function Conversation({ assignment, persuaderApi, onClose }: {
           // aria-live, because a screen reader gets nothing from a bubble that
           // grows; it is polite so it is read once it settles rather than
           // re-announced on every token.
-          <p aria-live="polite" className="conversation__msg" data-from="persuader" data-writing="true">
+          <p
+            aria-live="polite"
+            className="conversation__msg"
+            data-from="persuader"
+            data-writing="true"
+          >
             {draft}
           </p>
-        ) : (
-          WAITING[phase.kind] ? <p className="knowledge-message">{WAITING[phase.kind]}</p> : null
-        )}
+        ) : WAITING[phase.kind] ? (
+          <p className="knowledge-message">{WAITING[phase.kind]}</p>
+        ) : null}
       </div>
 
       {phase.kind === 'failed' ? (
-        <p className="knowledge-message" role="alert">{phase.message}</p>
+        <p className="knowledge-message" role="alert">
+          {phase.message}
+        </p>
       ) : null}
 
       {phase.kind === 'finished' ? (
@@ -238,7 +261,9 @@ export function Conversation({ assignment, persuaderApi, onClose }: {
                 conversation: closing a broken one is the only way out of it. */}
             <button
               data-weight="quiet"
-              disabled={phase.kind === 'opening' || phase.kind === 'preparing' || phase.kind === 'thinking'}
+              disabled={
+                phase.kind === 'opening' || phase.kind === 'preparing' || phase.kind === 'thinking'
+              }
               onClick={() => void finish()}
               type="button"
             >

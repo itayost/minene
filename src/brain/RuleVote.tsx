@@ -10,7 +10,13 @@
  * toggles rather than a three-position control: a cleared vote leaves the
  * denominator, a dislike stays in it.
  */
-export function RuleVote({ ruleId, vote, isSaving, onVote, onClear }: {
+export function RuleVote({
+  ruleId,
+  vote,
+  isSaving,
+  onVote,
+  onClear,
+}: {
   ruleId: string
   vote: boolean | undefined
   isSaving: boolean

@@ -42,11 +42,13 @@ const unauthorized = () => new DocumentsApiError('UNAUTHORIZED', 'ההרשאה �
 const uploadFailed = () => new DocumentsApiError('UPLOAD_FAILED', 'העלאת הקובץ נכשלה. נסי שוב.')
 const saveFailed = () => new DocumentsApiError('SAVE_FAILED', 'שמירת המסמך נכשלה. נסי שוב.')
 const loadFailed = () => new DocumentsApiError('LOAD_FAILED', 'לא הצלחנו לטעון את רשימת המסמכים.')
-const emptyConversation = () => new DocumentsApiError('EMPTY_CONVERSATION', 'יש להדביק את תוכן השיחה.')
-const conversationTooLong = () => new DocumentsApiError(
-  'CONVERSATION_TOO_LONG',
-  `השיחה ארוכה מדי. הגבול הוא ${MAX_CONVERSATION_CHARS.toLocaleString('he-IL')} תווים.`,
-)
+const emptyConversation = () =>
+  new DocumentsApiError('EMPTY_CONVERSATION', 'יש להדביק את תוכן השיחה.')
+const conversationTooLong = () =>
+  new DocumentsApiError(
+    'CONVERSATION_TOO_LONG',
+    `השיחה ארוכה מדי. הגבול הוא ${MAX_CONVERSATION_CHARS.toLocaleString('he-IL')} תווים.`,
+  )
 
 type PostgrestError = { code?: string | null }
 
@@ -63,27 +65,44 @@ type DocumentQuery = {
   select: (columns: string) => DocumentQuery
   eq: (column: string, value: unknown) => DocumentQuery
   order: (column: string, options: { ascending: boolean }) => DocumentQuery
-  limit: (count: number) => PromiseLike<{ data: BrainDocument[] | null; error: PostgrestError | null; status?: number }>
-  maybeSingle: () => PromiseLike<{ data: { status: string; error: string | null } | null; error: PostgrestError | null; status?: number }>
+  limit: (
+    count: number,
+  ) => PromiseLike<{ data: BrainDocument[] | null; error: PostgrestError | null; status?: number }>
+  maybeSingle: () => PromiseLike<{
+    data: { status: string; error: string | null } | null
+    error: PostgrestError | null
+    status?: number
+  }>
 }
 
 export type DocumentsClient = {
-  auth: { getUser: () => PromiseLike<{ data: { user: { id: string } | null } | null; error: unknown }> }
+  auth: {
+    getUser: () => PromiseLike<{ data: { user: { id: string } | null } | null; error: unknown }>
+  }
   functions: {
-    invoke: (name: string, options: { body: unknown }) => PromiseLike<{
+    invoke: (
+      name: string,
+      options: { body: unknown },
+    ) => PromiseLike<{
       data: unknown
       error: { context?: { status?: number }; code?: string | null } | null
     }>
   }
   storage: {
     from: (bucket: string) => {
-      upload: (path: string, file: File, options: { contentType: string }) => PromiseLike<{
+      upload: (
+        path: string,
+        file: File,
+        options: { contentType: string },
+      ) => PromiseLike<{
         error: (PostgrestError & { status?: number }) | null
       }>
     }
   }
   from: (table: string) => DocumentQuery & {
-    insert: (values: Record<string, unknown>) => PromiseLike<{ error: PostgrestError | null; status?: number }>
+    insert: (
+      values: Record<string, unknown>,
+    ) => PromiseLike<{ error: PostgrestError | null; status?: number }>
   }
 }
 
@@ -100,7 +119,11 @@ export function createDocumentsApi(client: DocumentsClient) {
      * naming convention, and tenantId comes from the verified session, never
      * from user input.
      */
-    async uploadDocument({ file, tenantId, topicId }: {
+    async uploadDocument({
+      file,
+      tenantId,
+      topicId,
+    }: {
       file: File
       tenantId: string
       topicId: string
@@ -159,7 +182,12 @@ export function createDocumentsApi(client: DocumentsClient) {
      * is no ordering hazard between an upload and a row, and no path convention
      * to keep in step with the storage policy.
      */
-    async saveConversation({ tenantId, topicId, title, text }: {
+    async saveConversation({
+      tenantId,
+      topicId,
+      title,
+      text,
+    }: {
       tenantId: string
       topicId: string
       title: string
@@ -206,20 +234,28 @@ export function createDocumentsApi(client: DocumentsClient) {
      * may not even reflect it.
      */
     async extractRules(documentId: string): Promise<unknown> {
-      const { data, error } = await client.functions.invoke('extract-rules', { body: { documentId } })
+      const { data, error } = await client.functions.invoke('extract-rules', {
+        body: { documentId },
+      })
       if (!error) return data
 
       if (isAuthError(error, error.context?.status)) throw unauthorized()
 
-      const { data: doc, error: queryError, status: queryStatus } = await client
-        .from('documents').select('status, error').eq('id', documentId).maybeSingle()
+      const {
+        data: doc,
+        error: queryError,
+        status: queryStatus,
+      } = await client.from('documents').select('status, error').eq('id', documentId).maybeSingle()
 
       // The fallback query can hit the same expired session. Without this check
       // its error is silently discarded and the reader sees the generic
       // extraction message instead of being sent back to sign in.
       if (queryError && isAuthError(queryError, queryStatus)) throw unauthorized()
 
-      throw new DocumentsApiError('EXTRACTION_FAILED', doc?.error || GENERIC_EXTRACTION_FAILURE_MESSAGE)
+      throw new DocumentsApiError(
+        'EXTRACTION_FAILED',
+        doc?.error || GENERIC_EXTRACTION_FAILURE_MESSAGE,
+      )
     },
 
     /**

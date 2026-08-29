@@ -1,0 +1,17 @@
+#!/bin/sh
+# Fast enough to never be worth skipping. The suite runs on pre-push instead,
+# and the production build runs in CI -- a hook long enough to dread is a hook
+# that gets bypassed with --no-verify, which is worse than having none.
+
+pnpm exec biome check --write --staged --no-errors-on-unmatched || {
+  echo "\n✖ Biome could not fix everything. Review, stage, and commit again."
+  exit 1
+}
+# Re-stage whatever the formatter just rewrote, so the commit contains the
+# fixed files rather than the ones that were staged a moment ago.
+git update-index --again
+
+pnpm exec tsc --noEmit || {
+  echo "\n✖ Type errors. Commit blocked."
+  exit 1
+}

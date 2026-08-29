@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { matrixFrom } from '../../src/persuade/matrix-data'
 import type { StoredSimulation } from '../../src/persuade/lib/simulations'
+import { matrixFrom } from '../../src/persuade/matrix-data'
 
 const sim = (industry: string, jobRoleId: string, outcome: string): StoredSimulation => ({
   id: `s-${Math.random()}`,
@@ -8,16 +8,22 @@ const sim = (industry: string, jobRoleId: string, outcome: string): StoredSimula
   run: { state: { outcome, blockers: [], interaction: 3 }, violations: [] } as never,
 })
 
-const roles = [{ id: 'r1', name: 'מנהלת חנות' }, { id: 'r2', name: 'מוכרת' }]
+const roles = [
+  { id: 'r1', name: 'מנהלת חנות' },
+  { id: 'r2', name: 'מוכרת' },
+]
 
 describe('turning runs into a matrix', () => {
   it('computes a cell’s rate from the runs in it', () => {
-    const cells = matrixFrom([
-      sim('אופנה', 'r1', 'agreed'),
-      sim('אופנה', 'r1', 'agreed'),
-      sim('אופנה', 'r1', 'refused'),
-      sim('אופנה', 'r1', 'refused'),
-    ], roles)
+    const cells = matrixFrom(
+      [
+        sim('אופנה', 'r1', 'agreed'),
+        sim('אופנה', 'r1', 'agreed'),
+        sim('אופנה', 'r1', 'refused'),
+        sim('אופנה', 'r1', 'refused'),
+      ],
+      roles,
+    )
 
     const cell = cells.find((c) => c.industry === 'אופנה' && c.jobRoleId === 'r1')
     expect(cell).toMatchObject({ runs: 4, persuasionRate: 50 })

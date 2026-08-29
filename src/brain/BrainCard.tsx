@@ -9,7 +9,13 @@ import type { ReactElement, ReactNode } from 'react'
  * Each slot is omitted rather than rendered empty: an empty head still occupies
  * its gap in the grid, which reads as a card that failed to load.
  */
-export function BrainCard({ head, children, meta, actions, as = 'div' }: {
+export function BrainCard({
+  head,
+  children,
+  meta,
+  actions,
+  as = 'div',
+}: {
   head?: ReactNode
   children: ReactNode
   meta?: ReactNode

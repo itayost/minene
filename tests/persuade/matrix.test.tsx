@@ -19,7 +19,13 @@ describe('the matrix', () => {
   })
 
   it('renders a cell with no runs as unmeasured, never as zero', () => {
-    render(<Matrix cells={[cell({ runs: 0, persuasionRate: null })]} onSelect={vi.fn()} selected={null} />)
+    render(
+      <Matrix
+        cells={[cell({ runs: 0, persuasionRate: null })]}
+        onSelect={vi.fn()}
+        selected={null}
+      />,
+    )
 
     // "Nobody has run this cell" and "everybody refused here" are opposite
     // facts. 0% claims the second when the first is true, and the heat ramp
@@ -31,7 +37,13 @@ describe('the matrix', () => {
   })
 
   it('carries the denominator with the rate', () => {
-    render(<Matrix cells={[cell({ persuasionRate: 81, runs: 42 })]} onSelect={vi.fn()} selected={null} />)
+    render(
+      <Matrix
+        cells={[cell({ persuasionRate: 81, runs: 42 })]}
+        onSelect={vi.fn()}
+        selected={null}
+      />,
+    )
 
     // 81% off four runs and 81% off forty support different decisions.
     expect(screen.getByText('42 ריצות')).toBeVisible()
@@ -40,7 +52,10 @@ describe('the matrix', () => {
   it('steps the heat by magnitude, so a stronger cell is never lighter', () => {
     render(
       <Matrix
-        cells={[cell({ jobRoleId: 'a', persuasionRate: 24 }), cell({ jobRoleId: 'b', persuasionRate: 81 })]}
+        cells={[
+          cell({ jobRoleId: 'a', persuasionRate: 24 }),
+          cell({ jobRoleId: 'b', persuasionRate: 81 }),
+        ]}
         onSelect={vi.fn()}
         selected={null}
       />,
@@ -66,6 +81,8 @@ describe('the matrix', () => {
 
     await userEvent.setup().click(screen.getByRole('gridcell'))
 
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ industry: 'אופנה', jobRoleId: 'r1' }))
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ industry: 'אופנה', jobRoleId: 'r1' }),
+    )
   })
 })

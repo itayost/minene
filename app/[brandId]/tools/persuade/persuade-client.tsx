@@ -5,10 +5,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabase } from '../../../../src/auth/supabase-browser'
 import { BottomSheet } from '../../../../src/brain/BottomSheet'
 import { BrainCard } from '../../../../src/brain/BrainCard'
-import { useApiErrorHandler } from '../../../../src/brain/use-api-error'
 import { getTopic } from '../../../../src/brain/topics'
+import { useApiErrorHandler } from '../../../../src/brain/use-api-error'
 import {
-  createAssignmentsApi, type Assignment, type AssignmentsClient,
+  type Assignment,
+  type AssignmentsClient,
+  createAssignmentsApi,
 } from '../../../../src/persuade/assignments-api'
 import { Conversation } from '../../../../src/persuade/Conversation'
 import { createPersuaderApi } from '../../../../src/persuade/persuader-api'
@@ -40,7 +42,9 @@ export function PersuadeClient({ brandId, role }: { brandId: string; role: 'owne
     }
   }, [assignmentsApi, handleError])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    void load()
+  }, [load])
 
   /**
    * `partial` settles as `not_done`, deliberately. Anything else lets the
@@ -78,20 +82,26 @@ export function PersuadeClient({ brandId, role }: { brandId: string; role: 'owne
         </header>
 
         {state.status === 'error' ? (
-          <p className="knowledge-message" role="alert">{state.message}</p>
+          <p className="knowledge-message" role="alert">
+            {state.message}
+          </p>
         ) : state.status === 'loading' ? (
           <p className="knowledge-message">טוענת…</p>
         ) : rows.length === 0 ? (
           <p className="knowledge-message">אין כרגע משימות פתוחות.</p>
         ) : null}
 
-        {actionError ? <p className="knowledge-message" role="alert">{actionError}</p> : null}
+        {actionError ? (
+          <p className="knowledge-message" role="alert">
+            {actionError}
+          </p>
+        ) : null}
 
         <ul className="knowledge-list">
           {rows.map((row) => (
             <BrainCard
               as="li"
-              actions={(
+              actions={
                 <>
                   <button
                     data-weight="primary"
@@ -110,13 +120,15 @@ export function PersuadeClient({ brandId, role }: { brandId: string; role: 'owne
                     דיווח ביצוע
                   </button>
                 </>
-              )}
-              head={row.rule ? (
-                <>
-                  <span>{getTopic(row.rule.topicId)?.title ?? row.rule.topicId}</span>
-                  {row.dueOn ? <span>{`עד ${row.dueOn}`}</span> : null}
-                </>
-              ) : null}
+              }
+              head={
+                row.rule ? (
+                  <>
+                    <span>{getTopic(row.rule.topicId)?.title ?? row.rule.topicId}</span>
+                    {row.dueOn ? <span>{`עד ${row.dueOn}`}</span> : null}
+                  </>
+                ) : null
+              }
               key={row.id}
             >
               {/* The row survives a rule that failed to join. A task that
@@ -134,7 +146,10 @@ export function PersuadeClient({ brandId, role }: { brandId: string; role: 'owne
       {talkingAbout ? (
         <Conversation
           assignment={talkingAbout}
-          onClose={() => { setTalkingAbout(null); void load() }}
+          onClose={() => {
+            setTalkingAbout(null)
+            void load()
+          }}
           persuaderApi={persuaderApi}
         />
       ) : null}
@@ -147,14 +162,22 @@ export function PersuadeClient({ brandId, role }: { brandId: string; role: 'owne
         <h2 className="rule-edit-sheet__title">מה קרה בפועל?</h2>
         <p className="knowledge-message">{reporting?.rule?.text ?? ''}</p>
         <div className="brain-card__actions">
-          <button data-weight="primary" onClick={() => void report('done')} type="button">בוצע</button>
-          <button data-weight="quiet" onClick={() => void report('partial')} type="button">בוצע חלקית</button>
-          <button data-weight="quiet" onClick={() => void report('not_done')} type="button">לא בוצע</button>
+          <button data-weight="primary" onClick={() => void report('done')} type="button">
+            בוצע
+          </button>
+          <button data-weight="quiet" onClick={() => void report('partial')} type="button">
+            בוצע חלקית
+          </button>
+          <button data-weight="quiet" onClick={() => void report('not_done')} type="button">
+            לא בוצע
+          </button>
         </div>
         {/* Said out loud rather than left to be discovered: a partial closes the
             assignment as not done, and somebody reporting one deserves to know
             that before they press it. */}
-        <p className="rule-edit-sheet__hint">ביצוע חלקי נרשם כלא בוצע, כדי שהמדידה לא תזחל למעלה.</p>
+        <p className="rule-edit-sheet__hint">
+          ביצוע חלקי נרשם כלא בוצע, כדי שהמדידה לא תזחל למעלה.
+        </p>
       </BottomSheet>
     </div>
   )

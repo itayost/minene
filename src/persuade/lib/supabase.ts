@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * The knowledge base and the conversation store both live in eran-task's Supabase
@@ -19,27 +19,27 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
  * returns `tenantId` in its payload precisely so this side can check it, and
  * `loadAmmunition` below does.
  */
-const URL_VAR = 'SUPABASE_URL';
-const KEY_VAR = 'SUPABASE_SECRET_KEY';
+const URL_VAR = 'SUPABASE_URL'
+const KEY_VAR = 'SUPABASE_SECRET_KEY'
 
 export class StorageNotConfiguredError extends Error {
   constructor() {
     super(
       `שכבת האחסון לא מוגדרת. צריך ${URL_VAR} ו-${KEY_VAR} בסביבה כדי לשמור שיחות ולקרוא ידע ארגוני.`,
-    );
-    this.name = 'StorageNotConfiguredError';
+    )
+    this.name = 'StorageNotConfiguredError'
   }
 }
 
-let cached: SupabaseClient | null = null;
+let cached: SupabaseClient | null = null
 
 /** True when the store can actually be reached. Callers that must degrade rather than fail check this. */
 export function isStorageConfigured(): boolean {
-  return Boolean(process.env[URL_VAR] && process.env[KEY_VAR]);
+  return Boolean(process.env[URL_VAR] && process.env[KEY_VAR])
 }
 
 export function supabase(): SupabaseClient {
-  if (!isStorageConfigured()) throw new StorageNotConfiguredError();
+  if (!isStorageConfigured()) throw new StorageNotConfiguredError()
   // Cached, because a Next.js route module is re-entered per request and a new
   // client per request means a new connection pool per request.
   //
@@ -48,11 +48,11 @@ export function supabase(): SupabaseClient {
   // set the variables.
   cached ??= createClient(process.env[URL_VAR]!, process.env[KEY_VAR]!, {
     auth: { persistSession: false, autoRefreshToken: false },
-  });
-  return cached;
+  })
+  return cached
 }
 
 /** Test seam. The cached client outlives a single test otherwise. */
 export function resetSupabaseClient(): void {
-  cached = null;
+  cached = null
 }

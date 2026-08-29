@@ -10,7 +10,11 @@ import { describe, expect, it } from 'vitest'
 const source = (p: string) => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8')
 
 describe('every route that spends model budget checks who is asking', () => {
-  it.each(['chat', 'generate', 'simulate'])('%s resolves access before touching a model', (name) => {
+  it.each([
+    'chat',
+    'generate',
+    'simulate',
+  ])('%s resolves access before touching a model', (name) => {
     const route = source(`app/api/persuade/${name}/route.ts`)
 
     // The middleware was widened to skip /api on the grounds that "those routes
@@ -21,7 +25,10 @@ describe('every route that spends model budget checks who is asking', () => {
     // Asserted for all three together rather than for simulate alone, because
     // the claim the middleware rests on is about all of them.
     expect(route).toMatch(/resolveAccess\(/)
-    expect(route.indexOf('resolveAccess(')).toBeLessThan(route.indexOf('runSimulation('.replace('runSimulation(', 'assertModelAccessConfigured(')) + route.length)
+    expect(route.indexOf('resolveAccess(')).toBeLessThan(
+      route.indexOf('runSimulation('.replace('runSimulation(', 'assertModelAccessConfigured(')) +
+        route.length,
+    )
   })
 
   it('restricts simulation to an owner, because a run costs money', () => {

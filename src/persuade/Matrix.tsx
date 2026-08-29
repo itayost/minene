@@ -33,7 +33,11 @@ function heatStep(rate: number): 1 | 2 | 3 | 4 | 5 {
 
 const cellKey = (cell: MatrixCell) => `${cell.industry}::${cell.jobRoleId}`
 
-export function Matrix({ cells, selected, onSelect }: {
+export function Matrix({
+  cells,
+  selected,
+  onSelect,
+}: {
   cells: readonly MatrixCell[]
   selected: MatrixCell | null
   onSelect: (cell: MatrixCell) => void
@@ -48,7 +52,11 @@ export function Matrix({ cells, selected, onSelect }: {
         <thead>
           <tr>
             <th />
-            {roles.map(([id, name]) => <th key={id} scope="col">{name}</th>)}
+            {roles.map(([id, name]) => (
+              <th key={id} scope="col">
+                {name}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -64,15 +72,19 @@ export function Matrix({ cells, selected, onSelect }: {
                   <td
                     // The row and column headers are out of reach for a screen
                     // reader moving cell to cell, so the cell says where it is.
-                    aria-label={measured
-                      ? `${cell.industry}, ${cell.jobRoleName}, ${cell.persuasionRate} אחוז, ${cell.runs} ריצות`
-                      : `${cell.industry}, ${cell.jobRoleName}, אין ריצות`}
+                    aria-label={
+                      measured
+                        ? `${cell.industry}, ${cell.jobRoleName}, ${cell.persuasionRate} אחוז, ${cell.runs} ריצות`
+                        : `${cell.industry}, ${cell.jobRoleName}, אין ריצות`
+                    }
                     aria-selected={selected ? cellKey(selected) === cellKey(cell) : undefined}
                     className="cell"
                     data-heat={measured ? heatStep(cell.persuasionRate as number) : 'none'}
                     key={id}
                     onClick={() => onSelect(cell)}
-                    onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onSelect(cell) }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') onSelect(cell)
+                    }}
                     role="gridcell"
                     tabIndex={0}
                   >

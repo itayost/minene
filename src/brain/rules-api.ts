@@ -1,5 +1,13 @@
 import type {
-  Rule, RuleCursor, RuleKind, RulePage, RulePolarity, RuleStatus, RuleVote, SubTopicCount, TenantKpis,
+  Rule,
+  RuleCursor,
+  RuleKind,
+  RulePage,
+  RulePolarity,
+  RuleStatus,
+  RuleVote,
+  SubTopicCount,
+  TenantKpis,
 } from './types'
 
 const PAGE_SIZE = 50
@@ -16,8 +24,21 @@ const PAGE_SIZE = 50
  * anywhere; it is a property that is always undefined at runtime.
  */
 const RULE_COLUMNS = [
-  'id', 'rule_number', 'topic_id', 'sub_topic', 'text', 'response', 'created_at',
-  'kind', 'polarity', 'status', 'source', 'source_url', 'like_count', 'vote_count', 'like_pct',
+  'id',
+  'rule_number',
+  'topic_id',
+  'sub_topic',
+  'text',
+  'response',
+  'created_at',
+  'kind',
+  'polarity',
+  'status',
+  'source',
+  'source_url',
+  'like_count',
+  'vote_count',
+  'like_pct',
 ].join(',')
 
 /** PostgREST's code for an expired or invalid JWT under row-level security. */
@@ -44,7 +65,8 @@ export class RulesApiError extends Error {
 }
 
 const unauthorized = () => new RulesApiError('UNAUTHORIZED', 401, 'ההרשאה פגה. נא להתחבר מחדש.')
-const failed = (status: number) => new RulesApiError('REQUEST_FAILED', status, 'לא הצלחנו להשלים את הבקשה')
+const failed = (status: number) =>
+  new RulesApiError('REQUEST_FAILED', status, 'לא הצלחנו להשלים את הבקשה')
 
 type PostgrestError = { code?: string | null }
 type PostgrestResult<T> = { data: T | null; error: PostgrestError | null; status?: number }
@@ -59,9 +81,8 @@ type PostgrestResult<T> = { data: T | null; error: PostgrestError | null; status
  * Non-auth failures keep their real status rather than being rewritten to a
  * fabricated 500.
  */
-const mapPostgrestError = (error: PostgrestError, status: number | undefined) => (
+const mapPostgrestError = (error: PostgrestError, status: number | undefined) =>
   error.code === POSTGREST_JWT_EXPIRED || status === 401 ? unauthorized() : failed(status ?? 500)
-)
 
 /**
  * A cursor is only valid when BOTH fields are present. list_rules coalesces a
@@ -116,7 +137,10 @@ type RpcCall = PromiseLike<PostgrestResult<SubTopicRow[]>> & {
  */
 export type RulesClient = {
   functions: {
-    invoke: (name: string, options: { body: unknown }) => PromiseLike<{
+    invoke: (
+      name: string,
+      options: { body: unknown },
+    ) => PromiseLike<{
       data: unknown
       error: { context?: { status?: number } } | null
     }>
@@ -135,9 +159,21 @@ export type RulesClient = {
  * among them: it is the dedupe key, a trigger derives it from `text`, and
  * sending it would fail the whole update at 42501.
  */
-async function updateStatus(client: RulesClient, ruleId: string, status: RuleStatus): Promise<Rule> {
-  const { data, error, status: httpStatus } = await client
-    .from('rules').update({ status }).eq('id', ruleId).select(RULE_COLUMNS).maybeSingle()
+async function updateStatus(
+  client: RulesClient,
+  ruleId: string,
+  status: RuleStatus,
+): Promise<Rule> {
+  const {
+    data,
+    error,
+    status: httpStatus,
+  } = await client
+    .from('rules')
+    .update({ status })
+    .eq('id', ruleId)
+    .select(RULE_COLUMNS)
+    .maybeSingle()
   if (error) throw mapPostgrestError(error, httpStatus)
   // RLS filtering an update to zero visible rows returns { data: null, error:
   // null }. That is a real outcome -- the row stopped being visible mid-session
@@ -199,8 +235,16 @@ export function createRulesApi(client: RulesClient) {
      * already inside the freshness window. The caller renders that as a
      * sentence, not as a failure.
      */
-    async huntExternal({ topicId, subTopic = null }: { topicId: string; subTopic?: string | null }): Promise<unknown> {
-      const { data, error } = await client.functions.invoke('hunt-external', { body: { topicId, subTopic } })
+    async huntExternal({
+      topicId,
+      subTopic = null,
+    }: {
+      topicId: string
+      subTopic?: string | null
+    }): Promise<unknown> {
+      const { data, error } = await client.functions.invoke('hunt-external', {
+        body: { topicId, subTopic },
+      })
       if (!error) return data
       const status = error.context?.status ?? 500
       throw status === 401 ? unauthorized() : failed(status)
@@ -227,19 +271,25 @@ export function createRulesApi(client: RulesClient) {
       cursor = null,
       limit = PAGE_SIZE,
     }: ListRulesOptions): Promise<RulePage> {
-      const { data, error, status: httpStatus } = await client.rpc('list_rules', {
-        p_topic_id: topicId,
-        p_query: query || null,
-        p_kind: kind,
-        p_status: status,
-        ...cursorArgs(cursor),
-        p_limit: limit,
-        // null means "no filter", the same convention kind and status already
-        // follow, so a caller that names none of the three keeps its behaviour.
-        p_sub_topic: subTopic,
-        p_polarity: polarity,
-        p_role_id: roleId,
-      }).select(RULE_COLUMNS)
+      const {
+        data,
+        error,
+        status: httpStatus,
+      } = await client
+        .rpc('list_rules', {
+          p_topic_id: topicId,
+          p_query: query || null,
+          p_kind: kind,
+          p_status: status,
+          ...cursorArgs(cursor),
+          p_limit: limit,
+          // null means "no filter", the same convention kind and status already
+          // follow, so a caller that names none of the three keeps its behaviour.
+          p_sub_topic: subTopic,
+          p_polarity: polarity,
+          p_role_id: roleId,
+        })
+        .select(RULE_COLUMNS)
 
       if (error) throw mapPostgrestError(error, httpStatus)
       return pageFrom(data ?? [], limit)
@@ -251,16 +301,27 @@ export function createRulesApi(client: RulesClient) {
      * to page past, so once a topic held more than 50 pending rows the oldest
      * were silently unreachable.
      */
-    async listPendingRules({ cursor = null, limit = PAGE_SIZE }: { cursor?: RuleCursor | null; limit?: number } = {}): Promise<RulePage> {
-      const { data, error, status: httpStatus } = await client.rpc('list_pending_rules', {
-        ...cursorArgs(cursor),
-        p_limit: limit,
-      }).select(RULE_COLUMNS)
+    async listPendingRules({
+      cursor = null,
+      limit = PAGE_SIZE,
+    }: {
+      cursor?: RuleCursor | null
+      limit?: number
+    } = {}): Promise<RulePage> {
+      const {
+        data,
+        error,
+        status: httpStatus,
+      } = await client
+        .rpc('list_pending_rules', {
+          ...cursorArgs(cursor),
+          p_limit: limit,
+        })
+        .select(RULE_COLUMNS)
 
       if (error) throw mapPostgrestError(error, httpStatus)
       return pageFrom(data ?? [], limit)
     },
-
 
     /** The lobby's positive decision: the rule becomes curated knowledge. */
     async approveRule(ruleId: string): Promise<Rule> {
@@ -285,21 +346,36 @@ export function createRulesApi(client: RulesClient) {
      * extractor put under the wrong topic is the third correction a reviewer
      * needs, and rejecting it was the only way to do that before.
      */
-    async updateRule({ ruleId, text, kind, topicId, subTopic = null, polarity = null, response = null }: {
+    async updateRule({
+      ruleId,
+      text,
+      kind,
+      topicId,
+      subTopic = null,
+      polarity = null,
+      response = null,
+    }: {
       ruleId: string
       text: string
       kind: RuleKind
       topicId: string
     } & RuleClassification): Promise<Rule> {
-      const { data, error, status: httpStatus } = await client
+      const {
+        data,
+        error,
+        status: httpStatus,
+      } = await client
         // Each of the three is sent as an explicit null rather than omitted when
         // the caller does not pass it, and that has a real consequence: clearing
         // a wrong sub-topic or polarity has to be possible, and an object that
         // drops undefined keys cannot express "set this back to nothing".
         // Callers therefore pass the CURRENT value for anything they are not
         // changing, which the edit sheet does because it edits a whole rule.
-        .from('rules').update({ text, kind, topic_id: topicId, sub_topic: subTopic, polarity, response })
-        .eq('id', ruleId).select(RULE_COLUMNS).maybeSingle()
+        .from('rules')
+        .update({ text, kind, topic_id: topicId, sub_topic: subTopic, polarity, response })
+        .eq('id', ruleId)
+        .select(RULE_COLUMNS)
+        .maybeSingle()
       if (error) throw mapPostgrestError(error, httpStatus)
       if (!data) throw failed(404)
       return data
@@ -313,16 +389,22 @@ export function createRulesApi(client: RulesClient) {
      * Unpaged, and that is the design: a top-N ranking is not a queue, and the
      * RPC caps the limit regardless of what is asked for.
      */
-    async listProvenProcesses({ minVotes = 3, minLikePct = 60, limit = 20 }: {
+    async listProvenProcesses({
+      minVotes = 3,
+      minLikePct = 60,
+      limit = 20,
+    }: {
       minVotes?: number
       minLikePct?: number
       limit?: number
     } = {}): Promise<Rule[]> {
-      const { data, error, status } = await client.rpc('list_proven_processes', {
-        p_min_votes: minVotes,
-        p_min_like_pct: minLikePct,
-        p_limit: limit,
-      }).select(RULE_COLUMNS)
+      const { data, error, status } = await client
+        .rpc('list_proven_processes', {
+          p_min_votes: minVotes,
+          p_min_like_pct: minLikePct,
+          p_limit: limit,
+        })
+        .select(RULE_COLUMNS)
       if (error) throw mapPostgrestError(error, status)
       return data ?? []
     },
@@ -333,11 +415,18 @@ export function createRulesApi(client: RulesClient) {
      * classified nothing yet, so it comes back as [] rather than as a failure:
      * the filter that renders it simply has no options to offer.
      */
-    async listRuleSubTopics({ topicId = null, status = 'approved' }: {
+    async listRuleSubTopics({
+      topicId = null,
+      status = 'approved',
+    }: {
       topicId?: string | null
       status?: RuleStatus | null
     } = {}): Promise<SubTopicCount[]> {
-      const { data, error, status: httpStatus } = await client.rpc('list_rule_sub_topics', {
+      const {
+        data,
+        error,
+        status: httpStatus,
+      } = await client.rpc('list_rule_sub_topics', {
         p_topic_id: topicId,
         p_status: status,
       })
@@ -345,7 +434,10 @@ export function createRulesApi(client: RulesClient) {
       // rule_count is a bigint, which postgrest-js hands back as a string for
       // the same reason the KPI columns arrive as strings. Number() is required
       // before it reaches the UI, not optional: '9' sorts above '14'.
-      return (data ?? []).map((row) => ({ subTopic: row.sub_topic, ruleCount: Number(row.rule_count) }))
+      return (data ?? []).map((row) => ({
+        subTopic: row.sub_topic,
+        ruleCount: Number(row.rule_count),
+      }))
     },
 
     /**
@@ -353,10 +445,12 @@ export function createRulesApi(client: RulesClient) {
      * from the session, so there is no id for a caller to get wrong.
      */
     async setRuleVote({ ruleId, isLike }: { ruleId: string; isLike: boolean }): Promise<RuleVote> {
-      const { data, error, status } = await client.rpc('set_rule_vote', {
-        p_rule_id: ruleId,
-        p_is_like: isLike,
-      }).maybeSingle<VoteRow>()
+      const { data, error, status } = await client
+        .rpc('set_rule_vote', {
+          p_rule_id: ruleId,
+          p_is_like: isLike,
+        })
+        .maybeSingle<VoteRow>()
       if (error) throw mapPostgrestError(error, status)
       if (!data) throw failed(404)
       return { ruleId: data.rule_id, isLike: data.is_like }
@@ -397,19 +491,28 @@ export function createRulesApi(client: RulesClient) {
      * admits approved rows only, so a submitter cannot read their own pending
      * row back. This response is the only confirmation they get.
      */
-    async submitInternalRule({ topicId, text, kind = 'tip', subTopic = null, polarity = null, response = null }: {
+    async submitInternalRule({
+      topicId,
+      text,
+      kind = 'tip',
+      subTopic = null,
+      polarity = null,
+      response = null,
+    }: {
       topicId: string
       text: string
       kind?: RuleKind
     } & RuleClassification): Promise<Rule> {
-      const { data, error, status } = await client.rpc('submit_internal_rule', {
-        p_topic_id: topicId,
-        p_text: text,
-        p_kind: kind,
-        p_sub_topic: subTopic,
-        p_polarity: polarity,
-        p_response: response,
-      }).maybeSingle<Rule>()
+      const { data, error, status } = await client
+        .rpc('submit_internal_rule', {
+          p_topic_id: topicId,
+          p_text: text,
+          p_kind: kind,
+          p_sub_topic: subTopic,
+          p_polarity: polarity,
+          p_response: response,
+        })
+        .maybeSingle<Rule>()
       if (error) throw mapPostgrestError(error, status)
       if (!data) throw failed(500)
       return data

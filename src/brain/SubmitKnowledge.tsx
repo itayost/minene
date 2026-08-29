@@ -1,10 +1,10 @@
 'use client'
 
-import { useRef, useState, type FormEvent } from 'react'
+import { type FormEvent, useRef, useState } from 'react'
 import { BottomSheet } from './BottomSheet'
 import { RULE_TOPICS } from './topics'
-import { useApiErrorHandler } from './use-api-error'
 import type { Rule, RuleKind, RulePolarity } from './types'
+import { useApiErrorHandler } from './use-api-error'
 
 const FIRST_TOPIC_ID = RULE_TOPICS[0]?.id ?? 'live'
 
@@ -52,7 +52,10 @@ export type SubmitKnowledgeApi = {
  *
  * Collapsed by default, because it sits above a list people came here to read.
  */
-export function SubmitKnowledge({ rulesApi, onSubmitted }: {
+export function SubmitKnowledge({
+  rulesApi,
+  onSubmitted,
+}: {
   rulesApi: SubmitKnowledgeApi
   onSubmitted?: () => void
 }) {
@@ -65,8 +68,10 @@ export function SubmitKnowledge({ rulesApi, onSubmitted }: {
   const [state, setState] = useState<State>(IDLE)
 
   const isCase = draft.kind === 'case'
-  const set = <K extends keyof Draft>(field: K) => (value: Draft[K]) =>
-    setDraft((current) => ({ ...current, [field]: value }))
+  const set =
+    <K extends keyof Draft>(field: K) =>
+    (value: Draft[K]) =>
+      setDraft((current) => ({ ...current, [field]: value }))
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -80,7 +85,11 @@ export function SubmitKnowledge({ rulesApi, onSubmitted }: {
     // missing, in front of the form, rather than the submission failing after a
     // round trip with a constraint name they cannot act on.
     if (isCase && !draft.response.trim()) {
-      setState({ status: 'idle', message: 'למקרה צריך גם תגובה: מה עושים כשזה קורה.', isError: true })
+      setState({
+        status: 'idle',
+        message: 'למקרה צריך גם תגובה: מה עושים כשזה קורה.',
+        isError: true,
+      })
       return
     }
 
@@ -100,7 +109,11 @@ export function SubmitKnowledge({ rulesApi, onSubmitted }: {
       // Says what happens next, not just that it worked: a submission that
       // vanishes into a review queue with no explanation reads as a bug the
       // first time someone checks the list and cannot find what they added.
-      setState({ status: 'idle', message: 'נשלח לאישור. החוק יופיע ברשימה אחרי שהמנהל יאשר אותו.', isError: false })
+      setState({
+        status: 'idle',
+        message: 'נשלח לאישור. החוק יופיע ברשימה אחרי שהמנהל יאשר אותו.',
+        isError: false,
+      })
       setIsOpen(false)
       onSubmitted?.()
     } catch (error) {
@@ -114,14 +127,14 @@ export function SubmitKnowledge({ rulesApi, onSubmitted }: {
     }
   }
 
-  const notice = state.message
-    ? (
-      // role follows the KIND of message, not its position. This one node
-      // carries both the confirmation and the failure, and announcing a success
-      // as an alert interrupts a screen reader with an urgency it does not have.
-      <p className="knowledge-message" role={state.isError ? 'alert' : 'status'}>{state.message}</p>
-    )
-    : null
+  const notice = state.message ? (
+    // role follows the KIND of message, not its position. This one node
+    // carries both the confirmation and the failure, and announcing a success
+    // as an alert interrupts a screen reader with an urgency it does not have.
+    <p className="knowledge-message" role={state.isError ? 'alert' : 'status'}>
+      {state.message}
+    </p>
+  ) : null
 
   return (
     <div className="knowledge-submit">
@@ -136,61 +149,99 @@ export function SubmitKnowledge({ rulesApi, onSubmitted }: {
         onDismiss={() => setIsOpen(false)}
         openKey={isOpen ? 'submit' : null}
       >
-    <form className="knowledge-submit--open" onSubmit={(event) => void submit(event)}>
-      <h3 className="knowledge-submit__title">הוספת ידע</h3>
+        <form className="knowledge-submit--open" onSubmit={(event) => void submit(event)}>
+          <h3 className="knowledge-submit__title">הוספת ידע</h3>
 
-      <label>
-        <span>נושא</span>
-        <select onChange={(event) => set('topicId')(event.target.value)} value={draft.topicId}>
-          {RULE_TOPICS.map((topic) => <option key={topic.id} value={topic.id}>{topic.title}</option>)}
-        </select>
-      </label>
+          <label>
+            <span>נושא</span>
+            <select onChange={(event) => set('topicId')(event.target.value)} value={draft.topicId}>
+              {RULE_TOPICS.map((topic) => (
+                <option key={topic.id} value={topic.id}>
+                  {topic.title}
+                </option>
+              ))}
+            </select>
+          </label>
 
-      <label>
-        <span>תת־נושא</span>
-        <input maxLength={60} onChange={(event) => set('subTopic')(event.target.value)} type="text" value={draft.subTopic} />
-      </label>
+          <label>
+            <span>תת־נושא</span>
+            <input
+              maxLength={60}
+              onChange={(event) => set('subTopic')(event.target.value)}
+              type="text"
+              value={draft.subTopic}
+            />
+          </label>
 
-      <label>
-        <span>סוג</span>
-        <select onChange={(event) => set('kind')(event.target.value as RuleKind)} value={draft.kind}>
-          {KINDS.map((kind) => <option key={kind.id} value={kind.id}>{kind.label}</option>)}
-        </select>
-      </label>
+          <label>
+            <span>סוג</span>
+            <select
+              onChange={(event) => set('kind')(event.target.value as RuleKind)}
+              value={draft.kind}
+            >
+              {KINDS.map((kind) => (
+                <option key={kind.id} value={kind.id}>
+                  {kind.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-      <label>
-        <span>עשה / אל תעשה</span>
-        <select onChange={(event) => set('polarity')(event.target.value as '' | RulePolarity)} value={draft.polarity}>
-          {POLARITIES.map((item) => <option key={item.id || 'none'} value={item.id}>{item.label}</option>)}
-        </select>
-      </label>
+          <label>
+            <span>עשה / אל תעשה</span>
+            <select
+              onChange={(event) => set('polarity')(event.target.value as '' | RulePolarity)}
+              value={draft.polarity}
+            >
+              {POLARITIES.map((item) => (
+                <option key={item.id || 'none'} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-      <label className="knowledge-submit__wide">
-        {/* The label changes with the kind, because for a case this field holds
+          <label className="knowledge-submit__wide">
+            {/* The label changes with the kind, because for a case this field holds
             the situation rather than the rule. One field doing two jobs has to
             say which one it is doing. */}
-        <span>{isCase ? 'המקרה' : 'החוק'}</span>
-        <textarea onChange={(event) => set('text')(event.target.value)} ref={textRef} rows={3} value={draft.text} />
-      </label>
+            <span>{isCase ? 'המקרה' : 'החוק'}</span>
+            <textarea
+              onChange={(event) => set('text')(event.target.value)}
+              ref={textRef}
+              rows={3}
+              value={draft.text}
+            />
+          </label>
 
-      {isCase ? (
-        <label className="knowledge-submit__wide">
-          <span>התגובה</span>
-          <textarea onChange={(event) => set('response')(event.target.value)} rows={3} value={draft.response} />
-        </label>
-      ) : null}
+          {isCase ? (
+            <label className="knowledge-submit__wide">
+              <span>התגובה</span>
+              <textarea
+                onChange={(event) => set('response')(event.target.value)}
+                rows={3}
+                value={draft.response}
+              />
+            </label>
+          ) : null}
 
-      {notice}
+          {notice}
 
-      <div className="knowledge-submit__actions">
-        <button disabled={state.status === 'saving'} type="submit">
-          {state.status === 'saving' ? 'שולחת…' : 'שליחה לאישור'}
-        </button>
-        <button onClick={() => { setIsOpen(false); setState(IDLE) }} type="button">
-          ביטול
-        </button>
-      </div>
-    </form>
+          <div className="knowledge-submit__actions">
+            <button disabled={state.status === 'saving'} type="submit">
+              {state.status === 'saving' ? 'שולחת…' : 'שליחה לאישור'}
+            </button>
+            <button
+              onClick={() => {
+                setIsOpen(false)
+                setState(IDLE)
+              }}
+              type="button"
+            >
+              ביטול
+            </button>
+          </div>
+        </form>
       </BottomSheet>
     </div>
   )

@@ -13,10 +13,10 @@ function updatesSnapshots(arg: string): boolean {
 
 if (process.argv.some(updatesSnapshots)) {
   throw new Error(
-    'Refusing to update the visual references. They were captured from the pre-conversion Vite '
-    + 'build, which no longer exists, so they cannot be regenerated: an overwrite can only be '
-    + 'recovered with git restore tests/visual/__snapshots__. Use pnpm visual:verify to compare '
-    + 'against them. To regenerate deliberately, remove this guard from playwright.config.ts first.',
+    'Refusing to update the visual references. They were captured from the pre-conversion Vite ' +
+      'build, which no longer exists, so they cannot be regenerated: an overwrite can only be ' +
+      'recovered with git restore tests/visual/__snapshots__. Use pnpm visual:verify to compare ' +
+      'against them. To regenerate deliberately, remove this guard from playwright.config.ts first.',
   )
 }
 
@@ -41,16 +41,19 @@ const LOCAL_BASE_URL = `http://127.0.0.1:${PORT}`
  * the frozen references and pass. VIEWER_BASE_URL still points the run at an
  * already-deployed URL, and then there is nothing here to start.
  */
-const webServer = (process.env.VIEWER_BASE_URL || !hasCredentials) ? undefined : {
-  command: `pnpm build && pnpm start --port ${PORT}`,
-  // Probes /login, not the root. Every content route now requires a session, so
-  // an unauthenticated request to / answers 500 or redirects, and Playwright
-  // would wait for a readiness signal that can never arrive. /login is reachable
-  // by definition -- it is where an unauthenticated caller is sent.
-  url: `${LOCAL_BASE_URL}/login`,
-  reuseExistingServer: false,
-  timeout: 240_000,
-}
+const webServer =
+  process.env.VIEWER_BASE_URL || !hasCredentials
+    ? undefined
+    : {
+        command: `pnpm build && pnpm start --port ${PORT}`,
+        // Probes /login, not the root. Every content route now requires a session, so
+        // an unauthenticated request to / answers 500 or redirects, and Playwright
+        // would wait for a readiness signal that can never arrive. /login is reachable
+        // by definition -- it is where an unauthenticated caller is sent.
+        url: `${LOCAL_BASE_URL}/login`,
+        reuseExistingServer: false,
+        timeout: 240_000,
+      }
 
 export default defineConfig({
   testDir: './tests/visual',

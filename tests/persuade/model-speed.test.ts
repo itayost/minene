@@ -1,9 +1,9 @@
 /**
  * @vitest-environment node
  */
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { callOptions, setModelOverrides } from '../../src/persuade/lib/model';
-import { jsonModel } from './helpers';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { callOptions, setModelOverrides } from '../../src/persuade/lib/model'
+import { jsonModel } from './helpers'
 
 /**
  * The third lever on response time, after caching the plan and streaming the
@@ -15,26 +15,26 @@ import { jsonModel } from './helpers';
  * table, the rung ladder and the rule checks are all deterministic code.
  */
 
-const ENV = { ...process.env };
+const ENV = { ...process.env }
 
 beforeEach(() => {
-  delete process.env.PERSUADER_PROVIDER;
-  delete process.env.ANTHROPIC_API_KEY;
-  delete process.env.PERSUADER_EFFORT;
-  process.env.OPENAI_API_KEY = 'test-key';
-});
+  delete process.env.PERSUADER_PROVIDER
+  delete process.env.ANTHROPIC_API_KEY
+  delete process.env.PERSUADER_EFFORT
+  process.env.OPENAI_API_KEY = 'test-key'
+})
 
 afterEach(() => {
-  process.env = { ...ENV };
-  setModelOverrides({});
-});
+  process.env = { ...ENV }
+  setModelOverrides({})
+})
 
 describe('speed settings per role', () => {
   test('keeps the roles someone is waiting on at a low thinking budget', () => {
-    expect(callOptions('persuader').providerOptions?.openai?.reasoningEffort).toBe('low');
-    expect(callOptions('planner').providerOptions?.openai?.reasoningEffort).toBe('low');
-    expect(callOptions('target').providerOptions?.openai?.reasoningEffort).toBe('low');
-  });
+    expect(callOptions('persuader').providerOptions?.openai?.reasoningEffort).toBe('low')
+    expect(callOptions('planner').providerOptions?.openai?.reasoningEffort).toBe('low')
+    expect(callOptions('target').providerOptions?.openai?.reasoningEffort).toBe('low')
+  })
 
   test('never defaults to a value a model would reject', () => {
     // target was 'minimal', which the SDK's type accepts and gpt-5.4-mini --
@@ -43,66 +43,66 @@ describe('speed settings per role', () => {
     // reply in the lab threw. A union the provider accepts is not the same as a
     // union the model accepts, and only the second one matters.
     for (const role of ['planner', 'persuader', 'target'] as const) {
-      const chosen = callOptions(role).providerOptions?.openai?.reasoningEffort;
-      expect(['none', 'low', 'medium', 'high', 'xhigh']).toContain(chosen);
+      const chosen = callOptions(role).providerOptions?.openai?.reasoningEffort
+      expect(['none', 'low', 'medium', 'high', 'xhigh']).toContain(chosen)
     }
-  });
+  })
 
   test('drops an effort the model would refuse rather than failing the call', () => {
     // These are env-settable, so a typo or a model swap would otherwise break
     // conversations in production for a setting whose whole purpose is to make
     // them faster. The model's own default is a far better outcome than a 400.
-    process.env.PERSUADER_EFFORT = 'minimal';
-    expect(callOptions('persuader').providerOptions).toBeUndefined();
+    process.env.PERSUADER_EFFORT = 'minimal'
+    expect(callOptions('persuader').providerOptions).toBeUndefined()
 
-    process.env.PERSUADER_EFFORT = 'lwo';
-    expect(callOptions('persuader').providerOptions).toBeUndefined();
-  });
+    process.env.PERSUADER_EFFORT = 'lwo'
+    expect(callOptions('persuader').providerOptions).toBeUndefined()
+  })
 
   test('leaves the judge alone, because nobody is waiting on a score', () => {
     // Scoring runs offline in the lab. It is the one role where depth is worth
     // its seconds, so it keeps the model's own default rather than being
     // hurried along with the rest.
-    expect(callOptions('judge').providerOptions).toBeUndefined();
-  });
+    expect(callOptions('judge').providerOptions).toBeUndefined()
+  })
 
   test('is overridable without a deploy', () => {
     // The whole point of an env var here: if the shorter thinking budget costs
     // quality on real conversations, it is turned back up from the dashboard
     // rather than from a pull request.
-    process.env.PERSUADER_EFFORT = 'high';
-    expect(callOptions('persuader').providerOptions?.openai?.reasoningEffort).toBe('high');
-  });
+    process.env.PERSUADER_EFFORT = 'high'
+    expect(callOptions('persuader').providerOptions?.openai?.reasoningEffort).toBe('high')
+  })
 
   test('caps output for every role', () => {
     // A ceiling rather than a target. Message length is enforced by
     // rules.maxWordsPerMessage in code, where it belongs; this only stops a
     // model that ignores its instructions from costing unbounded seconds.
     for (const role of ['planner', 'persuader', 'target', 'judge'] as const) {
-      expect(callOptions(role).maxOutputTokens).toBeGreaterThan(0);
+      expect(callOptions(role).maxOutputTokens).toBeGreaterThan(0)
     }
-  });
+  })
 
   test('sends nothing provider-specific to a provider that would not understand it', () => {
     // An unknown provider option is a warning, not an error, and a warning
     // nobody reads is how a setting silently stops applying.
-    process.env.PERSUADER_PROVIDER = 'anthropic';
-    expect(callOptions('persuader').providerOptions).toBeUndefined();
-  });
+    process.env.PERSUADER_PROVIDER = 'anthropic'
+    expect(callOptions('persuader').providerOptions).toBeUndefined()
+  })
 
   test('names the upstream provider when running through the gateway', () => {
     // The gateway forwards provider options under the real provider's key, so
     // 'gateway' is never the right name to send them under.
-    process.env.PERSUADER_PROVIDER = 'gateway';
-    process.env.PERSUADER_MODEL = 'openai/gpt-5.5';
-    expect(callOptions('persuader').providerOptions?.openai?.reasoningEffort).toBe('low');
-  });
+    process.env.PERSUADER_PROVIDER = 'gateway'
+    process.env.PERSUADER_MODEL = 'openai/gpt-5.5'
+    expect(callOptions('persuader').providerOptions?.openai?.reasoningEffort).toBe('low')
+  })
 
   test('sends no provider options to a scripted model in a test', () => {
     // A mock has no provider to configure and no budget to spend. Passing them
     // anyway would make every test assert against options that exist for
     // nobody's benefit.
-    setModelOverrides({ persuader: jsonModel([{}]) });
-    expect(callOptions('persuader').providerOptions).toBeUndefined();
-  });
-});
+    setModelOverrides({ persuader: jsonModel([{}]) })
+    expect(callOptions('persuader').providerOptions).toBeUndefined()
+  })
+})

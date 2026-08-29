@@ -1,9 +1,9 @@
 import { notFound, redirect } from 'next/navigation'
 import { getBrand } from '../core/brand-registry'
 import type { BrandManifest } from '../core/brand-types'
-import { createServerSupabase } from './supabase-server'
 import { LOGIN_PATH } from './paths'
 import { asSessionClient, loadSessionBrand, type SessionBrand } from './session'
+import { createServerSupabase } from './supabase-server'
 
 export type ResolvedBrand = { brand: BrandManifest; session: SessionBrand }
 

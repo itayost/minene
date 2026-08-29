@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { type KeyboardEvent, type PointerEvent, useEffect, useRef, useState } from 'react'
 import type { ContentGroup, Direction, PageAsset } from '../core/brand-types'
 
 type PageViewerProps = {
@@ -49,7 +49,9 @@ function PageImage({ page }: { page: PageAsset }) {
       {status === 'error' ? (
         <div className="page-viewer__error" role="alert">
           <p>{page.alt}</p>
-          <button type="button" onClick={retryImage}>Retry loading {page.alt}</button>
+          <button type="button" onClick={retryImage}>
+            Retry loading {page.alt}
+          </button>
         </div>
       ) : (
         <img
@@ -65,7 +67,13 @@ function PageImage({ page }: { page: PageAsset }) {
   )
 }
 
-export function PageViewer({ group, pageIndex, direction, onPageChange, onShare: _onShare }: PageViewerProps) {
+export function PageViewer({
+  group,
+  pageIndex,
+  direction,
+  onPageChange,
+  onShare: _onShare,
+}: PageViewerProps) {
   const pointerOrigin = useRef<PointerOrigin | null>(null)
   const pageCount = group.pages.length
   const currentIndex = Number.isInteger(pageIndex)
@@ -89,9 +97,8 @@ export function PageViewer({ group, pageIndex, direction, onPageChange, onShare:
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
 
-    const movesForward = direction === 'rtl'
-      ? event.key === 'ArrowLeft'
-      : event.key === 'ArrowRight'
+    const movesForward =
+      direction === 'rtl' ? event.key === 'ArrowLeft' : event.key === 'ArrowRight'
     requestPage(currentIndex + (movesForward ? 1 : -1))
     event.preventDefault()
   }
@@ -112,7 +119,8 @@ export function PageViewer({ group, pageIndex, direction, onPageChange, onShare:
     event.currentTarget.releasePointerCapture?.(event.pointerId)
     const dx = event.clientX - origin.x
     const dy = event.clientY - origin.y
-    if (Math.abs(dx) <= SWIPE_THRESHOLD || Math.abs(dx) <= Math.abs(dy) * HORIZONTAL_DOMINANCE) return
+    if (Math.abs(dx) <= SWIPE_THRESHOLD || Math.abs(dx) <= Math.abs(dy) * HORIZONTAL_DOMINANCE)
+      return
 
     requestPage(currentIndex + (dx < 0 ? 1 : -1))
   }
@@ -144,8 +152,14 @@ export function PageViewer({ group, pageIndex, direction, onPageChange, onShare:
       <PageImage key={currentPage.src} page={currentPage} />
 
       <footer className="page-viewer__footer">
-        <span className="page-viewer__count" aria-live="polite">{currentIndex + 1} / {pageCount}</span>
-        <div className="page-viewer__indicators" aria-label={`Choose a page in ${group.label}`} role="group">
+        <span className="page-viewer__count" aria-live="polite">
+          {currentIndex + 1} / {pageCount}
+        </span>
+        <div
+          className="page-viewer__indicators"
+          aria-label={`Choose a page in ${group.label}`}
+          role="group"
+        >
           {group.pages.map((page, index) => (
             <button
               className="page-viewer__indicator"

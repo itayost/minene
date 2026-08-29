@@ -1,6 +1,6 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Run, RuleViolation, Turn } from '../engine/types';
-import { supabase } from './supabase';
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { RuleViolation, Run, Turn } from '../engine/types'
+import { supabase } from './supabase'
 
 /**
  * Conversations live in eran-task's Supabase project.
@@ -18,14 +18,14 @@ import { supabase } from './supabase';
  * whole engine for the benefit of one module at its edge.
  */
 export interface RunContext {
-  tenantId: string;
+  tenantId: string
   /** The assignment this conversation is about. Null for a lab run with no real ask behind it. */
-  assignmentId?: string | null;
-  assigneeId?: string | null;
-  channel?: 'in_app' | 'whatsapp' | 'simulation';
+  assignmentId?: string | null
+  assigneeId?: string | null
+  channel?: 'in_app' | 'whatsapp' | 'simulation'
 }
 
-const TENANT_VAR = 'PERSUADER_TENANT_ID';
+const TENANT_VAR = 'PERSUADER_TENANT_ID'
 
 /**
  * The lab runs personas against a plan with nobody real on the other side, so it
@@ -36,35 +36,35 @@ const TENANT_VAR = 'PERSUADER_TENANT_ID';
  * side.
  */
 export function defaultContext(): RunContext {
-  const tenantId = process.env[TENANT_VAR];
+  const tenantId = process.env[TENANT_VAR]
   if (!tenantId) {
     throw new Error(
       `חסר ${TENANT_VAR}. בלי מזהה עסק אי אפשר לשמור שיחה, כי כל שיחה שייכת לעסק אחד.`,
-    );
+    )
   }
-  return { tenantId, channel: 'simulation' };
+  return { tenantId, channel: 'simulation' }
 }
 
 interface TurnRow {
-  role: string;
-  text: string;
-  interaction: number;
-  rung: number | null;
-  blocker: string | null;
-  violations: RuleViolation[] | null;
+  role: string
+  text: string
+  interaction: number
+  rung: number | null
+  blocker: string | null
+  violations: RuleViolation[] | null
 }
 
 interface ConversationRow {
-  id: string;
-  started_at: string;
-  state: Run['state'];
-  outcome: string;
-  plan: Run['plan'];
-  persona: Run['persona'];
-  conversation_turns: TurnRow[] | null;
+  id: string
+  started_at: string
+  state: Run['state']
+  outcome: string
+  plan: Run['plan']
+  persona: Run['persona']
+  conversation_turns: TurnRow[] | null
 }
 
-const CONVERSATION_COLUMNS = 'id,started_at,state,outcome,plan,persona';
+const CONVERSATION_COLUMNS = 'id,started_at,state,outcome,plan,persona'
 
 const toTurn = (row: TurnRow): Turn => ({
   role: row.role as Turn['role'],
@@ -73,7 +73,7 @@ const toTurn = (row: TurnRow): Turn => ({
   ...(row.rung === null ? {} : { rung: row.rung as Turn['rung'] }),
   ...(row.blocker === null ? {} : { blocker: row.blocker as Turn['blocker'] }),
   ...(row.violations?.length ? { violations: row.violations } : {}),
-});
+})
 
 /**
  * `Turn.rung`, `Turn.blocker` and `Turn.violations` are optional on the type, and
@@ -83,7 +83,7 @@ const toTurn = (row: TurnRow): Turn => ({
  * that was saved, which is what the store's own tests assert.
  */
 function toRun(row: ConversationRow): Run {
-  const turns = (row.conversation_turns ?? []).map(toTurn);
+  const turns = (row.conversation_turns ?? []).map(toTurn)
   return {
     id: row.id,
     createdAt: row.started_at,
@@ -97,7 +97,7 @@ function toRun(row: ConversationRow): Run {
     // (`turns.flatMap(t => t.violations ?? [])`), so a stored copy would be a
     // second source of truth for something the turns already answer.
     violations: turns.flatMap((t) => t.violations ?? []),
-  };
+  }
 }
 
 export function createStore(client: SupabaseClient) {
@@ -118,8 +118,8 @@ export function createStore(client: SupabaseClient) {
         persona: run.persona,
         started_at: run.createdAt,
         ended_at: new Date().toISOString(),
-      });
-      if (error) throw new Error(`שמירת השיחה נכשלה: ${error.message}`);
+      })
+      if (error) throw new Error(`שמירת השיחה נכשלה: ${error.message}`)
 
       // Replace rather than append. saveRun is called once at the end of a
       // conversation, but the lab can re-run and re-save the same id, and an
@@ -130,10 +130,12 @@ export function createStore(client: SupabaseClient) {
       // rather than as a corrupted one -- the safe direction, and recoverable by
       // saving again.
       const { error: clearError } = await client
-        .from('conversation_turns').delete().eq('conversation_id', run.id);
-      if (clearError) throw new Error(`שמירת השיחה נכשלה: ${clearError.message}`);
+        .from('conversation_turns')
+        .delete()
+        .eq('conversation_id', run.id)
+      if (clearError) throw new Error(`שמירת השיחה נכשלה: ${clearError.message}`)
 
-      if (run.turns.length === 0) return;
+      if (run.turns.length === 0) return
 
       const { error: turnsError } = await client.from('conversation_turns').insert(
         run.turns.map((turn) => ({
@@ -145,8 +147,8 @@ export function createStore(client: SupabaseClient) {
           blocker: turn.blocker ?? null,
           violations: turn.violations ?? [],
         })),
-      );
-      if (turnsError) throw new Error(`שמירת השיחה נכשלה: ${turnsError.message}`);
+      )
+      if (turnsError) throw new Error(`שמירת השיחה נכשלה: ${turnsError.message}`)
     },
 
     /**
@@ -164,28 +166,32 @@ export function createStore(client: SupabaseClient) {
     async getRun(id: string, tenantId: string): Promise<Run | null> {
       const { data, error } = await client
         .from('conversations')
-        .select(`${CONVERSATION_COLUMNS},conversation_turns(role,text,interaction,rung,blocker,violations)`)
+        .select(
+          `${CONVERSATION_COLUMNS},conversation_turns(role,text,interaction,rung,blocker,violations)`,
+        )
         .eq('id', id)
         .eq('tenant_id', tenantId)
-        .maybeSingle();
+        .maybeSingle()
       // A missing row is null, not an error -- the file store answered the same
       // way and both call sites rely on it.
-      if (error || !data) return null;
-      return toRun(data as unknown as ConversationRow);
+      if (error || !data) return null
+      return toRun(data as unknown as ConversationRow)
     },
 
     /** Scoped for the same reason getRun is: nothing else scopes it. */
     async listRuns(tenantId: string, limit = 200): Promise<Run[]> {
       const { data, error } = await client
         .from('conversations')
-        .select(`${CONVERSATION_COLUMNS},conversation_turns(role,text,interaction,rung,blocker,violations)`)
+        .select(
+          `${CONVERSATION_COLUMNS},conversation_turns(role,text,interaction,rung,blocker,violations)`,
+        )
         .eq('tenant_id', tenantId)
         .order('started_at', { ascending: false })
-        .limit(limit);
-      if (error || !data) return [];
-      return (data as unknown as ConversationRow[]).map(toRun);
+        .limit(limit)
+      if (error || !data) return []
+      return (data as unknown as ConversationRow[]).map(toRun)
     },
-  };
+  }
 }
 
 /**
@@ -194,13 +200,13 @@ export function createStore(client: SupabaseClient) {
  * every route that merely imports this file, including the ones that never save.
  */
 export async function saveRun(run: Run, context: RunContext = defaultContext()): Promise<void> {
-  return createStore(supabase()).saveRun(run, context);
+  return createStore(supabase()).saveRun(run, context)
 }
 
 export async function getRun(id: string, tenantId: string): Promise<Run | null> {
-  return createStore(supabase()).getRun(id, tenantId);
+  return createStore(supabase()).getRun(id, tenantId)
 }
 
 export async function listRuns(tenantId: string, limit = 200): Promise<Run[]> {
-  return createStore(supabase()).listRuns(tenantId, limit);
+  return createStore(supabase()).listRuns(tenantId, limit)
 }

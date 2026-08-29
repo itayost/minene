@@ -2,9 +2,9 @@ import { lstatSync } from 'node:fs'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  type BrandRegistration,
   brandManifestEntries,
   validateBrandRegistrations,
-  type BrandRegistration,
 } from '../src/core/brand-registry'
 import type { BrandManifest } from '../src/core/brand-types'
 import { normalizeBrandAssetPath, validateBrand } from '../src/core/validate-brand'
@@ -23,7 +23,11 @@ function collectAssetPaths(brand: BrandManifest): string[] {
   ]
 }
 
-function resolveBrandAsset(publicRoot: string, brandId: string, assetPath: string): string | undefined {
+function resolveBrandAsset(
+  publicRoot: string,
+  brandId: string,
+  assetPath: string,
+): string | undefined {
   const normalizedPath = normalizeBrandAssetPath(brandId, assetPath)
   if (!normalizedPath) return undefined
 
@@ -32,11 +36,12 @@ function resolveBrandAsset(publicRoot: string, brandId: string, assetPath: strin
   const resolvedAsset = resolve(brandRoot, ...relativeAssetPath.split('/'))
   const relativeToBrand = relative(brandRoot, resolvedAsset)
   if (
-    relativeToBrand.length === 0
-    || relativeToBrand === '..'
-    || relativeToBrand.startsWith(`..${sep}`)
-    || isAbsolute(relativeToBrand)
-  ) return undefined
+    relativeToBrand.length === 0 ||
+    relativeToBrand === '..' ||
+    relativeToBrand.startsWith(`..${sep}`) ||
+    isAbsolute(relativeToBrand)
+  )
+    return undefined
 
   return resolvedAsset
 }
@@ -48,7 +53,9 @@ export function validateRegisteredBrands(
   const failures = validateBrandRegistrations(registrations).map((issue) => `registry: ${issue}`)
 
   for (const [, brand] of registrations) {
-    failures.push(...validateBrand(brand).map((issue) => `${brand.id}: ${issue.path} ${issue.message}`))
+    failures.push(
+      ...validateBrand(brand).map((issue) => `${brand.id}: ${issue.path} ${issue.message}`),
+    )
 
     for (const assetPath of new Set(collectAssetPaths(brand))) {
       const publicFile = resolveBrandAsset(publicRoot, brand.id, assetPath)
@@ -74,7 +81,9 @@ function run() {
   const failures = validateRegisteredBrands(brandManifestEntries)
 
   if (failures.length > 0) {
-    console.error(`Brand validation failed:\n${failures.map((failure) => `- ${failure}`).join('\n')}`)
+    console.error(
+      `Brand validation failed:\n${failures.map((failure) => `- ${failure}`).join('\n')}`,
+    )
     process.exitCode = 1
     return
   }

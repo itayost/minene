@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import type { Role } from '../brain/types'
+import { useApiErrorHandler } from '../brain/use-api-error'
 import { DEFAULT_RULES } from './engine/rules'
 import type { PersuasionPlan, TargetPersona, Turn } from './engine/types'
-import type { Role } from '../brain/types'
 import { streamSimulation } from './simulate-api'
-import { useApiErrorHandler } from '../brain/use-api-error'
 
 /**
  * The lab could read runs long before it could start one, which made the matrix
@@ -90,14 +90,16 @@ export function RunControl({ onFinished, personas, plans, roles }: RunControlPro
           // Kept rather than dropped, but it can never reach the bank, which is
           // built from the score. A cell showing runs and no winning arguments
           // is confusing to meet later and cheap to explain here.
-          if (event_.type === 'unscored') setNotice('הריצה נשמרה אבל לא נוקדה, ולכן לא תיכנס לבנק הטיעונים.')
+          if (event_.type === 'unscored')
+            setNotice('הריצה נשמרה אבל לא נוקדה, ולכן לא תיכנס לבנק הטיעונים.')
           if (event_.type === 'stopped') setNotice(`השיחה נעצרה: ${event_.reason}`)
           if (event_.type === 'error') setError(event_.message)
           // `saved`, not `done`. The route scores and inserts after the engine
           // has finished, so reloading on `done` re-queries before the row
           // exists and the matrix comes back without the run just watched.
           if (event_.type === 'saved') onFinished()
-          if (event_.type === 'unsaved') setError('השיחה הסתיימה אבל לא נשמרה, ולכן היא לא תופיע במטריצה.')
+          if (event_.type === 'unsaved')
+            setError('השיחה הסתיימה אבל לא נשמרה, ולכן היא לא תופיע במטריצה.')
         },
       )
     } catch (failure) {
@@ -123,7 +125,11 @@ export function RunControl({ onFinished, personas, plans, roles }: RunControlPro
         <label>
           תפקיד
           <select onChange={(e) => setChosenRoleId(e.target.value)} value={jobRoleId}>
-            {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+            {roles.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.name}
+              </option>
+            ))}
           </select>
         </label>
 
@@ -131,7 +137,10 @@ export function RunControl({ onFinished, personas, plans, roles }: RunControlPro
           דמות
           <select onChange={(e) => setPersonaId(e.target.value)} value={personaId}>
             {personas.map((persona) => (
-              <option key={persona.id} value={persona.id}>{`${persona.name} · ${persona.role}`}</option>
+              <option
+                key={persona.id}
+                value={persona.id}
+              >{`${persona.name} · ${persona.role}`}</option>
             ))}
           </select>
         </label>
@@ -139,7 +148,11 @@ export function RunControl({ onFinished, personas, plans, roles }: RunControlPro
         <label>
           נושא
           <select onChange={(e) => setPlanId(e.target.value)} value={planId}>
-            {plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.topic}</option>)}
+            {plans.map((plan) => (
+              <option key={plan.id} value={plan.id}>
+                {plan.topic}
+              </option>
+            ))}
           </select>
         </label>
       </div>
@@ -148,7 +161,11 @@ export function RunControl({ onFinished, personas, plans, roles }: RunControlPro
         {running ? 'רץ…' : 'הרצת סימולציה'}
       </button>
 
-      {error ? <p className="knowledge-message" role="alert">{error}</p> : null}
+      {error ? (
+        <p className="knowledge-message" role="alert">
+          {error}
+        </p>
+      ) : null}
       {notice ? <p className="knowledge-message">{notice}</p> : null}
 
       {turns.length ? (
@@ -156,7 +173,11 @@ export function RunControl({ onFinished, personas, plans, roles }: RunControlPro
         // assertive region would interrupt a screen reader on every one of them.
         <ol aria-live="polite" className="run-control__turns">
           {turns.map((turn, index) => (
-            <li className="run-control__turn" data-role={turn.role} key={`${turn.interaction}-${index}`}>
+            <li
+              className="run-control__turn"
+              data-role={turn.role}
+              key={`${turn.interaction}-${index}`}
+            >
               <span className="run-control__who">{ROLE_LABEL[turn.role]}</span>
               <span>{turn.text}</span>
             </li>

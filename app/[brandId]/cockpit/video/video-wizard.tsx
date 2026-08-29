@@ -3,12 +3,12 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import {
+  type Choice,
   describeBrief,
   VIDEO_GOALS,
   VIDEO_LENGTHS,
   VIDEO_STYLES,
   VIDEO_TOPICS,
-  type Choice,
   type VideoGoal,
   type VideoLength,
   type VideoStyle,
@@ -93,9 +93,10 @@ function Step<T extends string | number>({
   const selectedLabel = choiceLabel(options, selected)
   const state = active ? 'active' : selectedLabel ? 'complete' : 'locked'
   const panelId = `wizard-step-${number}-panel`
-  const headerLabel = selectedLabel && !active
-    ? `שלב ${number}, ${summaryLabel}: ${selectedLabel}, עריכה`
-    : `שלב ${number}, ${title}`
+  const headerLabel =
+    selectedLabel && !active
+      ? `שלב ${number}, ${summaryLabel}: ${selectedLabel}, עריכה`
+      : `שלב ${number}, ${title}`
 
   return (
     <section className={`wizard-step wizard-step--${number}`} data-state={state}>
@@ -111,8 +112,12 @@ function Step<T extends string | number>({
       >
         <span aria-hidden="true" className="wizard-step__badge">
           {selectedLabel && !active ? (
-            <svg viewBox="0 0 16 16"><path d="m3 8 3 3 7-7" /></svg>
-          ) : number}
+            <svg viewBox="0 0 16 16">
+              <path d="m3 8 3 3 7-7" />
+            </svg>
+          ) : (
+            number
+          )}
         </span>
 
         <span className="wizard-step__copy">
@@ -144,10 +149,16 @@ function Step<T extends string | number>({
                   onClick={() => onSelect(option.id)}
                   type="button"
                 >
-                  {icon ? <span className="wizard-choice__icon"><Icon name={icon} /></span> : null}
+                  {icon ? (
+                    <span className="wizard-choice__icon">
+                      <Icon name={icon} />
+                    </span>
+                  ) : null}
                   <span className="wizard-choice__label">{option.label}</span>
                   <span aria-hidden="true" className="wizard-choice__check">
-                    <svg viewBox="0 0 16 16"><path d="m3 8 3 3 7-7" /></svg>
+                    <svg viewBox="0 0 16 16">
+                      <path d="m3 8 3 3 7-7" />
+                    </svg>
                   </span>
                 </button>
               )
@@ -190,7 +201,16 @@ export function VideoWizard({ backHref }: { backHref: string }) {
           recognise this path, so the header falls back to home chrome with no
           back control, which would leave the browser button as the only exit. */}
       <Link className="wizard__back" href={backHref}>
-        <svg aria-hidden="true" width="11" height="18" viewBox="0 0 11 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <svg
+          aria-hidden="true"
+          width="11"
+          height="18"
+          viewBox="0 0 11 18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
           <path d="m1.5 1.5 7.5 7.5-7.5 7.5" />
         </svg>
         <span>חזרה</span>
@@ -199,7 +219,9 @@ export function VideoWizard({ backHref }: { backHref: string }) {
       <header className="wizard__intro">
         <h2 className="wizard__title">יוצרות סרטון הדרכה</h2>
         <p className="wizard__tagline">4 בחירות קצרות, ואת מוכנה</p>
-        <p aria-live="polite" className="wizard__progress-copy">שלב {activeStep} מתוך 4</p>
+        <p aria-live="polite" className="wizard__progress-copy">
+          שלב {activeStep} מתוך 4
+        </p>
         <div
           aria-label={`${completedCount} מתוך 4 בחירות הושלמו`}
           aria-valuemax={4}
@@ -212,7 +234,9 @@ export function VideoWizard({ backHref }: { backHref: string }) {
             <span
               aria-hidden="true"
               className="wizard-progress__dot"
-              data-state={step === activeStep ? 'active' : completedSteps[step - 1] ? 'complete' : 'upcoming'}
+              data-state={
+                step === activeStep ? 'active' : completedSteps[step - 1] ? 'complete' : 'upcoming'
+              }
               key={step}
             >
               {completedSteps[step - 1] && step !== activeStep ? '✓' : step}
@@ -291,7 +315,9 @@ export function VideoWizard({ backHref }: { backHref: string }) {
 
       <div className="wizard__actions">
         {selections.length > 0 ? (
-          <p aria-label="סיכום הבחירות" className="wizard-brief">{selections.join(' · ')}</p>
+          <p aria-label="סיכום הבחירות" className="wizard-brief">
+            {selections.join(' · ')}
+          </p>
         ) : null}
 
         <button

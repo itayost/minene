@@ -57,7 +57,10 @@ export async function loadSessionBrand(client: SessionClient): Promise<SessionBr
   if (role !== 'owner' && role !== 'staff') return null
 
   const { data: tenant } = await client
-    .from('tenants').select('brand_id').eq('id', tenantId).maybeSingle()
+    .from('tenants')
+    .select('brand_id')
+    .eq('id', tenantId)
+    .maybeSingle()
   if (!tenant) return null
 
   const brandId = tenant.brand_id

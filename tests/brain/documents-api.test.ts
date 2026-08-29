@@ -1,15 +1,25 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createDocumentsApi, DocumentsApiError, type DocumentsClient } from '../../src/brain/documents-api'
+import {
+  createDocumentsApi,
+  DocumentsApiError,
+  type DocumentsClient,
+} from '../../src/brain/documents-api'
 
 const TENANT = '11111111-1111-4111-8111-111111111111'
 
-function client(outcomes: {
-  upload?: { error?: { code?: string; status?: number } | null }
-  insert?: { error?: { code?: string } | null; status?: number }
-  invoke?: { data?: unknown; error?: { context?: { status?: number }; code?: string } | null }
-  docRow?: { data?: { status: string; error: string | null } | null; error?: { code?: string } | null; status?: number }
-  list?: { data?: unknown[] | null; error?: { code?: string } | null; status?: number }
-} = {}) {
+function client(
+  outcomes: {
+    upload?: { error?: { code?: string; status?: number } | null }
+    insert?: { error?: { code?: string } | null; status?: number }
+    invoke?: { data?: unknown; error?: { context?: { status?: number }; code?: string } | null }
+    docRow?: {
+      data?: { status: string; error: string | null } | null
+      error?: { code?: string } | null
+      status?: number
+    }
+    list?: { data?: unknown[] | null; error?: { code?: string } | null; status?: number }
+  } = {},
+) {
   const order: string[] = []
   const uploads: { path: string; contentType: string }[] = []
   const inserts: Record<string, unknown>[] = []
@@ -31,7 +41,10 @@ function client(outcomes: {
     },
     from: () => {
       const query = {
-        select: (selected: string) => { columns.push(selected); return query },
+        select: (selected: string) => {
+          columns.push(selected)
+          return query
+        },
         eq: () => query,
         order: () => query,
         limit: async () => outcomes.list ?? { data: [], error: null },
@@ -63,7 +76,11 @@ describe('uploadDocument', () => {
 
   it('builds the storage path the policy matches on', async () => {
     const { api, uploads } = client()
-    const { documentId } = await api.uploadDocument({ file: file(), tenantId: TENANT, topicId: 'store' })
+    const { documentId } = await api.uploadDocument({
+      file: file(),
+      tenantId: TENANT,
+      topicId: 'store',
+    })
 
     // "<tenant_id>/<document_id>.pdf" is load-bearing, not a naming convention:
     // the storage policy matches on that prefix.
@@ -73,7 +90,11 @@ describe('uploadDocument', () => {
 
   it('writes every not-null column the documents row requires', async () => {
     const { api, inserts } = client()
-    const { documentId } = await api.uploadDocument({ file: file(), tenantId: TENANT, topicId: 'store' })
+    const { documentId } = await api.uploadDocument({
+      file: file(),
+      tenantId: TENANT,
+      topicId: 'store',
+    })
 
     // toEqual, not toMatchObject. A subset match hid a real bug here: tenant_id
     // and uploaded_by are NOT NULL with no default and no trigger, and omitting
@@ -92,22 +113,25 @@ describe('uploadDocument', () => {
   it('reports an expired session rather than a generic upload failure', async () => {
     const { api } = client({ upload: { error: { status: 401 } } })
 
-    await expect(api.uploadDocument({ file: file(), tenantId: TENANT, topicId: 'store' }))
-      .rejects.toMatchObject({ code: 'UNAUTHORIZED' })
+    await expect(
+      api.uploadDocument({ file: file(), tenantId: TENANT, topicId: 'store' }),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' })
   })
 
   it('reports a genuine upload failure as such', async () => {
     const { api } = client({ upload: { error: { code: 'boom' } } })
 
-    await expect(api.uploadDocument({ file: file(), tenantId: TENANT, topicId: 'store' }))
-      .rejects.toMatchObject({ code: 'UPLOAD_FAILED' })
+    await expect(
+      api.uploadDocument({ file: file(), tenantId: TENANT, topicId: 'store' }),
+    ).rejects.toMatchObject({ code: 'UPLOAD_FAILED' })
   })
 
   it('distinguishes a failed row insert from a failed upload', async () => {
     const { api } = client({ insert: { error: { code: 'boom' } } })
 
-    await expect(api.uploadDocument({ file: file(), tenantId: TENANT, topicId: 'store' }))
-      .rejects.toMatchObject({ code: 'SAVE_FAILED' })
+    await expect(
+      api.uploadDocument({ file: file(), tenantId: TENANT, topicId: 'store' }),
+    ).rejects.toMatchObject({ code: 'SAVE_FAILED' })
   })
 })
 
@@ -120,7 +144,7 @@ describe('extractRules', () => {
     await expect(api.extractRules('doc-1')).rejects.toMatchObject({ code: 'UNAUTHORIZED' })
   })
 
-  it('surfaces the document\'s own error when extraction failed', async () => {
+  it("surfaces the document's own error when extraction failed", async () => {
     const { api } = client({
       invoke: { error: { context: { status: 500 } } },
       docRow: { data: { status: 'failed', error: 'הקובץ ריק' }, error: null },
@@ -179,7 +203,12 @@ const CONVERSATION = 'אני: איך מטפלים בהחזר בלי חשבוני
 describe('saveConversation', () => {
   it('creates a row and touches storage not at all', async () => {
     const { api, order } = client()
-    await api.saveConversation({ tenantId: TENANT, topicId: 'store', title: 'החזרות', text: CONVERSATION })
+    await api.saveConversation({
+      tenantId: TENANT,
+      topicId: 'store',
+      title: 'החזרות',
+      text: CONVERSATION,
+    })
 
     // There is no object, so there is no ordering hazard between an upload and a
     // row, and no path convention to keep in step with the storage policy. This
@@ -190,7 +219,10 @@ describe('saveConversation', () => {
   it('writes the transcript on the row, with no storage path beside it', async () => {
     const { api, inserts } = client()
     const { documentId } = await api.saveConversation({
-      tenantId: TENANT, topicId: 'store', title: 'החזרות', text: CONVERSATION,
+      tenantId: TENANT,
+      topicId: 'store',
+      title: 'החזרות',
+      text: CONVERSATION,
     })
 
     // documents_source_shape requires exactly one of storage_path / raw_text.
@@ -209,7 +241,12 @@ describe('saveConversation', () => {
 
   it('names an untitled paste rather than inserting a null filename', async () => {
     const { api, inserts } = client()
-    await api.saveConversation({ tenantId: TENANT, topicId: 'store', title: '  ', text: CONVERSATION })
+    await api.saveConversation({
+      tenantId: TENANT,
+      topicId: 'store',
+      title: '  ',
+      text: CONVERSATION,
+    })
 
     // filename is NOT NULL and is what the documents list renders.
     expect(inserts[0]).toMatchObject({ filename: 'שיחה שהודבקה' })
@@ -218,8 +255,9 @@ describe('saveConversation', () => {
   it('refuses an empty paste in front of the person', async () => {
     const { api, inserts } = client()
 
-    await expect(api.saveConversation({ tenantId: TENANT, topicId: 'store', title: '', text: '   ' }))
-      .rejects.toMatchObject({ code: 'EMPTY_CONVERSATION' })
+    await expect(
+      api.saveConversation({ tenantId: TENANT, topicId: 'store', title: '', text: '   ' }),
+    ).rejects.toMatchObject({ code: 'EMPTY_CONVERSATION' })
     expect(inserts).toHaveLength(0)
   })
 
@@ -228,15 +266,25 @@ describe('saveConversation', () => {
 
     // raw_text checks the same 200k bound. Checking here too turns a constraint
     // violation nobody can act on into a sentence.
-    await expect(api.saveConversation({
-      tenantId: TENANT, topicId: 'store', title: '', text: 'א'.repeat(200_001),
-    })).rejects.toMatchObject({ code: 'CONVERSATION_TOO_LONG' })
+    await expect(
+      api.saveConversation({
+        tenantId: TENANT,
+        topicId: 'store',
+        title: '',
+        text: 'א'.repeat(200_001),
+      }),
+    ).rejects.toMatchObject({ code: 'CONVERSATION_TOO_LONG' })
     expect(inserts).toHaveLength(0)
   })
 
   it('reads the author from the session, never from the caller', async () => {
     const { api, inserts } = client()
-    await api.saveConversation({ tenantId: TENANT, topicId: 'store', title: '', text: CONVERSATION })
+    await api.saveConversation({
+      tenantId: TENANT,
+      topicId: 'store',
+      title: '',
+      text: CONVERSATION,
+    })
 
     // tenantId and topicId are deliberately client-known state. An identity
     // claim is not, and must never be spoofable from the browser.
@@ -246,15 +294,17 @@ describe('saveConversation', () => {
   it('sends an expired session back to sign in', async () => {
     const { api } = client({ insert: { error: { code: 'PGRST301' } } })
 
-    await expect(api.saveConversation({ tenantId: TENANT, topicId: 'store', title: '', text: CONVERSATION }))
-      .rejects.toMatchObject({ code: 'UNAUTHORIZED' })
+    await expect(
+      api.saveConversation({ tenantId: TENANT, topicId: 'store', title: '', text: CONVERSATION }),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' })
   })
 
   it('reports a refused insert as a save failure the person can retry', async () => {
     const { api } = client({ insert: { error: { code: '23502' }, status: 400 } })
 
-    await expect(api.saveConversation({ tenantId: TENANT, topicId: 'store', title: '', text: CONVERSATION }))
-      .rejects.toBeInstanceOf(DocumentsApiError)
+    await expect(
+      api.saveConversation({ tenantId: TENANT, topicId: 'store', title: '', text: CONVERSATION }),
+    ).rejects.toBeInstanceOf(DocumentsApiError)
   })
 })
 

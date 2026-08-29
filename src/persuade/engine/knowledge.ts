@@ -1,4 +1,4 @@
-import type { BlockerId, ArgumentCategory, Rung } from './types';
+import type { ArgumentCategory, BlockerId, Rung } from './types'
 
 /**
  * The persuasion knowledge base, distilled from Eran's model.
@@ -6,11 +6,11 @@ import type { BlockerId, ArgumentCategory, Rung } from './types';
  */
 
 export interface BlockerSpec {
-  id: BlockerId;
-  label: string;
-  signals: string[];
-  useTools: string[];
-  avoid: string;
+  id: BlockerId
+  label: string
+  signals: string[]
+  useTools: string[]
+  avoid: string
 }
 
 /** "Do not try to persuade before you understand why the person is not moving." */
@@ -141,11 +141,11 @@ export const BLOCKERS: BlockerSpec[] = [
     useTools: ['שכנוע להתמדה', 'חזרה ללמה התחלת', 'להקטין ולא לנתק רצף'],
     avoid: 'לא להגיד "אין דבר כזה אין כוח". להיות אמפתי וחד.',
   },
-];
+]
 
 export const BLOCKER_LOOKUP: Record<string, BlockerSpec> = Object.fromEntries(
   BLOCKERS.map((b) => [b.id, b]),
-);
+)
 
 /** Argument order matters: personal interest first, organization second. */
 export const ARGUMENT_ORDER: ArgumentCategory[] = [
@@ -160,7 +160,7 @@ export const ARGUMENT_ORDER: ArgumentCategory[] = [
   'role_standard',
   'cost_of_inaction',
   'authority',
-];
+]
 
 export const ARGUMENT_LABELS: Record<ArgumentCategory, string> = {
   personal_benefit: 'תועלת אישית',
@@ -174,7 +174,7 @@ export const ARGUMENT_LABELS: Record<ArgumentCategory, string> = {
   numbers: 'מספרים',
   social_proof: 'לחץ חברתי חיובי',
   authority: 'סמכות ושליחות',
-};
+}
 
 export const RUNG_LABELS: Record<Rung, string> = {
   1: 'שכנוע חיובי',
@@ -182,7 +182,7 @@ export const RUNG_LABELS: Record<Rung, string> = {
   3: 'סטנדרט ותפקיד',
   4: 'מחיר ובקרה',
   5: 'גבול ניהולי',
-};
+}
 
 /** What each of the four interactions is for. Interaction 4 must force a decision. */
 export const INTERACTION_PLAN: Record<number, string> = {
@@ -190,7 +190,7 @@ export const INTERACTION_PLAN: Record<number, string> = {
   2: 'לזהות את החסם ולתת תשובה קצרה אחת.',
   3: 'טיעון חזק יותר: מספרים, כסף, קריירה, סטנדרט, מחיר.',
   4: 'חתירה להחלטה. "מתחייב או לא? אם לא, תגיד למה ואעביר הלאה."',
-};
+}
 
 /** Hebrew closure/fatigue markers. Short, non-committal, or shrinking replies. */
 export const FATIGUE_MARKERS = [
@@ -211,7 +211,7 @@ export const FATIGUE_MARKERS = [
   'אוקיי',
   'אוקי',
   'ok',
-];
+]
 
 export const COMMITMENT_MARKERS = [
   'סגור',
@@ -225,7 +225,7 @@ export const COMMITMENT_MARKERS = [
   'מתחילים',
   'בוא ננסה',
   'מוכן לנסות',
-];
+]
 
 export const REFUSAL_MARKERS = [
   'לא מסכים',
@@ -235,9 +235,9 @@ export const REFUSAL_MARKERS = [
   'לא אעשה',
   'לא הולך לעשות',
   'זה לא התפקיד שלי',
-];
+]
 
-export const MAX_INTERACTIONS = 4;
+export const MAX_INTERACTIONS = 4
 
 /**
  * WhatsApp lengths, not memo lengths.
@@ -254,6 +254,6 @@ export const MAX_INTERACTIONS = 4;
  * Both are still `RuleConfig` fields and both are still editable on the rules
  * page: these are the defaults, not the ceiling.
  */
-export const MAX_WORDS_PER_SENTENCE = 12;
-export const MAX_WORDS_PER_MESSAGE = 25;
-export const MAX_ARGUMENTS_PER_TURN = 2;
+export const MAX_WORDS_PER_SENTENCE = 12
+export const MAX_WORDS_PER_MESSAGE = 25
+export const MAX_ARGUMENTS_PER_TURN = 2

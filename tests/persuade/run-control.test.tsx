@@ -25,9 +25,7 @@ const PLANS = [{ id: 'briefings', topic: 'תדריכי בוקר' }] as never
 const ROLES = [{ id: 'r1', name: 'מנהלת חנות', sortOrder: 10 }]
 
 const setup = (onFinished = vi.fn()) => {
-  render(
-    <RunControl onFinished={onFinished} personas={PERSONAS} plans={PLANS} roles={ROLES} />,
-  )
+  render(<RunControl onFinished={onFinished} personas={PERSONAS} plans={PLANS} roles={ROLES} />)
   return { user: userEvent.setup(), onFinished }
 }
 
@@ -61,12 +59,17 @@ const ndjson = (values: unknown[]) => stream(lines(...values))
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.stubGlobal('fetch', vi.fn(async () => ndjson([
-    { type: 'turn', turn: { role: 'persuader', text: 'רותי, בקשה אחת.', interaction: 1 } },
-    { type: 'turn', turn: { role: 'target', text: 'בסדר, ננסה.', interaction: 2 } },
-    { type: 'done', run: { id: 'sim-1' } },
-    { type: 'saved', id: 'sim-1' },
-  ])))
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () =>
+      ndjson([
+        { type: 'turn', turn: { role: 'persuader', text: 'רותי, בקשה אחת.', interaction: 1 } },
+        { type: 'turn', turn: { role: 'target', text: 'בסדר, ננסה.', interaction: 2 } },
+        { type: 'done', run: { id: 'sim-1' } },
+        { type: 'saved', id: 'sim-1' },
+      ]),
+    ),
+  )
 })
 
 describe('starting a simulation', () => {
@@ -99,16 +102,23 @@ describe('starting a simulation', () => {
     // rest of the run is held back here, so anything that renders only on
     // `done` shows nothing at all rather than showing it a moment later.
     let release = () => {}
-    const held = new Promise<void>((resolve) => { release = resolve })
-    vi.stubGlobal('fetch', vi.fn(async () => stream(
-      lines(
-        { type: 'turn', turn: { role: 'persuader', text: 'רותי, בקשה אחת.', interaction: 1 } },
-        { type: 'turn', turn: { role: 'target', text: 'בסדר, ננסה.', interaction: 2 } },
-        { type: 'done', run: { id: 'sim-1' } },
-        { type: 'saved', id: 'sim-1' },
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        stream(
+          lines(
+            { type: 'turn', turn: { role: 'persuader', text: 'רותי, בקשה אחת.', interaction: 1 } },
+            { type: 'turn', turn: { role: 'target', text: 'בסדר, ננסה.', interaction: 2 } },
+            { type: 'done', run: { id: 'sim-1' } },
+            { type: 'saved', id: 'sim-1' },
+          ),
+          { at: 2, until: held },
+        ),
       ),
-      { at: 2, until: held },
-    )))
+    )
 
     const { user, onFinished } = setup()
     await user.type(screen.getByLabelText('ענף'), 'אופנה')
@@ -130,7 +140,10 @@ describe('starting a simulation', () => {
     ) as [string, string, string]
     // Parsing whatever a chunk happens to contain throws here, and the run would
     // read as failed while the server had in fact finished it.
-    vi.stubGlobal('fetch', vi.fn(async () => stream([turn.slice(0, 20), turn.slice(20), done, saved])))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => stream([turn.slice(0, 20), turn.slice(20), done, saved])),
+    )
 
     const { user, onFinished } = setup()
     await user.type(screen.getByLabelText('ענף'), 'אופנה')
@@ -145,11 +158,18 @@ describe('starting a simulation', () => {
     // before the row exists, and the matrix comes back without the run that was
     // just watched -- which reads as the run having been lost.
     let release = () => {}
-    const held = new Promise<void>((resolve) => { release = resolve })
-    vi.stubGlobal('fetch', vi.fn(async () => stream(
-      lines({ type: 'done', run: { id: 'sim-1' } }, { type: 'saved', id: 'sim-1' }),
-      { at: 1, until: held },
-    )))
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        stream(lines({ type: 'done', run: { id: 'sim-1' } }, { type: 'saved', id: 'sim-1' }), {
+          at: 1,
+          until: held,
+        }),
+      ),
+    )
 
     const { user, onFinished } = setup()
     await user.type(screen.getByLabelText('ענף'), 'אופנה')
@@ -163,10 +183,10 @@ describe('starting a simulation', () => {
   })
 
   it('says when the run was lost on the way to the database', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ndjson([
-      { type: 'done', run: { id: 'sim-1' } },
-      { type: 'unsaved' },
-    ])))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ndjson([{ type: 'done', run: { id: 'sim-1' } }, { type: 'unsaved' }])),
+    )
     const { user, onFinished } = setup()
     await user.type(screen.getByLabelText('ענף'), 'אופנה')
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
@@ -195,10 +215,10 @@ describe('starting a simulation', () => {
   })
 
   it('says when the run was saved without a score', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ndjson([
-      { type: 'unscored' },
-      { type: 'done', run: { id: 'sim-1' } },
-    ])))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ndjson([{ type: 'unscored' }, { type: 'done', run: { id: 'sim-1' } }])),
+    )
     const { user } = setup()
     await user.type(screen.getByLabelText('ענף'), 'אופנה')
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
@@ -213,11 +233,16 @@ describe('starting a simulation', () => {
     // The lab spent an afternoon reading "הרצת הסימולציה נכשלה" while the route
     // was returning a precise sentence naming the missing configuration. A
     // generic message here throws away the only thing that explains the failure.
-    vi.stubGlobal('fetch', vi.fn(async () => ({
-      ok: false,
-      status: 503,
-      json: async () => ({ error: 'שכבת האחסון לא מוגדרת. צריך SUPABASE_URL ו-SUPABASE_SECRET_KEY בסביבה.' }),
-    })))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status: 503,
+        json: async () => ({
+          error: 'שכבת האחסון לא מוגדרת. צריך SUPABASE_URL ו-SUPABASE_SECRET_KEY בסביבה.',
+        }),
+      })),
+    )
     const { user } = setup()
     await user.type(screen.getByLabelText('ענף'), 'אופנה')
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
@@ -227,9 +252,16 @@ describe('starting a simulation', () => {
   })
 
   it('falls back to its own words when the body carries none', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({
-      ok: false, status: 500, json: async () => { throw new Error('not json') },
-    })))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status: 500,
+        json: async () => {
+          throw new Error('not json')
+        },
+      })),
+    )
     const { user } = setup()
     await user.type(screen.getByLabelText('ענף'), 'אופנה')
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
@@ -238,7 +270,10 @@ describe('starting a simulation', () => {
   })
 
   it('reports a refusal rather than looking like it is still running', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 403, json: async () => ({}) })))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 403, json: async () => ({}) })),
+    )
     const { user } = setup()
     await user.type(screen.getByLabelText('ענף'), 'אופנה')
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
@@ -254,14 +289,17 @@ describe('starting a simulation', () => {
     // fails, with nothing on it that fixes the problem. Every other surface here
     // routes a 401 through useApiErrorHandler, which navigates instead; this one
     // reported it as an error message and stranded them.
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 401, json: async () => ({}) })))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 401, json: async () => ({}) })),
+    )
     const { user } = setup()
     await user.type(screen.getByLabelText('ענף'), 'אופנה')
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith(
-      '/login?next=%2Fminene%2Ftools%2Fpersuade%2Flab',
-    ))
+    await waitFor(() =>
+      expect(router.replace).toHaveBeenCalledWith('/login?next=%2Fminene%2Ftools%2Fpersuade%2Flab'),
+    )
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
@@ -269,9 +307,9 @@ describe('starting a simulation', () => {
     // No session in the browser is the same predicament as a rejected one, and
     // it is the more common of the two: the tab was open across the expiry.
     const supabase = await import('../../src/auth/supabase-browser')
-    vi.mocked(supabase.createBrowserSupabase).mockReturnValueOnce(
-      { auth: { getSession: async () => ({ data: { session: null } }) } } as never,
-    )
+    vi.mocked(supabase.createBrowserSupabase).mockReturnValueOnce({
+      auth: { getSession: async () => ({ data: { session: null } }) },
+    } as never)
     const { user } = setup()
     await user.type(screen.getByLabelText('ענף'), 'אופנה')
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))

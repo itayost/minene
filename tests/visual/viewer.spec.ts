@@ -26,14 +26,19 @@ test.beforeEach(async ({ page }) => {
 async function settle(page: import('@playwright/test').Page) {
   await page.waitForLoadState('networkidle')
   // Page images fade in on load; without this the screenshots race the decode.
-  await page.evaluate(() => Promise.all(
-    Array.from(document.images)
-      .filter((image) => !image.complete)
-      .map((image) => new Promise((resolve) => {
-        image.addEventListener('load', resolve, { once: true })
-        image.addEventListener('error', resolve, { once: true })
-      })),
-  ))
+  await page.evaluate(() =>
+    Promise.all(
+      Array.from(document.images)
+        .filter((image) => !image.complete)
+        .map(
+          (image) =>
+            new Promise((resolve) => {
+              image.addEventListener('load', resolve, { once: true })
+              image.addEventListener('error', resolve, { once: true })
+            }),
+        ),
+    ),
+  )
 }
 
 /*

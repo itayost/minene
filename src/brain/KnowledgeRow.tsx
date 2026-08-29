@@ -12,7 +12,13 @@ import type { Rule } from './types'
  * not is the vote control -- the admin reads the aggregate, the floor produces
  * it.
  */
-export function KnowledgeRow({ rule, vote, isSaving, onVote, onClear }: {
+export function KnowledgeRow({
+  rule,
+  vote,
+  isSaving,
+  onVote,
+  onClear,
+}: {
   rule: Rule
   vote: boolean | undefined
   isSaving: boolean
@@ -21,16 +27,26 @@ export function KnowledgeRow({ rule, vote, isSaving, onVote, onClear }: {
 }) {
   return (
     <BrainCard
-      actions={<RuleVote isSaving={isSaving} onClear={onClear} onVote={onVote} ruleId={rule.id} vote={vote} />}
+      actions={
+        <RuleVote
+          isSaving={isSaving}
+          onClear={onClear}
+          onVote={onVote}
+          ruleId={rule.id}
+          vote={vote}
+        />
+      }
       as="li"
-      head={(
+      head={
         <>
           <span>{`#${rule.rule_number}`}</span>
           {/* A row whose topic was retired is still a real row with a real
               subject, and a blank badge reads as a bug rather than as an
               unknown topic. */}
           <span>{getTopic(rule.topic_id)?.title ?? rule.topic_id}</span>
-          {rule.sub_topic ? <span className="knowledge-row__sub-topic">{rule.sub_topic}</span> : null}
+          {rule.sub_topic ? (
+            <span className="knowledge-row__sub-topic">{rule.sub_topic}</span>
+          ) : null}
           {/* An unrated rule shows nothing at all rather than a placeholder: the
               person reading it is the one being asked to rate it, and "טרם דורג"
               beside the buttons that would fix that is noise. */}
@@ -48,7 +64,7 @@ export function KnowledgeRow({ rule, vote, isSaving, onVote, onClear }: {
             </span>
           ) : null}
         </>
-      )}
+      }
     >
       {rule.text}
 
@@ -64,7 +80,12 @@ export function KnowledgeRow({ rule, vote, isSaving, onVote, onClear }: {
           it on trust, which is the whole reason source_url exists. rel is not
           optional: the href is a URL a language model reported. */}
       {rule.source_url ? (
-        <a className="knowledge-row__source" href={rule.source_url} rel="noopener noreferrer" target="_blank">
+        <a
+          className="knowledge-row__source"
+          href={rule.source_url}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
           מקור חיצוני
         </a>
       ) : null}

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * An in-memory stand-in for the two tables the store touches.
@@ -14,29 +14,33 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  */
 
 export interface FakeRow {
-  [key: string]: unknown;
+  [key: string]: unknown
 }
 
 export interface FakeDb {
-  conversations: FakeRow[];
-  conversation_turns: FakeRow[];
-  assignments: FakeRow[];
-  assignment_events: FakeRow[];
+  conversations: FakeRow[]
+  conversation_turns: FakeRow[]
+  assignments: FakeRow[]
+  assignment_events: FakeRow[]
   /** Set to make the next write fail, so the error paths are reachable. */
-  failNext: string | null;
+  failNext: string | null
 }
 
 export function createFakeSupabase(): { client: SupabaseClient; db: FakeDb } {
   const db: FakeDb = {
-    conversations: [], conversation_turns: [], assignments: [], assignment_events: [], failNext: null,
-  };
+    conversations: [],
+    conversation_turns: [],
+    assignments: [],
+    assignment_events: [],
+    failNext: null,
+  }
 
   const takeFailure = (): { error: { message: string } } | null => {
-    if (!db.failNext) return null;
-    const message = db.failNext;
-    db.failNext = null;
-    return { error: { message } };
-  };
+    if (!db.failNext) return null
+    const message = db.failNext
+    db.failNext = null
+    return { error: { message } }
+  }
 
   // The join the store asks for: conversation_turns(...) nested under a
   // conversation. Insertion order stands in for the real query's ordering, which
@@ -47,25 +51,27 @@ export function createFakeSupabase(): { client: SupabaseClient; db: FakeDb } {
       .filter((t) => t.conversation_id === row.id)
       // conversation_id is dropped because the real query nests turns under the
       // conversation and never selects it.
-      .map((t) => Object.fromEntries(Object.entries(t).filter(([key]) => key !== 'conversation_id'))),
-  });
+      .map((t) =>
+        Object.fromEntries(Object.entries(t).filter(([key]) => key !== 'conversation_id')),
+      ),
+  })
 
   const from = (table: string) => ({
     upsert: async (row: FakeRow) => {
-      const failure = takeFailure();
-      if (failure) return failure;
-      const rows = db[table as keyof FakeDb] as FakeRow[];
-      const index = rows.findIndex((r) => r.id === row.id);
-      if (index >= 0) rows[index] = row;
-      else rows.push(row);
-      return { error: null };
+      const failure = takeFailure()
+      if (failure) return failure
+      const rows = db[table as keyof FakeDb] as FakeRow[]
+      const index = rows.findIndex((r) => r.id === row.id)
+      if (index >= 0) rows[index] = row
+      else rows.push(row)
+      return { error: null }
     },
 
     insert: async (rows: FakeRow | FakeRow[]) => {
-      const failure = takeFailure();
-      if (failure) return failure;
-      (db[table as keyof FakeDb] as FakeRow[]).push(...(Array.isArray(rows) ? rows : [rows]));
-      return { error: null };
+      const failure = takeFailure()
+      if (failure) return failure
+      ;(db[table as keyof FakeDb] as FakeRow[]).push(...(Array.isArray(rows) ? rows : [rows]))
+      return { error: null }
     },
 
     // .update(...).eq(...).eq(...) -- the second eq is the status guard that
@@ -73,27 +79,29 @@ export function createFakeSupabase(): { client: SupabaseClient; db: FakeDb } {
     // race the guard exists for would pass untested.
     update: (patch: FakeRow) => {
       const applyTo = (predicates: [string, unknown][]) => {
-        const failure = takeFailure();
-        if (failure) return failure;
+        const failure = takeFailure()
+        if (failure) return failure
         for (const row of db[table as keyof FakeDb] as FakeRow[]) {
-          if (predicates.every(([column, value]) => row[column] === value)) Object.assign(row, patch);
+          if (predicates.every(([column, value]) => row[column] === value))
+            Object.assign(row, patch)
         }
-        return { error: null };
-      };
+        return { error: null }
+      }
       const chain = (predicates: [string, unknown][]) => ({
         eq: (column: string, value: unknown) => chain([...predicates, [column, value]]),
-        then: (resolve: (r: unknown) => unknown) => Promise.resolve(applyTo(predicates)).then(resolve),
-      });
-      return chain([]);
+        then: (resolve: (r: unknown) => unknown) =>
+          Promise.resolve(applyTo(predicates)).then(resolve),
+      })
+      return chain([])
     },
 
     delete: () => ({
       eq: async (column: string, value: unknown) => {
-        const failure = takeFailure();
-        if (failure) return failure;
-        const key = table as keyof FakeDb;
-        db[key] = (db[key] as FakeRow[]).filter((r) => r[column] !== value) as never;
-        return { error: null };
+        const failure = takeFailure()
+        if (failure) return failure
+        const key = table as keyof FakeDb
+        db[key] = (db[key] as FakeRow[]).filter((r) => r[column] !== value) as never
+        return { error: null }
       },
     }),
 
@@ -107,28 +115,32 @@ export function createFakeSupabase(): { client: SupabaseClient; db: FakeDb } {
       const chain = (predicates: [string, unknown][]) => ({
         eq: (column: string, value: unknown) => chain([...predicates, [column, value]]),
 
-        matching: () => db.conversations
-          .filter((r) => predicates.every(([column, value]) => r[column] === value)),
+        matching: () =>
+          db.conversations.filter((r) =>
+            predicates.every(([column, value]) => r[column] === value),
+          ),
 
         maybeSingle: async () => {
-          const row = chain(predicates).matching()[0];
-          return { data: row ? withTurns(row) : null, error: null };
+          const row = chain(predicates).matching()[0]
+          return { data: row ? withTurns(row) : null, error: null }
         },
 
         order: (column: string, options?: { ascending?: boolean }) => ({
           limit: async (n: number) => {
             const sorted = [...chain(predicates).matching()].sort((a, b) => {
-              const left = String(a[column] ?? '');
-              const right = String(b[column] ?? '');
-              return options?.ascending === false ? right.localeCompare(left) : left.localeCompare(right);
-            });
-            return { data: sorted.slice(0, n).map(withTurns), error: null };
+              const left = String(a[column] ?? '')
+              const right = String(b[column] ?? '')
+              return options?.ascending === false
+                ? right.localeCompare(left)
+                : left.localeCompare(right)
+            })
+            return { data: sorted.slice(0, n).map(withTurns), error: null }
           },
         }),
-      });
-      return chain([]);
+      })
+      return chain([])
     },
-  });
+  })
 
-  return { client: { from } as unknown as SupabaseClient, db };
+  return { client: { from } as unknown as SupabaseClient, db }
 }

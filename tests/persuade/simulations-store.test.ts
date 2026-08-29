@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
-import { createSimulationsStore } from '../../src/persuade/lib/simulations'
+import { describe, expect, it } from 'vitest'
 import type { Run } from '../../src/persuade/engine/types'
+import { createSimulationsStore } from '../../src/persuade/lib/simulations'
 
 type Row = Record<string, unknown>
 
@@ -10,8 +10,14 @@ function fake(rows: Row[] = []) {
   const client = {
     from: () => {
       const q = {
-        insert: (values: Row) => { inserted.push(values); return q },
-        select: (cols: string) => { selected = cols; return q },
+        insert: (values: Row) => {
+          inserted.push(values)
+          return q
+        },
+        select: (cols: string) => {
+          selected = cols
+          return q
+        },
         order: () => q,
         limit: () => q,
         then: (resolve: (v: unknown) => unknown) => resolve({ data: rows, error: null }),
@@ -22,18 +28,19 @@ function fake(rows: Row[] = []) {
   return { store: createSimulationsStore(client), inserted, selectedColumns: () => selected }
 }
 
-const run = (over: Partial<Run> = {}) => ({
-  id: 'sim-1',
-  createdAt: '2026-08-27T10:00:00Z',
-  planId: 'p1',
-  personaId: 'rona',
-  plan: { id: 'p1', ask: { what: 'תדריך יומי' } },
-  persona: { id: 'rona' },
-  turns: [{ role: 'persuader', text: 'שלום', interaction: 1 }],
-  state: { outcome: 'agreed', blockers: ['overloaded'], interaction: 2 },
-  violations: [],
-  ...over,
-}) as unknown as Run
+const run = (over: Partial<Run> = {}) =>
+  ({
+    id: 'sim-1',
+    createdAt: '2026-08-27T10:00:00Z',
+    planId: 'p1',
+    personaId: 'rona',
+    plan: { id: 'p1', ask: { what: 'תדריך יומי' } },
+    persona: { id: 'rona' },
+    turns: [{ role: 'persuader', text: 'שלום', interaction: 1 }],
+    state: { outcome: 'agreed', blockers: ['overloaded'], interaction: 2 },
+    violations: [],
+    ...over,
+  }) as unknown as Run
 
 describe('saving a simulation', () => {
   it('writes the matrix coordinates, because the cell is what it belongs to', async () => {
@@ -54,7 +61,9 @@ describe('saving a simulation', () => {
   })
 
   it('persists the score, which is the whole reason the bank can exist', async () => {
-    const scored = run({ score: { winningCategory: 'numbers', winningArgument: 'פי שלוש', grade: 80 } } as never)
+    const scored = run({
+      score: { winningCategory: 'numbers', winningArgument: 'פי שלוש', grade: 80 },
+    } as never)
     const { store, inserted } = fake()
     await store.saveSimulation(scored, { industry: 'אופנה', jobRoleId: 'r1', need: null })
 
@@ -82,17 +91,19 @@ describe('reading simulations back', () => {
   })
 
   it('rebuilds a run the bank and the rates can use', async () => {
-    const { store } = fake([{
-      id: 'sim-1',
-      industry: 'אופנה',
-      job_role_id: 'r1',
-      persona_id: 'rona',
-      plan: { id: 'p1' },
-      turns: [{ role: 'persuader', text: 'שלום', interaction: 1 }],
-      state: { outcome: 'agreed', blockers: ['overloaded'], interaction: 2 },
-      score: { winningCategory: 'numbers', winningArgument: 'פי שלוש', grade: 80 },
-      created_at: '2026-08-27T10:00:00Z',
-    }])
+    const { store } = fake([
+      {
+        id: 'sim-1',
+        industry: 'אופנה',
+        job_role_id: 'r1',
+        persona_id: 'rona',
+        plan: { id: 'p1' },
+        turns: [{ role: 'persuader', text: 'שלום', interaction: 1 }],
+        state: { outcome: 'agreed', blockers: ['overloaded'], interaction: 2 },
+        score: { winningCategory: 'numbers', winningArgument: 'פי שלוש', grade: 80 },
+        created_at: '2026-08-27T10:00:00Z',
+      },
+    ])
 
     const [first] = await store.listSimulations()
 

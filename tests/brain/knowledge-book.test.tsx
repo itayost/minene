@@ -67,7 +67,9 @@ describe('the four ways the floor reads the knowledge base', () => {
     render(<BookClient brandId="minene" role="staff" />)
     await openTab(user, 'מקרים ותגובות')
 
-    await waitFor(() => expect(rulesApi.listRules).toHaveBeenCalledWith({ topicId: null, kind: 'case' }))
+    await waitFor(() =>
+      expect(rulesApi.listRules).toHaveBeenCalledWith({ topicId: null, kind: 'case' }),
+    )
   })
 
   it('asks for do and don’t as two calls, not one page filtered afterwards', async () => {
@@ -79,8 +81,16 @@ describe('the four ways the floor reads the knowledge base', () => {
     // with no polarity at all, which are the majority, and both lists would come
     // back short for a reason the reader cannot see.
     await waitFor(() => {
-      expect(rulesApi.listRules).toHaveBeenCalledWith({ topicId: null, polarity: 'do', roleId: null })
-      expect(rulesApi.listRules).toHaveBeenCalledWith({ topicId: null, polarity: 'dont', roleId: null })
+      expect(rulesApi.listRules).toHaveBeenCalledWith({
+        topicId: null,
+        polarity: 'do',
+        roleId: null,
+      })
+      expect(rulesApi.listRules).toHaveBeenCalledWith({
+        topicId: null,
+        polarity: 'dont',
+        roleId: null,
+      })
     })
   })
 
@@ -95,11 +105,11 @@ describe('the four ways the floor reads the knowledge base', () => {
 
 describe('what the do and don’t lists show', () => {
   it('splits them under their own headings rather than mixing them with a badge', async () => {
-    rulesApi.listRules.mockImplementation(async ({ polarity }: { polarity?: string }) => (
+    rulesApi.listRules.mockImplementation(async ({ polarity }: { polarity?: string }) =>
       polarity === 'do'
         ? page([makeRule({ id: 'do-1', text: 'לקבל לקוחה בכניסה', polarity: 'do' })])
-        : page([makeRule({ id: 'dont-1', text: 'לא לעזוב את הקופה', polarity: 'dont' })])
-    ))
+        : page([makeRule({ id: 'dont-1', text: 'לא לעזוב את הקופה', polarity: 'dont' })]),
+    )
     const user = userEvent.setup()
     render(<BookClient brandId="minene" role="staff" />)
     await openTab(user, 'עשה ואל תעשה')
@@ -119,7 +129,11 @@ describe('what the do and don’t lists show', () => {
     await user.selectOptions(await screen.findByLabelText('תפקיד'), 'role-1')
 
     await waitFor(() => {
-      expect(rulesApi.listRules).toHaveBeenCalledWith({ topicId: null, polarity: 'do', roleId: 'role-1' })
+      expect(rulesApi.listRules).toHaveBeenCalledWith({
+        topicId: null,
+        polarity: 'do',
+        roleId: 'role-1',
+      })
     })
   })
 
@@ -131,7 +145,13 @@ describe('what the do and don’t lists show', () => {
 
     // Every role is a superset, so nothing is hidden. Failing the whole page
     // over a filter that only one tab uses would hide the knowledge instead.
-    await waitFor(() => expect(rulesApi.listRules).toHaveBeenCalledWith({ topicId: null, polarity: 'do', roleId: null }))
+    await waitFor(() =>
+      expect(rulesApi.listRules).toHaveBeenCalledWith({
+        topicId: null,
+        polarity: 'do',
+        roleId: null,
+      }),
+    )
   })
 })
 
@@ -154,18 +174,20 @@ describe('a rule as the floor sees it', () => {
   })
 
   it('prints a case’s response, not only the situation it describes', async () => {
-    rulesApi.listRules.mockResolvedValue(page([
-      makeRule({ kind: 'case', text: 'לקוחה מבקשת החזר בלי חשבונית', response: 'להציע זיכוי' }),
-    ]))
+    rulesApi.listRules.mockResolvedValue(
+      page([
+        makeRule({ kind: 'case', text: 'לקוחה מבקשת החזר בלי חשבונית', response: 'להציע זיכוי' }),
+      ]),
+    )
     render(<BookClient brandId="minene" role="staff" />)
 
     expect(await screen.findByText(/להציע זיכוי/)).toBeVisible()
   })
 
   it('links a hunted rule to the page it came from, without handing that page a way back', async () => {
-    rulesApi.listRules.mockResolvedValue(page([
-      makeRule({ source: 'external', source_url: 'https://example.com/retail' }),
-    ]))
+    rulesApi.listRules.mockResolvedValue(
+      page([makeRule({ source: 'external', source_url: 'https://example.com/retail' })]),
+    )
     render(<BookClient brandId="minene" role="staff" />)
 
     const link = await screen.findByRole('link', { name: 'מקור חיצוני' })
@@ -182,8 +204,13 @@ describe('rating a rule', () => {
     render(<BookClient brandId="minene" role="staff" />)
     await user.click(await screen.findByRole('button', { name: 'הוסיפי לייק' }))
 
-    await waitFor(() => expect(rulesApi.setRuleVote).toHaveBeenCalledWith({ ruleId: 'rule-1', isLike: true }))
-    expect(await screen.findByRole('button', { name: 'ביטול הלייק' })).toHaveAttribute('aria-pressed', 'true')
+    await waitFor(() =>
+      expect(rulesApi.setRuleVote).toHaveBeenCalledWith({ ruleId: 'rule-1', isLike: true }),
+    )
+    expect(await screen.findByRole('button', { name: 'ביטול הלייק' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
   })
 
   it('never guesses the new percentage', async () => {
@@ -216,7 +243,10 @@ describe('rating a rule', () => {
     await user.click(await screen.findByRole('button', { name: 'הוסיפי לייק' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('הדירוג לא נשמר')
-    expect(screen.getByRole('button', { name: 'הוסיפי לייק' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'הוסיפי לייק' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
   })
 })
 
@@ -256,8 +286,11 @@ describe('what an owner gets on the same list', () => {
 
     // The whole reason נתוני המוח existed as a second screen. It is a filter,
     // not a destination.
-    await waitFor(() => expect(rulesApi.listRules)
-      .toHaveBeenCalledWith(expect.objectContaining({ status: 'pending' })))
+    await waitFor(() =>
+      expect(rulesApi.listRules).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'pending' }),
+      ),
+    )
   })
 
   it('searches the list rather than opening a second copy of it', async () => {
@@ -267,8 +300,9 @@ describe('what an owner gets on the same list', () => {
     await user.type(screen.getByLabelText('חיפוש בחוקים'), 'קופה')
     await user.click(screen.getByRole('button', { name: 'חיפוש' }))
 
-    await waitFor(() => expect(rulesApi.listRules)
-      .toHaveBeenCalledWith(expect.objectContaining({ query: 'קופה' })))
+    await waitFor(() =>
+      expect(rulesApi.listRules).toHaveBeenCalledWith(expect.objectContaining({ query: 'קופה' })),
+    )
   })
 
   it('links to the ingest screen, which is otherwise unreachable', async () => {
@@ -277,8 +311,10 @@ describe('what an owner gets on the same list', () => {
     // The deleted hub was the only thing linking to the owner surfaces. Without
     // this, PDF upload, the conversation paste, the web hunt, the approval
     // queue and the documents list are reachable only by typing a URL.
-    expect(await screen.findByRole('link', { name: /הזנה/ }))
-      .toHaveAttribute('href', '/minene/tools/brain/ingest')
+    expect(await screen.findByRole('link', { name: /הזנה/ })).toHaveAttribute(
+      'href',
+      '/minene/tools/brain/ingest',
+    )
   })
 
   it('hides the owner filters on the views they cannot filter', async () => {

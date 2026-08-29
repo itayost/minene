@@ -20,8 +20,8 @@ export function requireSupabaseConfig(): { url: string; key: string } {
   const config = supabaseConfig()
   if (!config) {
     throw new Error(
-      'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY. '
-      + 'Copy .env.example to .env.local and fill both in.',
+      'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY. ' +
+        'Copy .env.example to .env.local and fill both in.',
     )
   }
   return config

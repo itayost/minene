@@ -86,7 +86,9 @@ describe('contributing knowledge from the floor', () => {
 
     // The same constraint refuses it from the other direction, so a response
     // left behind by a change of mind would fail the whole submission.
-    expect(submitInternalRule).toHaveBeenCalledWith(expect.objectContaining({ kind: 'tip', response: null }))
+    expect(submitInternalRule).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'tip', response: null }),
+    )
   })
 
   it('sends an untouched sub-topic as null rather than as an empty string', async () => {
@@ -95,7 +97,9 @@ describe('contributing knowledge from the floor', () => {
     await user.type(screen.getByLabelText('החוק'), 'לחייך')
     await user.click(screen.getByRole('button', { name: 'שליחה לאישור' }))
 
-    expect(submitInternalRule).toHaveBeenCalledWith(expect.objectContaining({ subTopic: null, polarity: null }))
+    expect(submitInternalRule).toHaveBeenCalledWith(
+      expect.objectContaining({ subTopic: null, polarity: null }),
+    )
   })
 
   it('says what happens next, not merely that it worked', async () => {
@@ -134,7 +138,11 @@ describe('contributing knowledge from the floor', () => {
   })
 
   it('keeps what was typed when the submission fails', async () => {
-    const { user } = setup(vi.fn(async () => { throw new RulesApiError('REQUEST_FAILED', 500, 'nope') }))
+    const { user } = setup(
+      vi.fn(async () => {
+        throw new RulesApiError('REQUEST_FAILED', 500, 'nope')
+      }),
+    )
     await open(user)
     await user.type(screen.getByLabelText('החוק'), 'לחייך')
     await user.click(screen.getByRole('button', { name: 'שליחה לאישור' }))
@@ -146,7 +154,11 @@ describe('contributing knowledge from the floor', () => {
   })
 
   it('sends an expired session to sign in instead of showing a message', async () => {
-    const { user } = setup(vi.fn(async () => { throw new RulesApiError('UNAUTHORIZED', 401, 'פג') }))
+    const { user } = setup(
+      vi.fn(async () => {
+        throw new RulesApiError('UNAUTHORIZED', 401, 'פג')
+      }),
+    )
     await open(user)
     await user.type(screen.getByLabelText('החוק'), 'לחייך')
     await user.click(screen.getByRole('button', { name: 'שליחה לאישור' }))

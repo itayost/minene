@@ -1,5 +1,5 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { ConversationState } from '../engine/types';
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { ConversationState } from '../engine/types'
 
 /**
  * What a finished conversation writes back to the assignment it was about.
@@ -17,7 +17,7 @@ import type { ConversationState } from '../engine/types';
  * make every measurement of this bot a measurement of how agreeable people are.
  */
 
-export type ExecutionReport = 'yes' | 'partial' | 'no';
+export type ExecutionReport = 'yes' | 'partial' | 'no'
 
 /**
  * Called when a conversation ends, whatever its outcome. Writes the audit row
@@ -40,8 +40,8 @@ export async function recordAsked(
     // recorded as a person's own report.
     source: 'bot',
     note: `שיחה הסתיימה במצב ${state.outcome} אחרי ${state.interaction} אינטראקציות, מדרגה ${state.rung}`,
-  });
-  if (error) throw new Error(`רישום השיחה במשימה נכשל: ${error.message}`);
+  })
+  if (error) throw new Error(`רישום השיחה במשימה נכשל: ${error.message}`)
 }
 
 /**
@@ -61,17 +61,18 @@ export async function recordExecution(
   assignmentId: string,
   report: { executed: ExecutionReport; timesDone: number | null; whatHappened: string },
 ): Promise<void> {
-  const settled = report.executed === 'yes' ? 'done' : 'not_done';
+  const settled = report.executed === 'yes' ? 'done' : 'not_done'
 
   const { error: eventError } = await client.from('assignment_events').insert({
     assignment_id: assignmentId,
     kind: settled === 'done' ? 'reported_done' : 'reported_not_done',
     source: 'bot',
-    note: report.timesDone === null
-      ? report.whatHappened
-      : `${report.whatHappened} (${report.timesDone} פעמים)`,
-  });
-  if (eventError) throw new Error(`רישום הביצוע נכשל: ${eventError.message}`);
+    note:
+      report.timesDone === null
+        ? report.whatHappened
+        : `${report.whatHappened} (${report.timesDone} פעמים)`,
+  })
+  if (eventError) throw new Error(`רישום הביצוע נכשל: ${eventError.message}`)
 
   // Written directly rather than through settle_assignment, which derives its
   // source from auth.uid() and can only ever produce 'self' or 'manager'. This
@@ -86,6 +87,6 @@ export async function recordExecution(
     .from('assignments')
     .update({ status: settled, settled_at: new Date().toISOString() })
     .eq('id', assignmentId)
-    .eq('status', 'open');
-  if (statusError) throw new Error(`עדכון המשימה נכשל: ${statusError.message}`);
+    .eq('status', 'open')
+  if (statusError) throw new Error(`עדכון המשימה נכשל: ${statusError.message}`)
 }

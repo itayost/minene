@@ -15,8 +15,9 @@ const css = () => readFileSync(new URL('../../src/persuade/persuade.css', import
 
 describe('the persuasion surfaces paint only in brand colours', () => {
   it('uses no hex outside the allowed set', () => {
-    const offenders = [...new Set(css().match(HEX) ?? [])]
-      .filter((hex) => !ALLOWED.has(hex.toLowerCase()))
+    const offenders = [...new Set(css().match(HEX) ?? [])].filter(
+      (hex) => !ALLOWED.has(hex.toLowerCase()),
+    )
 
     // The same guard brain.css has, and for the same reason: eleven off-brand
     // colours sat in that file for a week because a var() fallback never fires

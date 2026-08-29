@@ -1,13 +1,20 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { BrandShell, type PagePosition } from '../../src/components/BrandShell'
 import { ShareSheet } from '../../src/components/ShareSheet'
 import type { BrandManifest } from '../../src/core/brand-types'
-import type { PageActionContext } from '../../src/core/page-actions'
-import { brandHref } from '../../src/core/hrefs'
 import { createInitialScreen, parentHref, resolveScreen } from '../../src/core/navigation'
+import type { PageActionContext } from '../../src/core/page-actions'
 
 type ShellChannels = {
   /** A route registers a factory. Passing null clears it on unmount. */
@@ -38,7 +45,13 @@ function samePosition(current: PagePosition | null, next: PagePosition | null): 
   return current.pageIndex === next.pageIndex && current.pageCount === next.pageCount
 }
 
-export function BrandShellClient({ brand, children }: { brand: BrandManifest; children: ReactNode }) {
+export function BrandShellClient({
+  brand,
+  children,
+}: {
+  brand: BrandManifest
+  children: ReactNode
+}) {
   const pathname = usePathname()
   const [build, setBuild] = useState<(() => PageActionContext) | null>(null)
   const [shareContext, setShareContext] = useState<PageActionContext | null>(null)
@@ -60,6 +73,9 @@ export function BrandShellClient({ brand, children }: { brand: BrandManifest; ch
   // Nothing else closes the sheet, so leaving the screen would carry it onto the
   // next one. The path is the right boundary: paging only changes the query, and
   // the base is inert while the sheet is open, so no page can turn beneath it.
+  // `pathname` is a trigger, not a read: navigating is what must re-run this,
+  // and the body has no use for the value itself.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deliberate trigger dependency
   useEffect(() => {
     setShareContext(null)
   }, [pathname])
@@ -83,15 +99,16 @@ export function BrandShellClient({ brand, children }: { brand: BrandManifest; ch
         screen={screen}
         pagePosition={position}
         backHref={parentHref(brand, screen)}
-        homeHref={brandHref(brand.id)}
         onShare={() => setShareContext(build ? build() : null)}
-        modal={shareContext ? (
-          <ShareSheet
-            context={shareContext}
-            labels={brand.labels}
-            onClose={() => setShareContext(null)}
-          />
-        ) : undefined}
+        modal={
+          shareContext ? (
+            <ShareSheet
+              context={shareContext}
+              labels={brand.labels}
+              onClose={() => setShareContext(null)}
+            />
+          ) : undefined
+        }
       >
         {children}
       </BrandShell>
