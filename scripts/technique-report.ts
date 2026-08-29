@@ -8,13 +8,22 @@
  * disagree with its own evidence.
  */
 import { readFileSync } from 'node:fs'
-import { createClient } from '@supabase/supabase-js'
+import { fileURLToPath } from 'node:url'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import {
   buildEffectiveness,
   type EffectivenessInput,
   formatTechnique,
 } from '../src/persuade/effectiveness'
-import type { ArgumentCategory, PersuasionPlan } from '../src/persuade/engine/types'
+import type {
+  ArgumentCategory,
+  Outcome,
+  PersuasionPlan,
+  RunScore,
+  Turn,
+} from '../src/persuade/engine/types'
+import type { WorldState } from '../src/persuade/engine/world'
+import { fetchAll } from '../src/persuade/lib/fetch-all'
 
 function env(): { url: string; key: string } {
   try {
@@ -37,19 +46,43 @@ function env(): { url: string; key: string } {
 
 const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1]
 
+export interface SimulationRow {
+  outcome: Outcome
+  turns: Turn[] | null
+  state: { fatigue?: number } | null
+  score: RunScore | null
+  world: WorldState | null
+  persona_id: string | null
+  plan: PersuasionPlan | null
+}
+
+/**
+ * Every simulation, not the most recent 5000 of them.
+ *
+ * A fixed `.limit()` reads as a deliberate bound, but there was no note anyone
+ * chose 5000 on purpose, and ordering by `created_at desc` first means growth
+ * past it quietly drops the OLDEST evidence -- so the report keeps looking
+ * complete right up until the day it silently stops being one. See
+ * `fetchAll` for why a plain `.select()` has the same failure mode.
+ */
+export async function fetchSimulationRows(db: SupabaseClient): Promise<SimulationRow[]> {
+  return fetchAll<SimulationRow>((from, to) =>
+    db
+      .from('simulations')
+      .select('outcome,turns,state,score,world,persona_id,plan')
+      .order('created_at', { ascending: false })
+      .range(from, to),
+  )
+}
+
 async function main(): Promise<void> {
   const { url, key } = env()
   const db = createClient(url, key, { auth: { persistSession: false } })
   const minRuns = Number(arg('min-runs') ?? '10')
 
-  const { data, error } = await db
-    .from('simulations')
-    .select('outcome,turns,state,score,world,persona_id,plan')
-    .order('created_at', { ascending: false })
-    .limit(5000)
-  if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
+  const data = await fetchSimulationRows(db)
 
-  const inputs: EffectivenessInput[] = (data ?? []).map((row) => ({
+  const inputs: EffectivenessInput[] = data.map((row) => ({
     run: {
       outcome: row.outcome,
       turns: row.turns ?? [],
@@ -111,4 +144,8 @@ async function main(): Promise<void> {
   }
 }
 
-await main()
+// Guarded so a test can import fetchSimulationRows without running the whole
+// script against a real database.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  await main()
+}

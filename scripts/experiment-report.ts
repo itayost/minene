@@ -10,8 +10,11 @@
  * arms) plus the one that makes it false (the arms ran on different models).
  */
 import { readFileSync } from 'node:fs'
-import { createClient } from '@supabase/supabase-js'
+import { fileURLToPath } from 'node:url'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import type { Outcome } from '../src/persuade/engine/types'
 import { compareArms, type ExperimentRun, readiness } from '../src/persuade/experiment-results'
+import { fetchAll } from '../src/persuade/lib/fetch-all'
 
 function env(): { url: string; key: string } {
   try {
@@ -32,18 +35,39 @@ function env(): { url: string; key: string } {
   return { url, key }
 }
 
+export interface ExperimentSimulationRow {
+  experiment: string
+  variant: string | null
+  outcome: Outcome
+  turns: ExperimentRun['turns'] | null
+  score: ExperimentRun['score']
+  models: ExperimentRun['models']
+}
+
+/**
+ * Every run that belongs to an experiment, not just the first page of them.
+ *
+ * There was no `.limit()` at all here, which is worse than technique-report's:
+ * an un-ranged `.select()` is capped by PostgREST's own default (1000 rows on
+ * a stock Supabase project) rather than by anything this file chose, so the
+ * truncation point isn't even visible by reading this code. See `fetchAll`.
+ */
+export async function fetchExperimentRows(db: SupabaseClient): Promise<ExperimentSimulationRow[]> {
+  return fetchAll<ExperimentSimulationRow>((from, to) =>
+    db
+      .from('simulations')
+      .select('experiment,variant,outcome,turns,score,models')
+      .not('experiment', 'is', null)
+      .range(from, to),
+  )
+}
+
 async function main(): Promise<void> {
   const { url, key } = env()
   const db = createClient(url, key, { auth: { persistSession: false } })
   const wanted = process.argv[2]
 
-  const { data, error } = await db
-    .from('simulations')
-    .select('experiment,variant,outcome,turns,score,models')
-    .not('experiment', 'is', null)
-  if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
-
-  const rows = data ?? []
+  const rows = await fetchExperimentRows(db)
   if (rows.length === 0) {
     console.log('לא רצה עדיין אף ניסוי.')
     console.log('כדי להתחיל אחד: queueExperiment ב-src/persuade/lib/experiments.ts')
@@ -97,4 +121,8 @@ async function main(): Promise<void> {
   }
 }
 
-await main()
+// Guarded so a test can import fetchExperimentRows without running the whole
+// script against a real database.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  await main()
+}
