@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, type FormEvent } from 'react'
+import { type FormEvent, useState } from 'react'
 import { createBrowserSupabase } from '../../src/auth/supabase-browser'
 
 export function LoginForm({ next }: { next: string | null }) {

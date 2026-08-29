@@ -3,12 +3,12 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import {
+  type Choice,
   describeBrief,
   VIDEO_GOALS,
   VIDEO_LENGTHS,
   VIDEO_STYLES,
   VIDEO_TOPICS,
-  type Choice,
   type VideoGoal,
   type VideoLength,
   type VideoStyle,

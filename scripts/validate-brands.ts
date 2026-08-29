@@ -2,9 +2,9 @@ import { lstatSync } from 'node:fs'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  type BrandRegistration,
   brandManifestEntries,
   validateBrandRegistrations,
-  type BrandRegistration,
 } from '../src/core/brand-registry'
 import type { BrandManifest } from '../src/core/brand-types'
 import { normalizeBrandAssetPath, validateBrand } from '../src/core/validate-brand'

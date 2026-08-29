@@ -1,6 +1,6 @@
-import { chromium, type FullConfig } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
+import { chromium, type FullConfig } from '@playwright/test'
 
 export const STORAGE_STATE = 'tests/visual/.auth/state.json'
 

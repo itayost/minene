@@ -1,10 +1,10 @@
 import type { BotConfig } from '../../../../src/persuade/engine/config'
 import { validateConfig } from '../../../../src/persuade/engine/config'
+import { scoreRun } from '../../../../src/persuade/engine/score'
 import { runSimulation } from '../../../../src/persuade/engine/simulation'
 import { resolveAccess } from '../../../../src/persuade/lib/access'
 import { getPersona } from '../../../../src/persuade/lib/content'
 import { assertModelAccessConfigured } from '../../../../src/persuade/lib/model'
-import { scoreRun } from '../../../../src/persuade/engine/score'
 import { createSimulationsStore } from '../../../../src/persuade/lib/simulations'
 import { supabase } from '../../../../src/persuade/lib/supabase'
 

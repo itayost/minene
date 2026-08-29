@@ -1,4 +1,4 @@
-import { supabase, isStorageConfigured } from './supabase'
+import { isStorageConfigured, supabase } from './supabase'
 
 /**
  * Who is asking.

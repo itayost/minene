@@ -2,12 +2,12 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
-import { useReportPagePosition, useShareTarget } from '../../brand-shell-client'
 import { PageViewer } from '../../../../src/components/PageViewer'
 import type { BrandManifest, ContentGroup } from '../../../../src/core/brand-types'
 import { groupHref } from '../../../../src/core/hrefs'
 import { progressEntryKey } from '../../../../src/core/progress'
 import { useProgress } from '../../../../src/hooks/use-progress'
+import { useReportPagePosition, useShareTarget } from '../../brand-shell-client'
 
 type ViewerClientProps = {
   brand: BrandManifest

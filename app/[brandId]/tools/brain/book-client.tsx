@@ -4,12 +4,12 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabase } from '../../../../src/auth/supabase-browser'
 import { KnowledgeRow } from '../../../../src/brain/KnowledgeRow'
-import { createRolesApi, type RolesClient } from '../../../../src/brain/roles-api'
 import { RolesManager } from '../../../../src/brain/RolesManager'
+import { createRolesApi, type RolesClient } from '../../../../src/brain/roles-api'
 import { createRulesApi, type RulesClient } from '../../../../src/brain/rules-api'
 import { SubmitKnowledge } from '../../../../src/brain/SubmitKnowledge'
-import { useApiErrorHandler } from '../../../../src/brain/use-api-error'
 import type { Role, Rule, RuleStatus } from '../../../../src/brain/types'
+import { useApiErrorHandler } from '../../../../src/brain/use-api-error'
 
 /**
  * The four ways the floor reads the knowledge base, and one of them is not like
@@ -92,6 +92,9 @@ export function BookClient({ brandId, role }: { brandId: string; role: 'owner' |
     }
   }, [handleError, rolesApi])
 
+  // `reloadKey` is a trigger, not a read: bumping it is how a write elsewhere asks
+  // this list to refetch, and the body never looks at the value.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deliberate trigger dependency
   useEffect(() => {
     let cancelled = false
     setState({ status: 'loading' })

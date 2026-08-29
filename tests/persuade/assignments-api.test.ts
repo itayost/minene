@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createAssignmentsApi, type AssignmentsClient } from '../../src/persuade/assignments-api'
+import { type AssignmentsClient, createAssignmentsApi } from '../../src/persuade/assignments-api'
 
 type Outcome = { data?: unknown; error?: { code?: string } | null; status?: number }
 

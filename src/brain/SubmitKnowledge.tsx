@@ -1,10 +1,10 @@
 'use client'
 
-import { useRef, useState, type FormEvent } from 'react'
+import { type FormEvent, useRef, useState } from 'react'
 import { BottomSheet } from './BottomSheet'
 import { RULE_TOPICS } from './topics'
-import { useApiErrorHandler } from './use-api-error'
 import type { Rule, RuleKind, RulePolarity } from './types'
+import { useApiErrorHandler } from './use-api-error'
 
 const FIRST_TOPIC_ID = RULE_TOPICS[0]?.id ?? 'live'
 

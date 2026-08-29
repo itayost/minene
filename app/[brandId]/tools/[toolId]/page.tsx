@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
-import { ToolScreen } from '../../../../src/components/ToolScreen'
 import { requireBrand } from '../../../../src/auth/require-brand'
+import { ToolScreen } from '../../../../src/components/ToolScreen'
 import { TOOLS_SEGMENT } from '../../../../src/core/hrefs'
 import { assertDefined } from '../../../../src/core/invariant'
 import { resolveScreen } from '../../../../src/core/navigation'

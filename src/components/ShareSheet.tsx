@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import type { BrandManifest } from '../core/brand-types'
 import {
+  type BrowserActionApis,
   downloadPage,
+  type OpenExternalWindow,
   openExternalWindow,
+  type PageActionContext,
   sharePage,
   whatsappUrl,
-  type BrowserActionApis,
-  type OpenExternalWindow,
-  type PageActionContext,
 } from '../core/page-actions'
 
 type ShareSheetProps = {

@@ -3,19 +3,18 @@
 import { usePathname } from 'next/navigation'
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from 'react'
 import { BrandShell, type PagePosition } from '../../src/components/BrandShell'
 import { ShareSheet } from '../../src/components/ShareSheet'
 import type { BrandManifest } from '../../src/core/brand-types'
-import type { PageActionContext } from '../../src/core/page-actions'
-import { brandHref } from '../../src/core/hrefs'
 import { createInitialScreen, parentHref, resolveScreen } from '../../src/core/navigation'
+import type { PageActionContext } from '../../src/core/page-actions'
 
 type ShellChannels = {
   /** A route registers a factory. Passing null clears it on unmount. */
@@ -74,6 +73,9 @@ export function BrandShellClient({
   // Nothing else closes the sheet, so leaving the screen would carry it onto the
   // next one. The path is the right boundary: paging only changes the query, and
   // the base is inert while the sheet is open, so no page can turn beneath it.
+  // `pathname` is a trigger, not a read: navigating is what must re-run this,
+  // and the body has no use for the value itself.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deliberate trigger dependency
   useEffect(() => {
     setShareContext(null)
   }, [pathname])
@@ -97,7 +99,6 @@ export function BrandShellClient({
         screen={screen}
         pagePosition={position}
         backHref={parentHref(brand, screen)}
-        homeHref={brandHref(brand.id)}
         onShare={() => setShareContext(build ? build() : null)}
         modal={
           shareContext ? (

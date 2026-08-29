@@ -70,6 +70,9 @@ export function Conversation({
    * out of sight. Pinned to the bottom on every change, which is what a
    * messaging thread does and what makes a streamed reply readable at all.
    */
+  // `turns` and `draft` are triggers, not reads: the body never uses either, and
+  // a change to them is exactly what must re-run the scroll.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deliberate trigger dependencies
   useEffect(() => {
     const thread = threadRef.current
     if (thread) thread.scrollTop = thread.scrollHeight

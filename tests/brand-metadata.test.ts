@@ -17,6 +17,7 @@ vi.mock('../src/auth/require-brand', async () => {
     }),
   }
 })
+
 import { generateMetadata, generateViewport } from '../app/[brandId]/layout'
 import { mineneBrand } from '../src/brands/minene'
 

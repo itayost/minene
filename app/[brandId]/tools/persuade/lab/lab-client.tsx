@@ -2,17 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabase } from '../../../../../src/auth/supabase-browser'
-import { BLOCKER_LABELS, CATEGORY_LABELS } from '../../../../../src/persuade/labels'
-import { Matrix, type MatrixCell } from '../../../../../src/persuade/Matrix'
-import { blockersIn, buildBank } from '../../../../../src/persuade/bank'
-import { matrixFrom } from '../../../../../src/persuade/matrix-data'
 import { createRolesApi, type RolesClient } from '../../../../../src/brain/roles-api'
-import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
-import { createSimulationsApi } from '../../../../../src/persuade/simulations-api'
-import { RunControl, type PersonaOption } from '../../../../../src/persuade/RunControl'
-import type { StoredSimulation } from '../../../../../src/persuade/lib/simulations'
-import type { PersuasionPlan } from '../../../../../src/persuade/engine/types'
 import type { Role } from '../../../../../src/brain/types'
+import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
+import { blockersIn, buildBank } from '../../../../../src/persuade/bank'
+import type { PersuasionPlan } from '../../../../../src/persuade/engine/types'
+import { BLOCKER_LABELS, CATEGORY_LABELS } from '../../../../../src/persuade/labels'
+import type { StoredSimulation } from '../../../../../src/persuade/lib/simulations'
+import { Matrix, type MatrixCell } from '../../../../../src/persuade/Matrix'
+import { matrixFrom } from '../../../../../src/persuade/matrix-data'
+import { type PersonaOption, RunControl } from '../../../../../src/persuade/RunControl'
+import { createSimulationsApi } from '../../../../../src/persuade/simulations-api'
 
 interface LabClientProps {
   personas: PersonaOption[]

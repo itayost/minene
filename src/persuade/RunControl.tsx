@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import type { Role } from '../brain/types'
+import { useApiErrorHandler } from '../brain/use-api-error'
 import { DEFAULT_RULES } from './engine/rules'
 import type { PersuasionPlan, TargetPersona, Turn } from './engine/types'
-import type { Role } from '../brain/types'
 import { streamSimulation } from './simulate-api'
-import { useApiErrorHandler } from '../brain/use-api-error'
 
 /**
  * The lab could read runs long before it could start one, which made the matrix

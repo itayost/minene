@@ -1,4 +1,4 @@
-import type { BlockerId, ArgumentCategory, Rung } from './types'
+import type { ArgumentCategory, BlockerId, Rung } from './types'
 
 /**
  * The persuasion knowledge base, distilled from Eran's model.

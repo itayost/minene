@@ -1,16 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabase } from '../../../../../src/auth/supabase-browser'
 import { DocumentsList } from '../../../../../src/brain/DocumentsList'
 import { createDocumentsApi, type DocumentsClient } from '../../../../../src/brain/documents-api'
 import { KpiCards, type KpiState } from '../../../../../src/brain/KpiCards'
+import { type RuleDraft, RuleEditSheet } from '../../../../../src/brain/RuleEditSheet'
 import { createRolesApi, type RolesClient } from '../../../../../src/brain/roles-api'
-import { RuleEditSheet, type RuleDraft } from '../../../../../src/brain/RuleEditSheet'
 import { createRulesApi, type RulesApi, type RulesClient } from '../../../../../src/brain/rules-api'
 import { getTopic, RULE_TOPICS } from '../../../../../src/brain/topics'
-import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
 import type { Role, Rule, RuleKind } from '../../../../../src/brain/types'
+import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
 
 const FIRST_TOPIC_ID = RULE_TOPICS[0]?.id ?? 'live'
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024

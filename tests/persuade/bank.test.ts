@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildBank, blockersIn } from '../../src/persuade/bank'
+import { blockersIn, buildBank } from '../../src/persuade/bank'
 import type { Run } from '../../src/persuade/engine/types'
 
 const run = ({

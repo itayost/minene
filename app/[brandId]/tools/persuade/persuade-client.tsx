@@ -5,12 +5,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabase } from '../../../../src/auth/supabase-browser'
 import { BottomSheet } from '../../../../src/brain/BottomSheet'
 import { BrainCard } from '../../../../src/brain/BrainCard'
-import { useApiErrorHandler } from '../../../../src/brain/use-api-error'
 import { getTopic } from '../../../../src/brain/topics'
+import { useApiErrorHandler } from '../../../../src/brain/use-api-error'
 import {
-  createAssignmentsApi,
   type Assignment,
   type AssignmentsClient,
+  createAssignmentsApi,
 } from '../../../../src/persuade/assignments-api'
 import { Conversation } from '../../../../src/persuade/Conversation'
 import { createPersuaderApi } from '../../../../src/persuade/persuader-api'

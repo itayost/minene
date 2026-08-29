@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest'
-import { demoBrand } from './fixtures/demo-brand'
 import { mineneBrand } from '../src/brands/minene'
 import { buildBrandRegistry, getBrand } from '../src/core/brand-registry'
 import type { BrandManifest } from '../src/core/brand-types'
 import { validateBrand } from '../src/core/validate-brand'
+import { demoBrand } from './fixtures/demo-brand'
 
 const validBrand: BrandManifest = {
   id: 'study-space',

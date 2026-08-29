@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { type ReactNode, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { BrandNotFound } from '../src/components/BrandNotFound'
 import { BrandShell } from '../src/components/BrandShell'
@@ -9,9 +9,9 @@ import { PageViewer } from '../src/components/PageViewer'
 import { ShareSheet } from '../src/components/ShareSheet'
 import { SubjectMenu } from '../src/components/SubjectMenu'
 import { ToolScreen } from '../src/components/ToolScreen'
-import { brandHref, groupHref, subjectHref } from '../src/core/hrefs'
-import type { BrowserActionApis, PageActionContext } from '../src/core/page-actions'
+import { groupHref, subjectHref } from '../src/core/hrefs'
 import { parentHref, type Screen } from '../src/core/navigation'
+import type { BrowserActionApis, PageActionContext } from '../src/core/page-actions'
 import { demoBrand } from './fixtures/demo-brand'
 
 type HarnessProps = {
@@ -48,7 +48,6 @@ function SharedComponentHarness({ initialScreen = { kind: 'home' }, modal }: Har
       brand={demoBrand}
       screen={currentScreen}
       backHref={parentHref(demoBrand, currentScreen)}
-      homeHref={brandHref(demoBrand.id)}
       modal={modal}
       onShare={() => undefined}
     >

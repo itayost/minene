@@ -1,5 +1,5 @@
 import type { BrandManifest, BrandSubject, ContentGroup } from './brand-types'
-import { brandHref, subjectHref, toolHref, TOOLS_SEGMENT } from './hrefs'
+import { brandHref, subjectHref, TOOLS_SEGMENT, toolHref } from './hrefs'
 
 export type Screen =
   | { kind: 'home' }

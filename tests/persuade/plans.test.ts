@@ -1,8 +1,9 @@
 /**
  * @vitest-environment node
  */
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Ammunition } from '../../src/persuade/engine/ammunition'
 import type { PrepareInput } from '../../src/persuade/engine/prepare'
 import type { PersuasionPlan } from '../../src/persuade/engine/types'
@@ -10,9 +11,9 @@ import { setModelOverrides } from '../../src/persuade/lib/model'
 import {
   clearPlanMemory,
   createPlanStore,
+  type PlanStore,
   planFingerprint,
   planFor,
-  type PlanStore,
 } from '../../src/persuade/lib/plans'
 import { jsonModel, TEST_AMMUNITION, TEST_PLAN } from './helpers'
 

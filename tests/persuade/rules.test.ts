@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { MAX_INTERACTIONS } from '../../src/persuade/engine/knowledge'
 import {
   checkTurn,
+  containsRequest,
   DEFAULT_RULES,
   detectOutcome,
   fatigueScore,
@@ -9,7 +10,6 @@ import {
   isAskPhotographable,
   longSentences,
   nextRung,
-  containsRequest,
   shouldStop,
 } from '../../src/persuade/engine/rules'
 import type { PersuasionPlan, Rung, Turn } from '../../src/persuade/engine/types'

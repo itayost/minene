@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { type KeyboardEvent, type PointerEvent, useEffect, useRef, useState } from 'react'
 import type { ContentGroup, Direction, PageAsset } from '../core/brand-types'
 
 type PageViewerProps = {

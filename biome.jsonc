@@ -76,6 +76,37 @@
         // and it does not belong in the commit that installs the linter.
         "noImgElement": "info"
       },
+      "a11y": {
+        // A tracked backlog, not a dismissal.
+        //
+        // These eight rules account for 15 real findings in screens that
+        // shop-floor staff use on a phone: svgs with no title, divs carrying
+        // click handlers with no keyboard equivalent, roles on elements that
+        // cannot take them. They are worth fixing and none of them is a
+        // one-line change -- each needs the screen looked at, and the visual
+        // snapshots they would move cannot be regenerated.
+        //
+        // Demoted individually rather than by category on purpose: an a11y
+        // violation of any OTHER kind still fails the build, so this records
+        // the debt we have without opening the door to more of it. Raise each
+        // back to "error" as it is cleared.
+        "noSvgWithoutTitle": "info",
+        "useSemanticElements": "info",
+        "noRedundantRoles": "info",
+        "noNoninteractiveElementToInteractiveRole": "info",
+        "useAriaPropsSupportedByRole": "info",
+        "noNoninteractiveTabindex": "info",
+        "noStaticElementInteractions": "info",
+        "useKeyWithClickEvents": "info",
+
+        // Off, because it cannot see the difference between an ARIA attribute
+        // and one of our props. It fired 30 times, every one of them on
+        // `<PersuadeClient role="staff" />` or `<BrainClient role="owner" />`
+        // -- our own components take a `role` prop meaning job role, which is
+        // domain vocabulary that predates this linter and is not going to be
+        // renamed to satisfy it.
+        "useValidAriaRole": "off"
+      },
       "complexity": {
         // Demoted. Six `!important` declarations in styles.css. Removing them
         // means untangling the cascade that made them necessary -- worth doing,

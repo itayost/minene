@@ -5,8 +5,8 @@ import { applyTargetReply, persuaderTurn } from './turn'
 import type {
   ConversationState,
   PersuasionPlan,
-  Run,
   RuleViolation,
+  Run,
   TargetPersona,
   Turn,
 } from './types'

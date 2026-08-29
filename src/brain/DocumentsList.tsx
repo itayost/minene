@@ -38,6 +38,9 @@ export function DocumentsList({
 }) {
   const [state, setState] = useState<ListState>({ status: 'loading' })
 
+  // `reloadToken` is a trigger, not a read. A reload token that no longer causes
+  // a reload is a silent bug, which is what dropping it from the list would be.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deliberate trigger dependency
   useEffect(() => {
     let cancelled = false
     setState({ status: 'loading' })

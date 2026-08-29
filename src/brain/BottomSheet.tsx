@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, type ReactElement, type ReactNode } from 'react'
+import { type ReactElement, type ReactNode, useEffect, useRef } from 'react'
 
 /**
  * Anything with a focus method.

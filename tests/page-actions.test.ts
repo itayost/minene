@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  type BrowserActionApis,
   downloadPage,
   openExternalWindow,
+  type PageActionContext,
   sharePage,
   whatsappUrl,
-  type BrowserActionApis,
-  type PageActionContext,
 } from '../src/core/page-actions'
 
 const context: PageActionContext = {

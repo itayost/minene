@@ -1,8 +1,8 @@
 import { generateObject } from 'ai'
 import { z } from 'zod'
 import { callOptions, model } from '../lib/model'
+import { type Ammunition, formatAmmunition, strengthFromLikePct } from './ammunition'
 import { ARGUMENT_LABELS, RUNG_LABELS } from './knowledge'
-import { formatAmmunition, strengthFromLikePct, type Ammunition } from './ammunition'
 import type { Argument, PersuasionPlan } from './types'
 
 /**

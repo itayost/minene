@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { BrandNotFound } from '../src/components/BrandNotFound'
 import { DEFAULT_BRAND_ID, getBrand } from '../src/core/brand-registry'
 import { brandHref } from '../src/core/hrefs'

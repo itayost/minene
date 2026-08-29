@@ -3,8 +3,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, test } from 'vitest'
-import type { BrandManifest } from '../src/core/brand-types'
 import { validateRegisteredBrands } from '../scripts/validate-brands'
+import type { BrandManifest } from '../src/core/brand-types'
 import { demoBrand } from './fixtures/demo-brand'
 
 const projectRoot = process.cwd()

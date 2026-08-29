@@ -145,9 +145,9 @@ export function validateBrand(brand: BrandManifest): ValidationIssue[] {
       if (group.icon !== undefined) validateAssetPath(group.icon, `${groupPath}.icon`)
 
       if (group.pages.length === 0) addIssue(`${groupPath}.pages`, 'must contain at least one page')
-      group.pages.forEach((page, pageIndex) =>
-        validateAsset(page, `${groupPath}.pages[${pageIndex}]`),
-      )
+      group.pages.forEach((page, pageIndex) => {
+        validateAsset(page, `${groupPath}.pages[${pageIndex}]`)
+      })
     })
   })
 
@@ -159,7 +159,9 @@ export function validateBrand(brand: BrandManifest): ValidationIssue[] {
     toolIds.add(tool.id)
     requireValue(tool.label, `${toolPath}.label`)
     validateAssetPath(tool.icon, `${toolPath}.icon`)
-    tool.items.forEach((item, itemIndex) => requireValue(item, `${toolPath}.items[${itemIndex}]`))
+    tool.items.forEach((item, itemIndex) => {
+      requireValue(item, `${toolPath}.items[${itemIndex}]`)
+    })
   })
 
   return issues

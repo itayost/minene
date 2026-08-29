@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { RuleEditSheet, type RuleDraft } from '../../src/brain/RuleEditSheet'
+import { type RuleDraft, RuleEditSheet } from '../../src/brain/RuleEditSheet'
 import type { Role } from '../../src/brain/types'
 import { makeRule } from '../fixtures/rule'
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback } from 'react'
-import { progressEntryKey, readProgress, writeProgress, type ProgressMap } from '../core/progress'
+import { type ProgressMap, progressEntryKey, readProgress, writeProgress } from '../core/progress'
 
 const unavailableStorage: Storage = {
   get length() {

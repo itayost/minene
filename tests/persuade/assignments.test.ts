@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { recordAsked, recordExecution } from '../../src/persuade/lib/assignments'
 import type { ConversationState } from '../../src/persuade/engine/types'
+import { recordAsked, recordExecution } from '../../src/persuade/lib/assignments'
 import { createFakeSupabase } from './fake-supabase'
 
 const ASSIGNMENT = '11111111-0000-4000-8000-00000000000a'

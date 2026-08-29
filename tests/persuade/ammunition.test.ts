@@ -1,12 +1,12 @@
-import { describe, expect, test, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { describe, expect, test, vi } from 'vitest'
 import {
+  type Ammunition,
   CrossTenantError,
   formatAmmunition,
   formatHistory,
   loadAmmunition,
   strengthFromLikePct,
-  type Ammunition,
 } from '../../src/persuade/engine/ammunition'
 
 const TENANT = '11111111-1111-4111-8111-111111111111'

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { matrixFrom } from '../../src/persuade/matrix-data'
 import type { StoredSimulation } from '../../src/persuade/lib/simulations'
+import { matrixFrom } from '../../src/persuade/matrix-data'
 
 const sim = (industry: string, jobRoleId: string, outcome: string): StoredSimulation => ({
   id: `s-${Math.random()}`,

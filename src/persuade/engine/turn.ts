@@ -8,8 +8,8 @@ import {
   detectOutcome,
   fatigueScore,
   nextRung,
-  shouldStop,
   type RuleConfig,
+  shouldStop,
 } from './rules'
 import type { ConversationState, PersuasionPlan, RuleViolation, Rung, Turn } from './types'
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'vitest'
-import { createStore, defaultContext, type RunContext } from '../../src/persuade/lib/store'
 import type { Turn } from '../../src/persuade/engine/types'
+import { createStore, defaultContext, type RunContext } from '../../src/persuade/lib/store'
 import { createFakeSupabase } from './fake-supabase'
 import { makeRun } from './helpers'
 

@@ -1,9 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
+import { type CSSProperties, type MouseEvent, type ReactNode, useEffect } from 'react'
 import type { BrandManifest } from '../core/brand-types'
-import { toolHref } from '../core/hrefs'
 import type { Screen } from '../core/navigation'
 
 /** Where the viewer currently is, reported by the viewer route to the shell. */
@@ -18,7 +17,6 @@ type BrandShellProps = {
   children: ReactNode
   modal?: ReactNode
   backHref: string
-  homeHref: string
   onShare: () => void
   pagePosition?: PagePosition | null
 }
@@ -40,13 +38,6 @@ type ThemeStyle = CSSProperties & {
   '--border': string
   '--font-family': string
 }
-
-const homeIcon = (
-  <svg aria-hidden="true" viewBox="0 0 23 22">
-    <path d="M2 9.5 11.5 2 21 9.5" />
-    <path d="M4 8v11a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V8" />
-  </svg>
-)
 
 function findHeaderContent(
   brand: BrandManifest,
@@ -89,7 +80,6 @@ export function BrandShell({
   children,
   modal,
   backHref,
-  homeHref,
   onShare,
   pagePosition = null,
 }: BrandShellProps) {

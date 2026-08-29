@@ -1,5 +1,5 @@
-import { createSimulationsStore } from './lib/simulations'
 import type { StoredSimulation } from './lib/simulations'
+import { createSimulationsStore } from './lib/simulations'
 
 /**
  * The browser's view of the simulations table.

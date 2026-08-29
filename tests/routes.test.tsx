@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { ReactNode } from 'react'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { mineneBrand } from '../src/brands/minene'
 import type { BrandManifest } from '../src/core/brand-types'
 import { demoBrand } from './fixtures/demo-brand'
