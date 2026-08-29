@@ -30,7 +30,26 @@ const scoreSchema = z.object({
   mainObjection: z.string().nullable(),
   whatBrokeIt: z.string().nullable().describe('מה שבר את ההתנגדות'),
   whatFailed: z.string().nullable().describe('מה המשכנע פספס. תהיה חד.'),
-  grade: z.number().min(0).max(100),
+  /**
+   * 0-100, stated explicitly because the model was reading it two ways.
+   *
+   * The field was `z.number().min(0).max(100)` with no description and no scale
+   * in the prompt, and the judge picked one per run: a conversation that ended
+   * in agreement in three messages came back as 8.4 while a deferred one came
+   * back as 72. Both are defensible on their own scale and the pair is
+   * meaningless, which is worse than either -- `buildDataset` filters on
+   * `grade >= 70`, so the scale drift was quietly rejecting the successful runs
+   * and keeping nothing.
+   *
+   * Integer for the same reason: 8.4 is a tell that a 0-10 scale was in use, and
+   * a whole number on 0-100 removes the ambiguity rather than documenting it.
+   */
+  grade: z
+    .number()
+    .int()
+    .min(0)
+    .max(100)
+    .describe('ציון כולל לשיחה בסולם 0 עד 100, כאשר 100 מצוין. לא בסולם 0-10.'),
   notes: z.string().describe('שתיים עד שלוש שורות. עברית פשוטה.'),
 })
 
@@ -53,7 +72,10 @@ export async function scoreRun(
     // judge is the registry's own rather than one carried per run.
     model: model('judge'),
     schema: scoreSchema,
-    system: `אתה בודק שיחת שכנוע ונותן ציון. אתה קשוח והוגן.
+    system: `אתה בודק שיחת שכנוע ונותן ציון בסולם 0 עד 100. אתה קשוח והוגן.
+
+הסולם הוא 0 עד 100 ולא 0 עד 10. שיחה שהסתיימה בהסכמה מפורשת ובמעט הודעות
+היא ציון גבוה, לא נמוך.
 
 הציון יורד על:
 - לא הוצגה השליחות בפתיחה.
