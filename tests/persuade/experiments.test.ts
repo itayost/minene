@@ -196,6 +196,24 @@ describe('whether the comparison is worth reading yet', () => {
     ]
     expect(readiness(compareArms(runs), 10, runs).join(' ')).toMatch(/לא נרשם אילו מודלים/)
   })
+
+  test('a recording gap is not a model swap', () => {
+    // `models` is null on rows predating the column, not on rows that ran a
+    // different model. Every recorded row here -- in both arms -- names the
+    // exact same combination; only the field's rollout date differs. Claiming
+    // "the comparison measures the model swap" is a false claim about data
+    // that never recorded a second model at all, and it is the more alarming
+    // of the two warnings this file distinguishes.
+    const runs = [
+      ...Array.from({ length: 10 }, () => run('a', 'agreed', 80, 2, null)),
+      ...Array.from({ length: 10 }, () => run('a', 'agreed', 80, 2)),
+      ...Array.from({ length: 10 }, () => run('b', 'refused', 40, 4, null)),
+      ...Array.from({ length: 10 }, () => run('b', 'refused', 40, 4)),
+    ]
+    const warnings = readiness(compareArms(runs), 10, runs).join(' ')
+    expect(warnings).not.toMatch(/החלפת המודל/)
+    expect(warnings).toMatch(/לא נרשם אילו מודלים/)
+  })
 })
 
 describe('sweeping the world space', () => {
