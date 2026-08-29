@@ -65,13 +65,38 @@ async function main(): Promise<void> {
     ) as ArgumentCategory[],
   }))
 
-  const reports = buildEffectiveness(inputs)
+  const withWorld = inputs.filter((i) => i.run.world)
+  const worldless = inputs.filter((i) => !i.run.world)
 
-  console.log(`סימולציות: ${inputs.length}`)
-  const withWorld = inputs.filter((i) => i.run.world).length
-  console.log(`מתוכן עם עולם מוגדר: ${withWorld}`)
-  if (withWorld === 0) {
+  /**
+   * Runs from before worlds existed are a different experiment.
+   *
+   * They cannot appear in the by-reason breakdown at all -- there is no reason
+   * on them -- so pooling them only moves the overall rate, and it moves it a
+   * long way: the first eleven runs were four pre-world refusals and seven
+   * world runs that agreed 86% of the time, which averaged to a number
+   * describing neither.
+   *
+   * Default is world runs only when any exist. `--all` pools them back, and
+   * says so, for anyone who wants the whole history.
+   */
+  const pool = process.argv.includes('--all')
+  const used = pool || withWorld.length === 0 ? inputs : withWorld
+  const reports = buildEffectiveness(used)
+
+  console.log(`סימולציות בסך הכול: ${inputs.length}`)
+  console.log(`  עם עולם: ${withWorld.length}   בלי: ${worldless.length}`)
+  if (withWorld.length === 0) {
     console.log('\nבלי עולם אין פילוח לפי סיבה. הרץ sweep כדי לקבל אחד.')
+  } else if (pool) {
+    console.log(
+      `\nמוצג: הכול (${inputs.length}). הריצות בלי עולם מגיעות מהגדרה אחרת ומושכות את הממוצע.`,
+    )
+  } else if (worldless.length > 0) {
+    console.log(
+      `\nמוצג: ${withWorld.length} הריצות עם עולם בלבד. ` +
+        `${worldless.length} ריצות ישנות הושמטו — הן מהגדרה אחרת ואין להן סיבה. ל--all כדי לכלול.`,
+    )
   }
   console.log('')
 
