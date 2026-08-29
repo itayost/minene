@@ -152,6 +152,11 @@ export async function runJob(client: SupabaseClient, job: JobRow): Promise<strin
       industry: job.industry,
       job_role_id: job.job_role_id,
       need: job.need,
+      // Out of the world and onto its own column. The migration backfilled
+      // existing rows and nothing wrote it going forward, so every new run
+      // landed with the reason inside the jsonb and the column null -- the
+      // report slices on the column.
+      reason: job.world?.reason ?? null,
       // Copied out of the plan rather than left in the jsonb: grouping runs by
       // subject should not mean digging through a blob, and the plan frozen
       // into this run can drift from the library plan behind it afterwards.
