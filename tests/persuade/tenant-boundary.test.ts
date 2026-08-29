@@ -26,6 +26,19 @@ describe('a simulation never touches a tenant’s knowledge', () => {
     expect(sim).not.toMatch(/assignmentId|assignment_id/)
   })
 
+  it('holds for the loop that runs simulations unattended', () => {
+    // The queue and the worker are new ways to start a simulation, and a
+    // boundary that holds for the one a person clicks and not for the one a
+    // cron runs is not a boundary. The worker reads personas and library plans
+    // by key; the moment it could read ammunition, every unattended run becomes
+    // a route for one tenant's rules into the shared bank.
+    const worker = source('src/persuade/lib/worker.ts')
+
+    expect(worker).not.toMatch(/ammunition/i)
+    expect(worker).not.toMatch(/tenantId|tenant_id/)
+    expect(worker).not.toMatch(/assignmentId|assignment_id/)
+  })
+
   it('keeps the turn-taking it drives free of them too', () => {
     // simulation.ts delegates every turn to turn.ts. A boundary that holds in
     // the caller and leaks in the callee is not a boundary.

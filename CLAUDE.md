@@ -70,6 +70,25 @@ parking area for migrations whose preconditions have not been met.
 Migrations are roll-forward only. To undo a schema change, write one that
 reverses it.
 
+### The simulation loop
+
+`vercel.json` runs `/api/persuade/worker` hourly. Each tick claims a small batch
+from `public.simulation_jobs`, runs the simulations, scores them and stores them
+with the `RuleConfig` that produced each one -- which is what makes two arms of
+an experiment comparable afterwards.
+
+- **It needs `CRON_SECRET` set in Vercel.** Without it the route refuses every
+  request, including the cron's. That is deliberate: the endpoint spends money.
+- **`PERSUADER_DAILY_RUN_CAP` stops the loop**, default 200 runs a UTC day. One
+  run is up to eleven model calls.
+- Queue work with `queueExperiment` in `src/persuade/lib/experiments.ts`. It
+  refuses an experiment whose arms differ in more than one setting, because that
+  is an expensive way to learn nothing.
+- A simulation must never touch a tenant's knowledge. `tests/persuade/
+  tenant-boundary.test.ts` enforces it on the engine, the turn loop and the
+  worker -- the matrix and bank are readable across every tenant, and that is
+  only safe while every run in them is invented.
+
 ## Traps that cost real time
 
 - **`next dev` needs an explicit `--hostname`.** Started on the default host and
