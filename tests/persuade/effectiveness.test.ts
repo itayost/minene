@@ -105,6 +105,18 @@ describe('what a technique report says', () => {
     expect(reports[0]!.negativeReactionPct).toBe(50)
   })
 
+  test('counts a run that literally stopped from fatigue as a negative reaction', () => {
+    // fatigueThreshold is a per-run RuleConfig setting (see experiments.ts),
+    // and an experiment is free to run it below the 0.7 default. A run whose
+    // outcome is 'stopped_fatigue' ended because the engine's OWN threshold
+    // was crossed -- the ground truth for "worn down" -- regardless of
+    // whether that score also clears the fixed 0.7 bar this report checks.
+    const reports = buildEffectiveness([
+      input('stopped_fatigue', null, 'no_time', 'adi', ['personal_benefit'], 0.4),
+    ])
+    expect(reports[0]!.negativeReactionPct).toBe(100)
+  })
+
   test('reports no evidence as null rather than as zero', () => {
     // "Nobody has tried this" and "this never works" are opposite facts, and
     // the same null-is-not-zero rule like_pct already follows.
