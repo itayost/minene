@@ -227,3 +227,26 @@ export function personaInWorld(persona: TargetPersona, world: WorldState): Targe
     agreesWhen: world.agreesWhen.map((c) => CONDITION_TEXT[c]).join('; '),
   }
 }
+
+/**
+ * Whether a value read back out of jsonb is actually a world.
+ *
+ * `describeWorld` indexes lookup tables by these fields, and an unknown value
+ * produces the string "undefined" inside the simulated employee's prompt --
+ * a corrupt run that completes, gets scored, and is stored as evidence. Loud
+ * beats silent: the worker fails the job instead.
+ */
+export function isWorldState(value: unknown): value is WorldState {
+  if (!value || typeof value !== 'object') return false
+  const w = value as Partial<WorldState>
+  return (
+    MOTIVATIONS.includes(w.motivation as Motivation) &&
+    WORKLOADS.includes(w.workload as Workload) &&
+    REASONS.includes(w.reason as Reason) &&
+    PRESSURE.includes(w.pressureResponse as PressureResponse) &&
+    typeof w.minutesLeft === 'number' &&
+    typeof w.hiddenTruth === 'string' &&
+    Array.isArray(w.agreesWhen) &&
+    w.agreesWhen.every((c) => c in CONDITION_TEXT)
+  )
+}

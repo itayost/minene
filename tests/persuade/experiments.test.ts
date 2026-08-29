@@ -3,11 +3,13 @@
  */
 import { describe, expect, test } from 'vitest'
 import { DEFAULT_RULES } from '../../src/persuade/engine/rules'
+import { worldCells } from '../../src/persuade/engine/world'
 import { compareArms, type ExperimentRun, readiness } from '../../src/persuade/experiment-results'
 import {
   type ExperimentSpec,
   messageLengthExperiment,
   planExperiment,
+  planSweep,
   validateExperiment,
 } from '../../src/persuade/lib/experiments'
 
@@ -192,5 +194,48 @@ describe('whether the comparison is worth reading yet', () => {
       ...Array.from({ length: 20 }, () => run('b', 'refused', 40, 4, null)),
     ]
     expect(readiness(compareArms(runs), 10, runs).join(' ')).toMatch(/לא נרשם אילו מודלים/)
+  })
+})
+
+describe('sweeping the world space', () => {
+  test('gives every job a world, and the experiment arms none', () => {
+    // The two halves of the loop. An experiment varies a setting and holds the
+    // world still; a sweep holds the settings still and walks the worlds.
+    const jobs = planSweep({ personaKeys: ['adi'], planKeys: ['briefings'], cells: 5 })
+
+    expect(jobs).toHaveLength(5)
+    expect(jobs.every((j) => j.world !== null)).toBe(true)
+    expect(jobs.every((j) => j.experiment === null && j.variant === null)).toBe(true)
+  })
+
+  test('walks the enumeration rather than sampling it', () => {
+    // Random sampling re-runs the easy cells and leaves holes nobody can name.
+    // Walking means coverage is a fact you can state.
+    const first = planSweep({ personaKeys: ['adi'], planKeys: ['p'], cells: 3 })
+    const next = planSweep({ personaKeys: ['adi'], planKeys: ['p'], cells: 3, after: 3 })
+
+    const seen = [...first, ...next].map((j) => JSON.stringify(j.world))
+    expect(new Set(seen).size).toBe(6)
+  })
+
+  test('wraps around rather than running off the end', () => {
+    const all = worldCells().length
+    const jobs = planSweep({ personaKeys: ['adi'], planKeys: ['p'], cells: 2, after: all - 1 })
+    expect(jobs).toHaveLength(2)
+  })
+
+  test('crosses every persona and plan with every cell', () => {
+    const jobs = planSweep({
+      personaKeys: ['adi', 'rona'],
+      planKeys: ['briefings', 'other'],
+      cells: 3,
+    })
+    // 3 cells x 2 personas x 2 plans.
+    expect(jobs).toHaveLength(12)
+  })
+
+  test('records the reason as the cell, so the matrix has its third axis', () => {
+    const jobs = planSweep({ personaKeys: ['adi'], planKeys: ['p'], cells: 1 })
+    expect(jobs[0]!.need).toBe(jobs[0]!.world!.reason)
   })
 })

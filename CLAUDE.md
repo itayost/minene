@@ -84,6 +84,34 @@ an experiment comparable afterwards.
 - Queue work with `queueExperiment` in `src/persuade/lib/experiments.ts`. It
   refuses an experiment whose arms differ in more than one setting, because that
   is an expensive way to learn nothing.
+### The scenario, and what the persuader is not told
+
+A run happens inside a `WorldState` — motivation, workload, the real reason it
+has not happened, response to pressure, minutes left. The simulated employee
+gets all of it; the persuader gets none of it and has no parameter it could be
+passed through. `tests/persuade/world-isolation.test.ts` asserts the signature
+and the rendered text, because a leak there makes every number the lab produces
+a measurement of a bot reading an answer key.
+
+- `worldCells()` enumerates 162 distinct worlds. `planSweep` walks them in order
+  and resumes with `after`, so coverage is a fact rather than a hope about a
+  random seed.
+- `pnpm report:techniques` reads what each technique is doing, sliced by persona
+  and by the reason. Note the denominator: a technique's `runs` counts runs
+  where the plan **offered** it, not where it was used — fair between techniques
+  in one plan, poor as an absolute rate.
+- `pnpm export:dataset` builds a fine-tuning JSONL from runs that ended agreed
+  with zero rule violations and a passing grade.
+
+### Nothing promotes itself
+
+`public.technique_weights` is the gate. `propose()` turns evidence into a
+suggestion and writes nothing; `readPromoted()` filters on `promoted_at is not
+null`, so a proposal nobody accepted is invisible to production; `promote()`
+requires a person's id. There is deliberately no function that could be put on a
+schedule to close that loop — the whole reason the table exists is that a weight
+which changed itself cannot be explained afterwards.
+
 - A simulation must never touch a tenant's knowledge. `tests/persuade/
   tenant-boundary.test.ts` enforces it on the engine, the turn loop and the
   worker -- the matrix and bank are readable across every tenant, and that is

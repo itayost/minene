@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { DEFAULT_RULES, type RuleConfig } from '../engine/rules'
+import { buildWorld, type WorldCell, type WorldState, worldCells } from '../engine/world'
 
 /**
  * Experiments over the engine's own settings.
@@ -29,6 +30,8 @@ export interface ExperimentArm {
 
 export interface ExperimentSpec {
   experiment: string
+  /** Held fixed across arms, so the config is the only thing that differs. */
+  world?: WorldState | null
   arms: ExperimentArm[]
   /** Every arm runs against every one of these. */
   pairs: { personaKey: string; planKey: string }[]
@@ -40,14 +43,15 @@ export interface ExperimentSpec {
 }
 
 export interface QueuedJob {
-  experiment: string
-  variant: string
+  experiment: string | null
+  variant: string | null
   persona_key: string
   plan_key: string
   industry: string
   job_role_id: string | null
   need: string | null
   rules: RuleConfig
+  world: WorldState | null
 }
 
 /**
@@ -72,6 +76,9 @@ export function planExperiment(spec: ExperimentSpec): QueuedJob[] {
           job_role_id: spec.jobRoleId ?? null,
           need: spec.need ?? null,
           rules: arm.rules,
+          // An experiment holds the world fixed so the setting is the only
+          // thing that varies. Scenario coverage is a different job, below.
+          world: spec.world ?? null,
         })
       }
     }
@@ -149,4 +156,70 @@ export function messageLengthExperiment(pairs: ExperimentSpec['pairs']): Experim
       { variant: 'long-45', rules: { ...DEFAULT_RULES, maxWordsPerMessage: 45 } },
     ],
   }
+}
+
+/**
+ * Queue a sweep across the world space rather than an experiment.
+ *
+ * The other half of the loop, and the one that makes it worth running
+ * continuously. An experiment varies one setting and holds the world still; a
+ * sweep holds the settings still and walks the worlds -- which is what fills in
+ * "this technique works on someone who forgot and not on someone who
+ * disagrees".
+ *
+ * Cells are taken in order rather than sampled, and `after` resumes where the
+ * last sweep stopped. Random sampling would re-run the same easy cells and
+ * leave holes nobody could name; walking the enumeration means coverage is a
+ * fact you can state.
+ */
+export interface SweepSpec {
+  personaKeys: string[]
+  planKeys: string[]
+  rules?: RuleConfig
+  industry?: string
+  jobRoleId?: string | null
+  /** How many world cells to take this time. */
+  cells?: number
+  /** Resume point: how many cells earlier sweeps already covered. */
+  after?: number
+}
+
+export function planSweep(spec: SweepSpec): QueuedJob[] {
+  const all = worldCells()
+  const start = Math.max(0, spec.after ?? 0) % all.length
+  const take = Math.min(Math.max(1, spec.cells ?? 10), all.length)
+
+  const chosen: WorldCell[] = []
+  for (let i = 0; i < take; i += 1) chosen.push(all[(start + i) % all.length] as WorldCell)
+
+  const jobs: QueuedJob[] = []
+  for (const cell of chosen) {
+    for (const personaKey of spec.personaKeys) {
+      for (const planKey of spec.planKeys) {
+        jobs.push({
+          experiment: null,
+          variant: null,
+          persona_key: personaKey,
+          plan_key: planKey,
+          industry: spec.industry ?? 'retail',
+          job_role_id: spec.jobRoleId ?? null,
+          need: cell.reason,
+          rules: spec.rules ?? DEFAULT_RULES,
+          world: buildWorld(cell),
+        })
+      }
+    }
+  }
+  return jobs
+}
+
+/** Queues a sweep. Returns how many jobs were written. */
+export async function queueSweep(client: SupabaseClient, spec: SweepSpec): Promise<number> {
+  if (spec.personaKeys.length === 0 || spec.planKeys.length === 0) {
+    throw new Error('צריך לפחות דמות אחת ותוכנית אחת')
+  }
+  const jobs = planSweep(spec)
+  const { error } = await client.from('simulation_jobs').insert(jobs)
+  if (error) throw new Error(`הוספת עבודות נכשלה: ${error.message}`)
+  return jobs.length
 }
