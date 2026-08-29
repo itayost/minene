@@ -117,6 +117,29 @@ describe('what a technique report says', () => {
     expect(reports[0]!.negativeReactionPct).toBe(100)
   })
 
+  test('an agreed run the judge never scored is not counted as a loss', () => {
+    // The route saves a run whose scoring call failed with the run's own
+    // outcome intact and `score: null` (see app/api/persuade/simulate/route.ts's
+    // `unscored` event) -- the conversation still ended in agreement, nobody
+    // just recorded which category did it. `bank.ts` already treats this as no
+    // evidence (`if (!category) continue`); a technique report that instead
+    // drags every offered category's win rate down for it is reporting a loss
+    // that never happened.
+    const unscored = input('agreed', null, 'no_value', 'adi', ['personal_benefit'])
+    const reports = buildEffectiveness([unscored])
+    expect(reports.find((r) => r.category === 'personal_benefit')).toBeUndefined()
+
+    // And it must not silently deflate a technique that otherwise has a clean
+    // winning record: one real win, one unscored agreement, should still read
+    // as 100%, not 50%.
+    const withAWin = buildEffectiveness([
+      input('agreed', 'personal_benefit', 'no_value', 'adi', ['personal_benefit']),
+      unscored,
+    ])
+    expect(withAWin.find((r) => r.category === 'personal_benefit')!.runs).toBe(1)
+    expect(withAWin.find((r) => r.category === 'personal_benefit')!.winPct).toBe(100)
+  })
+
   test('reports no evidence as null rather than as zero', () => {
     // "Nobody has tried this" and "this never works" are opposite facts, and
     // the same null-is-not-zero rule like_pct already follows.

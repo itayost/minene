@@ -136,6 +136,16 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
   >()
 
   for (const { run, offered } of inputs) {
+    // An agreed run the judge never scored (the scoring call can fail after
+    // the conversation already ended -- see the `unscored` event in
+    // app/api/persuade/simulate/route.ts) is not a loss for any technique the
+    // plan offered. `won` below would read as null exactly as it does for a
+    // refusal, and counting it into every offered category's denominator with
+    // no win reports a false negative for all of them. `bank.ts` already
+    // treats the same case as no evidence (`if (!category) continue`); this
+    // is that same skip.
+    if (run.outcome === 'agreed' && !run.score) continue
+
     const { attempted, won } = categoriesInPlay(run, offered)
 
     for (const category of new Set(attempted)) {
