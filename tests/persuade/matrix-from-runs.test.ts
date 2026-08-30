@@ -88,4 +88,21 @@ describe('runs that carry no role', () => {
     const cells = matrixFrom([sim('retail', 'r1', 'agreed')], [{ id: 'r1', name: 'מנהל חנות' }])
     expect(cells.every((c) => c.jobRoleId !== null)).toBe(true)
   })
+
+  it('does not vanish a run whose role id matches no role in the catalogue', () => {
+    // Simulations are cross-tenant by design (CLAUDE.md: "the matrix and bank
+    // are readable across every tenant"), but public.roles is per-tenant. A
+    // run recorded under another tenant's role id is neither null (the
+    // roleless bucket above) nor equal to any id in the *current* tenant's
+    // roles list -- so it matches no column at all and disappears, the same
+    // failure the roleless column exists to prevent, just for a role id that
+    // is not null instead of one that is.
+    const cells = matrixFrom(
+      [sim('retail', 'foreign-tenant-role', 'agreed')],
+      [{ id: 'r1', name: 'מנהל חנות' }],
+    )
+
+    const total = cells.reduce((n, c) => n + c.runs, 0)
+    expect(total).toBe(1)
+  })
 })
