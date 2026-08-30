@@ -85,6 +85,27 @@ describe('refusing an experiment that could not answer anything', () => {
   test('the ready-made length experiment is itself valid', () => {
     expect(validateExperiment(messageLengthExperiment(PAIRS))).toEqual([])
   })
+
+  test('rejects a third arm that confounds the comparison, not just a second one', () => {
+    // The one-setting-at-a-time check only ever compared spec.arms[0] against
+    // spec.arms[1]. A third arm that differs from the others in two settings
+    // slipped through validation entirely -- so compareArms would report a
+    // clean three-way difference that is really two settings moving together
+    // for one of the arms, with nothing here to say so.
+    const problems = validateExperiment(
+      spec({
+        arms: [
+          { variant: 'a', rules: { ...DEFAULT_RULES, maxWordsPerMessage: 25 } },
+          { variant: 'b', rules: { ...DEFAULT_RULES, maxWordsPerMessage: 45 } },
+          {
+            variant: 'c',
+            rules: { ...DEFAULT_RULES, maxWordsPerMessage: 65, maxInteractions: 6 },
+          },
+        ],
+      }),
+    )
+    expect(problems.join(' ')).toMatch(/יותר מהגדרה אחת/)
+  })
 })
 
 const SAME_MODELS = { persuader: 'gpt-5.5', target: 'gpt-5.4-mini', judge: 'gpt-5.5' }
