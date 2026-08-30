@@ -196,6 +196,23 @@ describe('whether the comparison is worth reading yet', () => {
     ]
     expect(readiness(compareArms(runs), 10, runs).join(' ')).toMatch(/לא נרשם אילו מודלים/)
   })
+
+  test('does not claim a confirmed model swap when only some rows predate tracking', () => {
+    // `models` became a column partway through this lab's life -- ExperimentRun
+    // says so ("Null on rows predating it"). An arm that is half old rows (null)
+    // and half new rows on the SAME model is not evidence the arms differ; it is
+    // missing data on the old half. The strong claim ("the comparison measures
+    // the model swap") must be reserved for two DIFFERENT recorded model sets,
+    // not for "recorded" vs "not recorded".
+    const runs = [
+      ...Array.from({ length: 10 }, () => run('a', 'agreed', 80, 2, null)),
+      ...Array.from({ length: 10 }, () => run('a', 'agreed', 80, 2, SAME_MODELS)),
+      ...Array.from({ length: 20 }, () => run('b', 'refused', 40, 4, SAME_MODELS)),
+    ]
+    const warnings = readiness(compareArms(runs), 10, runs).join(' ')
+    expect(warnings).not.toMatch(/ההשוואה מודדת את החלפת המודל/)
+    expect(warnings).toMatch(/לא נרשם אילו מודלים הריצו את כולן/)
+  })
 })
 
 describe('sweeping the world space', () => {

@@ -97,14 +97,26 @@ export function readiness(
    * experiments. This is the failure that looks most like a result: a clean,
    * large, confident difference that is entirely the model swap. Reported
    * first because no other warning matters if this one is true.
+   *
+   * `models` is null on rows that predate the column, not on rows that ran a
+   * different combination -- so "recorded" and "not recorded" are kept apart
+   * from "recorded twice, differently". A run missing the field mixed with one
+   * that names a model is not proof the two differ; it is missing data on the
+   * older row, and claiming a confirmed swap there is exactly the
+   * zero-instead-of-null mistake this file exists to avoid elsewhere. Only two
+   * or more DISTINCT recorded fingerprints earn the strong claim.
    */
   const fingerprints = new Set(
     runs.filter((r) => r.variant).map((r) => JSON.stringify(r.models ?? null)),
   )
-  if (fingerprints.size > 1) {
+  const recorded = new Set([...fingerprints].filter((f) => f !== 'null'))
+  const hasUnrecorded = fingerprints.has('null')
+
+  if (recorded.size > 1) {
     warnings.push('הריצות רצו על יותר מצירוף מודלים אחד — ההשוואה מודדת את החלפת המודל')
-  }
-  if (fingerprints.has('null') && fingerprints.size === 1) {
+  } else if (hasUnrecorded && recorded.size === 1) {
+    warnings.push('לא נרשם אילו מודלים הריצו את כולן — אי אפשר לוודא שכולן רצו על אותו דבר')
+  } else if (hasUnrecorded && recorded.size === 0) {
     warnings.push('לא נרשם אילו מודלים הריצו — אי אפשר לדעת אם כולן רצו על אותו דבר')
   }
 
