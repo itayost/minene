@@ -63,12 +63,18 @@ export function propose(
   // real evidence.
   const totalRuns = rated.reduce((sum, r) => sum + r.runs, 0)
   const totalWins = rated.reduce((sum, r) => sum + r.wins, 0)
-  const average = totalRuns === 0 ? 0 : (totalWins / totalRuns) * 100
 
   return rated.map((report) => {
     const win = report.winPct ?? 0
-    // Relative to peers, not absolute: a 20% win rate is good in a hard cell
-    // and poor in an easy one, and only the comparison survives that.
+    // Relative to peers, not to a baseline the technique itself is pooled
+    // into: a technique that ran most of the volume would otherwise be most
+    // of its own "average", so a technique that is genuinely a third as good
+    // as its one peer could read as merely below average instead of far
+    // below it. Excluding the technique's own runs and wins is what keeps
+    // "peers" meaning the others.
+    const peerRuns = totalRuns - report.runs
+    const peerWins = totalWins - report.wins
+    const average = peerRuns === 0 ? 0 : (peerWins / peerRuns) * 100
     const ratio = average === 0 ? 1 : win / average
     const weight = Math.min(WEIGHT_CEILING, Math.max(WEIGHT_FLOOR, Number(ratio.toFixed(2))))
 

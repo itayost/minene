@@ -123,6 +123,19 @@ describe('turning evidence into a suggestion', () => {
     expect(authority.weight).toBeGreaterThan(0.9)
   })
 
+  it('scores a technique against its actual peers, not against a baseline it dominates', () => {
+    // "numbers" ran 900 times and won 20%. "authority" ran only 100 times but
+    // won 60%. The peer group for "numbers" is authority alone -- pooling
+    // numbers' own 900 runs into its own baseline lets a technique that ran
+    // most of the volume drag the bar down to meet itself, so a technique
+    // that is genuinely a third as good as its peer (20 vs 60) reads as only
+    // mildly below "average" instead of clearly underperforming it.
+    const proposals = propose([report('numbers', 20, 900), report('authority', 60, 100)])
+    const numbers = proposals.find((p) => p.category === 'numbers')!
+
+    expect(numbers.weight).toBeLessThan(0.5)
+  })
+
   it('carries the evidence, so a promotion can record what it was based on', () => {
     const [proposal] = propose([report('numbers', 60, 42)])
     expect(proposal!.evidence).toEqual({ runs: 42, winPct: 60, negativeReactionPct: 0 })
