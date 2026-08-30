@@ -74,7 +74,22 @@ export function propose(
 
     const caveats: string[] = []
     if (report.runs < minRuns) caveats.push(`${report.runs} ריצות בלבד`)
-    if (report.byReason.length === 0) caveats.push('אין פילוח לפי סיבה — הריצות רצו בלי עולם')
+
+    // byReason only counts runs that carried a world -- a run with none has no
+    // reason to key by, and sliceBy drops it. Comparing that total back to
+    // report.runs is what tells "no world at all" apart from "some of them":
+    // a technique's runs is one pooled number regardless, so a PARTIAL mix is
+    // just as capable of moving it as a total one is -- see the pre-world vs.
+    // world example in technique-report.ts that this same check exists to
+    // catch there.
+    const withReason = report.byReason.reduce((sum, s) => sum + s.runs, 0)
+    const withoutWorld = report.runs - withReason
+    if (withoutWorld === report.runs) {
+      caveats.push('אין פילוח לפי סיבה — הריצות רצו בלי עולם')
+    } else if (withoutWorld > 0) {
+      caveats.push(`${withoutWorld} מתוך ${report.runs} ריצות בלי עולם — מעורבבות בשיעור הכולל`)
+    }
+
     if ((report.negativeReactionPct ?? 0) >= 30) {
       caveats.push(`${report.negativeReactionPct}% מהשיחות הסתיימו בעייפות`)
     }
