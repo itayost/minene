@@ -6,6 +6,7 @@ import {
   buildEffectiveness,
   type EffectivenessInput,
   formatTechnique,
+  modelWarning,
 } from '../../src/persuade/effectiveness'
 import type { ArgumentCategory, RunScore, Turn } from '../../src/persuade/engine/types'
 import { buildWorld } from '../../src/persuade/engine/world'
@@ -29,6 +30,7 @@ const input = (
   personaId: string,
   offered: ArgumentCategory[] = ['personal_benefit', 'social_proof'],
   fatigue = 0,
+  models: Record<string, string> | null = null,
 ): EffectivenessInput => ({
   run: {
     outcome: outcome as EffectivenessInput['run']['outcome'],
@@ -37,6 +39,7 @@ const input = (
     world: world(reason),
     personaId,
     fatigue,
+    models,
   },
   offered,
 })
@@ -126,6 +129,46 @@ describe('what a technique report says', () => {
     const [only] = buildEffectiveness([input('agreed', 'numbers', 'forgot', 'adi', ['numbers'])])
     expect(only!.winPct).toBe(100)
     expect(only!.byReason.find((s) => s.key === 'no_value')).toBeUndefined()
+  })
+})
+
+describe('the model-fingerprint guard', () => {
+  // worker.ts stores `models` on every run for exactly this reason (see its
+  // comment: "swapping PERSUADER_MODEL makes every comparison spanning the
+  // swap measure the model rather than the setting -- and still render as a
+  // clean difference"). experiment-results.ts's readiness() already checks
+  // this for A/B arms; a technique's pooled win rate needs the same guard,
+  // because it pools every run regardless of which models produced it.
+  test('flags a report built from runs that did not all use the same models', () => {
+    const gptFour = { persuader: 'gpt-4', target: 'gpt-4', judge: 'gpt-4' }
+    const gptFive = { persuader: 'gpt-5', target: 'gpt-4', judge: 'gpt-4' }
+    const inputs = [
+      input('agreed', 'personal_benefit', 'no_value', 'adi', ['personal_benefit'], 0, gptFour),
+      input('agreed', 'personal_benefit', 'no_value', 'adi', ['personal_benefit'], 0, gptFive),
+    ]
+
+    expect(modelWarning(inputs)).not.toBeNull()
+  })
+
+  test('stays quiet when every run in the report came from the same models', () => {
+    const gptFour = { persuader: 'gpt-4', target: 'gpt-4', judge: 'gpt-4' }
+    const inputs = [
+      input('agreed', 'personal_benefit', 'no_value', 'adi', ['personal_benefit'], 0, gptFour),
+      input('refused', null, 'disagrees', 'adi', ['personal_benefit'], 0, gptFour),
+    ]
+
+    expect(modelWarning(inputs)).toBeNull()
+  })
+
+  test('stays quiet when no run carries a models fingerprint at all', () => {
+    // Rows predating the `models` column are all null together -- one
+    // fingerprint, not "unknown vs unknown".
+    const inputs = [
+      input('agreed', 'personal_benefit', 'no_value', 'adi'),
+      input('refused', null, 'disagrees', 'adi'),
+    ]
+
+    expect(modelWarning(inputs)).toBeNull()
   })
 })
 

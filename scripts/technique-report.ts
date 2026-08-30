@@ -13,6 +13,7 @@ import {
   buildEffectiveness,
   type EffectivenessInput,
   formatTechnique,
+  modelWarning,
 } from '../src/persuade/effectiveness'
 import type { ArgumentCategory, PersuasionPlan } from '../src/persuade/engine/types'
 
@@ -44,7 +45,7 @@ async function main(): Promise<void> {
 
   const { data, error } = await db
     .from('simulations')
-    .select('outcome,turns,state,score,world,persona_id,plan')
+    .select('outcome,turns,state,score,world,persona_id,plan,models')
     .order('created_at', { ascending: false })
     .limit(5000)
   if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
@@ -57,6 +58,7 @@ async function main(): Promise<void> {
       world: row.world ?? null,
       personaId: row.persona_id,
       fatigue: row.state?.fatigue ?? 0,
+      models: row.models ?? null,
     },
     // What the plan actually put on the table. A technique the plan never
     // offered cannot be credited or blamed for the outcome.
@@ -98,6 +100,10 @@ async function main(): Promise<void> {
         `${worldless.length} ריצות ישנות הושמטו — הן מהגדרה אחרת ואין להן סיבה. ל--all כדי לכלול.`,
     )
   }
+
+  const modelWarn = modelWarning(used)
+  if (modelWarn) console.log(`\n⚠ ${modelWarn}`)
+
   console.log('')
 
   if (reports.length === 0) {

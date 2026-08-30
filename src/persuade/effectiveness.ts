@@ -27,6 +27,8 @@ export interface EffectivenessRun {
   personaId: string | null
   /** Fatigue at the end. The proxy for a reaction that went badly. */
   fatigue: number
+  /** The model id per role that produced the run. Null on rows predating it. */
+  models?: Record<string, string> | null
 }
 
 export interface Slice {
@@ -120,6 +122,24 @@ export interface EffectivenessInput {
   run: EffectivenessRun
   /** The categories this run's plan actually put on the table. */
   offered: ArgumentCategory[]
+}
+
+/**
+ * Whether every run behind this report came from the same models.
+ *
+ * The same check `readiness()` runs for an experiment's arms, needed here too:
+ * `buildEffectiveness` pools every run it is given into one win rate per
+ * technique, and a `PERSUADER_MODEL` swap in the middle of that pool would
+ * still render as a clean, confident number -- it would just be measuring the
+ * swap. `worker.ts` stores `models` on every run precisely so this is
+ * checkable; this report never checked it.
+ */
+export function modelWarning(inputs: readonly EffectivenessInput[]): string | null {
+  const fingerprints = new Set(inputs.map((i) => JSON.stringify(i.run.models ?? null)))
+  if (fingerprints.size > 1) {
+    return 'הריצות שנספרו כאן רצו על יותר מצירוף מודלים אחד — שיעורי ההצלחה עלולים לשקף החלפת מודל ולא את הטכניקה'
+  }
+  return null
 }
 
 export function buildEffectiveness(inputs: readonly EffectivenessInput[]): TechniqueReport[] {
