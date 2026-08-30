@@ -113,16 +113,20 @@ export function validateExperiment(spec: ExperimentSpec): string[] {
   }
 
   // One axis at a time. Two arms differing in three settings tell you the three
-  // together did something, and nothing about which.
-  if (spec.arms.length === 2) {
-    const [a, b] = spec.arms as [ExperimentArm, ExperimentArm]
-    const differing = (Object.keys(DEFAULT_RULES) as (keyof RuleConfig)[]).filter(
-      (key) => a.rules[key] !== b.rules[key],
-    )
-    if (differing.length > 1) {
-      problems.push(
-        `הזרועות נבדלות ביותר מהגדרה אחת (${differing.join(', ')}) — לא יהיה אפשר לדעת מה גרם למה`,
-      )
+  // together did something, and nothing about which. Checked over every pair,
+  // not just arms[0] against arms[1] -- a third arm is still a confound if it
+  // differs from either of the others in more than one setting.
+  const keys = Object.keys(DEFAULT_RULES) as (keyof RuleConfig)[]
+  for (let i = 0; i < spec.arms.length; i += 1) {
+    for (let j = i + 1; j < spec.arms.length; j += 1) {
+      const a = spec.arms[i] as ExperimentArm
+      const b = spec.arms[j] as ExperimentArm
+      const differing = keys.filter((key) => a.rules[key] !== b.rules[key])
+      if (differing.length > 1) {
+        problems.push(
+          `${a.variant} ו-${b.variant} נבדלות ביותר מהגדרה אחת (${differing.join(', ')}) — לא יהיה אפשר לדעת מה גרם למה`,
+        )
+      }
     }
   }
 
