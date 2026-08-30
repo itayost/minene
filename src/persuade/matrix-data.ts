@@ -15,6 +15,7 @@ export function matrixFrom(
   roles: readonly { id: string; name: string }[],
 ): MatrixCell[] {
   const industries = [...new Set(simulations.map((s) => s.cell.industry))].sort()
+  const knownRoleIds = new Set(roles.map((r) => r.id))
 
   const cell = (
     industry: string,
@@ -59,11 +60,40 @@ export function matrixFrom(
      * never sees an empty extra column.
      */
     const roleless = here.filter((s) => s.cell.jobRoleId === null)
-    return roleless.length > 0
-      ? [...columns, cell(industry, null, UNASSIGNED_ROLE, roleless)]
-      : columns
+    const rolelessColumn =
+      roleless.length > 0 ? [cell(industry, null, UNASSIGNED_ROLE, roleless)] : []
+
+    /**
+     * A run whose jobRoleId is set but names no role in the current catalogue --
+     * typically because the role was deleted (RolesManager) after the run was
+     * recorded. Same failure as the roleless case above: it matches no column
+     * built from `roles` and isn't the null-id case either, so it was being
+     * silently dropped from the grid. The id is kept (unlike the roleless
+     * bucket) so a cell picked here still maps back to the exact runs that
+     * produced it.
+     */
+    const orphanIds = [
+      ...new Set(
+        here
+          .filter((s) => s.cell.jobRoleId !== null && !knownRoleIds.has(s.cell.jobRoleId))
+          .map((s) => s.cell.jobRoleId as string),
+      ),
+    ]
+    const orphanColumns = orphanIds.map((id) =>
+      cell(
+        industry,
+        id,
+        DELETED_ROLE,
+        here.filter((s) => s.cell.jobRoleId === id),
+      ),
+    )
+
+    return [...columns, ...rolelessColumn, ...orphanColumns]
   })
 }
 
 /** Named rather than blank, so the column says why it exists. */
 export const UNASSIGNED_ROLE = 'ללא תפקיד'
+
+/** For a jobRoleId that no role in the current catalogue matches -- the role was deleted. */
+export const DELETED_ROLE = 'תפקיד שנמחק'

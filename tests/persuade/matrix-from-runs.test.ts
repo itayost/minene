@@ -89,3 +89,26 @@ describe('runs that carry no role', () => {
     expect(cells.every((c) => c.jobRoleId !== null)).toBe(true)
   })
 })
+
+describe('runs whose role no longer exists', () => {
+  const sim = (industry: string, jobRoleId: string | null, outcome: string) =>
+    ({
+      id: `${industry}-${jobRoleId}-${outcome}-${Math.random()}`,
+      cell: { industry, jobRoleId },
+      run: { state: { outcome } },
+    }) as never
+
+  it('does not vanish when the role catalogue no longer lists it', () => {
+    // A role can be deleted (RolesManager) after runs were recorded against it.
+    // Those runs still carry the old, now-unknown jobRoleId -- they match no
+    // column built from the current roles list, and are not the null-id case
+    // `matrixFrom` already special-cases either. Same failure as the roleless
+    // fix above, just triggered by a delete instead of a tenant-free sweep.
+    const cells = matrixFrom(
+      [sim('retail', 'r1', 'agreed'), sim('retail', 'deleted-role', 'agreed')],
+      [{ id: 'r1', name: 'מנהל חנות' }],
+    )
+
+    expect(cells.reduce((n, c) => n + c.runs, 0)).toBe(2)
+  })
+})
