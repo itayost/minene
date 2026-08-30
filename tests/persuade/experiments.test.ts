@@ -85,6 +85,27 @@ describe('refusing an experiment that could not answer anything', () => {
   test('the ready-made length experiment is itself valid', () => {
     expect(validateExperiment(messageLengthExperiment(PAIRS))).toEqual([])
   })
+
+  test('rejects a multi-setting difference even with three or more arms', () => {
+    // The single-axis check only ever compared spec.arms[0] against
+    // spec.arms[1], guarded behind `arms.length === 2` -- so a third arm made
+    // the guard vanish entirely rather than widen. Here arm 'c' differs from
+    // arm 'a' in two settings at once, which the two-arm version of this same
+    // spec would correctly refuse.
+    const problems = validateExperiment(
+      spec({
+        arms: [
+          { variant: 'a', rules: { ...DEFAULT_RULES, maxWordsPerMessage: 25 } },
+          { variant: 'b', rules: { ...DEFAULT_RULES, maxWordsPerMessage: 45 } },
+          {
+            variant: 'c',
+            rules: { ...DEFAULT_RULES, maxWordsPerMessage: 65, maxInteractions: 6 },
+          },
+        ],
+      }),
+    )
+    expect(problems.join(' ')).toMatch(/יותר מהגדרה אחת/)
+  })
 })
 
 const SAME_MODELS = { persuader: 'gpt-5.5', target: 'gpt-5.4-mini', judge: 'gpt-5.5' }
