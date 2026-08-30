@@ -206,17 +206,28 @@ export function formatTechnique(report: TechniqueReport, minRuns = 10): string {
     lines.push(`  ! only ${report.runs} runs — too few to read`)
   }
 
+  // The same bar the overall figure is checked against, applied per row: an
+  // overall count that clears minRuns says nothing about any one slice inside
+  // it, and a persona or reason built from a single run can print a 100% that
+  // means nothing while sitting unflagged next to rows built from a real
+  // sample.
+  const thin = (n: number) => (n < minRuns ? ' !' : '')
+
   if (report.byPersona.length > 0) {
     lines.push('', 'By persona:')
     for (const s of report.byPersona) {
-      lines.push(`  ${s.key.padEnd(22)} ${s.winPct === null ? '-' : `${s.winPct}%`}  (${s.runs})`)
+      lines.push(
+        `  ${s.key.padEnd(22)} ${s.winPct === null ? '-' : `${s.winPct}%`}  (${s.runs})${thin(s.runs)}`,
+      )
     }
   }
 
   if (report.byReason.length > 0) {
     lines.push('', 'By reason:')
     for (const s of report.byReason) {
-      lines.push(`  ${s.key.padEnd(22)} ${s.winPct === null ? '-' : `${s.winPct}%`}  (${s.runs})`)
+      lines.push(
+        `  ${s.key.padEnd(22)} ${s.winPct === null ? '-' : `${s.winPct}%`}  (${s.runs})${thin(s.runs)}`,
+      )
     }
   }
 
