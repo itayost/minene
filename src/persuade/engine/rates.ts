@@ -61,13 +61,19 @@ export function computeRates(runs: Run[]): Rates {
     }
   })
 
+  // `overcome` only credits a run when it is the run's SOLE blocker -- see the
+  // matching comment on `blockersIn` in bank.ts. `state.blockers` only ever
+  // grows, so a run with two diagnosed blockers that ends in agreement gives no
+  // evidence pointing at either one specifically.
   const blockers = new Map<BlockerId, { encountered: number; overcome: number }>()
   for (const run of runs) {
-    for (const blocker of new Set(run.state.blockers)) {
+    const distinct = [...new Set(run.state.blockers)]
+    const unambiguous = agreedIn(run) && distinct.length === 1
+    for (const blocker of distinct) {
       const entry = blockers.get(blocker) ?? { encountered: 0, overcome: 0 }
       blockers.set(blocker, {
         encountered: entry.encountered + 1,
-        overcome: entry.overcome + (agreedIn(run) ? 1 : 0),
+        overcome: entry.overcome + (unambiguous ? 1 : 0),
       })
     }
   }

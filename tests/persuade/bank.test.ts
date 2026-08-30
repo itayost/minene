@@ -95,4 +95,18 @@ describe('what stopped the conversations', () => {
 
     expect(blockers[0]?.blocker).toBe('overloaded')
   })
+
+  it('does not credit every blocker in a run for a win only one of them earned', () => {
+    // Two distinct blockers were diagnosed in the same conversation, which then
+    // ended in agreement. Nothing in the data says which of the two the
+    // agreement is actually attributable to -- `state.blockers` only ever grows,
+    // it never records which one was resolved. Crediting both as "overcome"
+    // states a fact ("this specific blocker was broken") the run cannot support.
+    const blockers = blockersIn([run({ outcome: 'agreed', blockers: ['overloaded', 'no_price'] })])
+
+    const overloaded = blockers.find((b) => b.blocker === 'overloaded')
+    const noPrice = blockers.find((b) => b.blocker === 'no_price')
+    expect(overloaded).toMatchObject({ encountered: 1, overcome: 0 })
+    expect(noPrice).toMatchObject({ encountered: 1, overcome: 0 })
+  })
 })
