@@ -9,6 +9,11 @@ function fake(rows: Row[] = []) {
   let selected = ''
   const client = {
     from: () => {
+      // Mirrors what Postgres actually does with .order().limit(): sorts the
+      // whole table by the column, then cuts. A fake that ignored the argument
+      // (as this one used to) could never catch a limit that was too small --
+      // it would return every row regardless of what was asked for.
+      let paged = rows
       const q = {
         insert: (values: Row) => {
           inserted.push(values)
@@ -18,9 +23,20 @@ function fake(rows: Row[] = []) {
           selected = cols
           return q
         },
-        order: () => q,
-        limit: () => q,
-        then: (resolve: (v: unknown) => unknown) => resolve({ data: rows, error: null }),
+        order: (column: string, opts?: { ascending?: boolean }) => {
+          const ascending = opts?.ascending ?? true
+          paged = [...rows].sort((a, b) => {
+            const left = String(a[column] ?? '')
+            const right = String(b[column] ?? '')
+            return ascending ? left.localeCompare(right) : right.localeCompare(left)
+          })
+          return q
+        },
+        limit: (n: number) => {
+          paged = paged.slice(0, n)
+          return q
+        },
+        then: (resolve: (v: unknown) => unknown) => resolve({ data: paged, error: null }),
       }
       return q
     },
@@ -110,5 +126,42 @@ describe('reading simulations back', () => {
     expect(first?.run.state.outcome).toBe('agreed')
     expect(first?.run.score?.winningCategory).toBe('numbers')
     expect(first?.cell).toEqual({ industry: 'אופנה', jobRoleId: 'r1' })
+  })
+
+  it('does not let its default page size silently drop an industry from the matrix', async () => {
+    // The worker can log up to 144 runs a day (worker.ts's batch-size comment:
+    // six an hour, under the 200 daily cap) and never stops -- so any fixed page
+    // size is a matter of when, not if, it is exceeded. Once it is, the oldest
+    // industry's runs fall off the page and its matrix cell reads back with zero
+    // runs: indistinguishable from an industry nobody has ever simulated, which is
+    // the exact "smaller number, shown confidently" failure the roleless-run fix
+    // above exists to prevent -- recurring here through a LIMIT instead of a join.
+    const oldest = {
+      id: 'old',
+      industry: 'תעשייה',
+      job_role_id: 'r1',
+      persona_id: null,
+      plan: { id: 'p' },
+      turns: [],
+      state: { outcome: 'agreed' },
+      score: null,
+      created_at: '2020-01-01T00:00:00Z',
+    }
+    const flood = Array.from({ length: 500 }, (_, i) => ({
+      id: `flood-${i}`,
+      industry: 'קמעונאות',
+      job_role_id: 'r2',
+      persona_id: null,
+      plan: { id: 'p' },
+      turns: [],
+      state: { outcome: 'refused' },
+      score: null,
+      created_at: '2026-01-01T00:00:00Z',
+    }))
+    const { store } = fake([oldest, ...flood])
+
+    const all = await store.listSimulations()
+
+    expect(all.some((s) => s.id === 'old')).toBe(true)
   })
 })

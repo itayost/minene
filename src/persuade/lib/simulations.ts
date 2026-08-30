@@ -92,7 +92,14 @@ export function createSimulationsStore(client: SupabaseClient) {
       if (error) throw new Error(`שמירת הסימולציה נכשלה: ${error.message}`)
     },
 
-    async listSimulations(limit = 500): Promise<StoredSimulation[]> {
+    // The worker never stops (up to 144 runs/day, worker.ts), so any fixed page
+    // is a matter of when, not if, it is exceeded. Past that point the oldest
+    // industry's runs fall off the page and its matrix cell reads back as zero
+    // runs -- indistinguishable from an industry nobody has simulated. 5000
+    // matches the limit scripts/technique-report.ts already uses against this
+    // same table, which is the largest this codebase has treated as safe to
+    // pull in one query.
+    async listSimulations(limit = 5000): Promise<StoredSimulation[]> {
       const { data, error } = await client
         .from('simulations')
         .select(SIMULATION_COLUMNS)
