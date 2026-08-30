@@ -88,4 +88,19 @@ describe('runs that carry no role', () => {
     const cells = matrixFrom([sim('retail', 'r1', 'agreed')], [{ id: 'r1', name: 'מנהל חנות' }])
     expect(cells.every((c) => c.jobRoleId !== null)).toBe(true)
   })
+
+  it('catches a role id the catalogue no longer has, instead of dropping the run', () => {
+    // A role can be renamed or deleted after runs were recorded against it. The
+    // id is not null, so it used to match neither a current column nor the
+    // `=== null` roleless check -- it vanished from the grid's total, the same
+    // failure as the null case above but with no column left to blame it on.
+    const cells = matrixFrom(
+      [sim('retail', 'r1', 'agreed'), sim('retail', 'deleted-role', 'agreed')],
+      [{ id: 'r1', name: 'מנהל חנות' }],
+    )
+
+    expect(cells.reduce((n, c) => n + c.runs, 0)).toBe(2)
+    const unassigned = cells.find((c) => c.jobRoleId === null)
+    expect(unassigned?.runs).toBe(1)
+  })
 })

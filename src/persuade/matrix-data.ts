@@ -15,6 +15,7 @@ export function matrixFrom(
   roles: readonly { id: string; name: string }[],
 ): MatrixCell[] {
   const industries = [...new Set(simulations.map((s) => s.cell.industry))].sort()
+  const knownRoleIds = new Set(roles.map((role) => role.id))
 
   const cell = (
     industry: string,
@@ -46,7 +47,8 @@ export function matrixFrom(
     )
 
     /**
-     * Runs with no role get a column of their own.
+     * Runs with no role, or with a role id the catalogue no longer has, get a
+     * column of their own.
      *
      * A sweep of the world space is deliberately tenant-free, and public.roles
      * is per-tenant, so those runs carry no role id and matched none of the
@@ -55,10 +57,20 @@ export function matrixFrom(
      * the worst way for a measurement screen to be wrong: it showed a smaller
      * number confidently rather than showing nothing.
      *
-     * Added only when such runs exist, so a tenant that always records a role
-     * never sees an empty extra column.
+     * The same disappearance happens to a run whose role id is not null but is
+     * no longer in `roles` -- a renamed or deleted role, or a role belonging to
+     * a different tenant's catalogue. `columns` only has a cell per id `roles`
+     * still lists, so that run matches none of them either, and unlike the null
+     * case it used to match the roleless bucket's `=== null` check even less:
+     * it vanished from the total without a column to blame it on. A run counts
+     * as roleless here whenever its id is not one `roles` actually has.
+     *
+     * Added only when such runs exist, so a tenant that always records a live
+     * role never sees an empty extra column.
      */
-    const roleless = here.filter((s) => s.cell.jobRoleId === null)
+    const roleless = here.filter(
+      (s) => s.cell.jobRoleId === null || !knownRoleIds.has(s.cell.jobRoleId),
+    )
     return roleless.length > 0
       ? [...columns, cell(industry, null, UNASSIGNED_ROLE, roleless)]
       : columns
