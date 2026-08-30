@@ -88,4 +88,20 @@ describe('runs that carry no role', () => {
     const cells = matrixFrom([sim('retail', 'r1', 'agreed')], [{ id: 'r1', name: 'מנהל חנות' }])
     expect(cells.every((c) => c.jobRoleId !== null)).toBe(true)
   })
+
+  it('catches a role id from another tenant instead of dropping the run', () => {
+    // `simulations` is read across every tenant by design; `roles` is the
+    // caller's own tenant's catalogue. A run another tenant recorded against
+    // one of ITS roles carries an id that matches no column here and is not
+    // null either -- it used to match nothing at all and vanish from the
+    // total, the same silent shrink the null-role fix above exists to avoid.
+    const cells = matrixFrom(
+      [sim('retail', 'role-from-another-tenant', 'agreed'), sim('retail', 'r1', 'agreed')],
+      [{ id: 'r1', name: 'מנהל חנות' }],
+    )
+
+    expect(cells.reduce((n, c) => n + c.runs, 0)).toBe(2)
+    const unassigned = cells.find((c) => c.jobRoleId === null)
+    expect(unassigned?.runs).toBe(1)
+  })
 })

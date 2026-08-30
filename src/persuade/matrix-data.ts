@@ -15,6 +15,7 @@ export function matrixFrom(
   roles: readonly { id: string; name: string }[],
 ): MatrixCell[] {
   const industries = [...new Set(simulations.map((s) => s.cell.industry))].sort()
+  const roleIds = new Set(roles.map((r) => r.id))
 
   const cell = (
     industry: string,
@@ -46,7 +47,8 @@ export function matrixFrom(
     )
 
     /**
-     * Runs with no role get a column of their own.
+     * Runs with no role -- or with a role this tenant's catalogue does not
+     * recognise -- get a column of their own.
      *
      * A sweep of the world space is deliberately tenant-free, and public.roles
      * is per-tenant, so those runs carry no role id and matched none of the
@@ -55,10 +57,20 @@ export function matrixFrom(
      * the worst way for a measurement screen to be wrong: it showed a smaller
      * number confidently rather than showing nothing.
      *
+     * The same disappearance happens to a non-null role id nobody here matches:
+     * `simulations` is read across every tenant by design (that is the whole
+     * point of a shared matrix), while `roles` is scoped to the caller's own
+     * tenant. A run another tenant recorded against one of ITS roles carries an
+     * id that exists in nobody's list here, so it matched no column above and
+     * was not null either -- invisible for the same reason, just a different
+     * cause. Both belong in the same catch-all: a viewer cannot tell "no role
+     * was recorded" from "a role was recorded that isn't mine to resolve", and
+     * neither should silently shrink the count.
+     *
      * Added only when such runs exist, so a tenant that always records a role
      * never sees an empty extra column.
      */
-    const roleless = here.filter((s) => s.cell.jobRoleId === null)
+    const roleless = here.filter((s) => s.cell.jobRoleId === null || !roleIds.has(s.cell.jobRoleId))
     return roleless.length > 0
       ? [...columns, cell(industry, null, UNASSIGNED_ROLE, roleless)]
       : columns
