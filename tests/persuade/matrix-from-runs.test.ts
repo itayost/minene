@@ -88,4 +88,19 @@ describe('runs that carry no role', () => {
     const cells = matrixFrom([sim('retail', 'r1', 'agreed')], [{ id: 'r1', name: 'מנהל חנות' }])
     expect(cells.every((c) => c.jobRoleId !== null)).toBe(true)
   })
+
+  it('keeps a run whose role was since deleted, instead of dropping it', () => {
+    // job_role_id is written once, when the run is saved, and never updated
+    // again. Deleting the role afterwards (roles-api.ts's deleteRole is a hard
+    // delete) does not touch the old runs -- so a run recorded against a role
+    // that no longer exists is neither in the current roles list nor null,
+    // and matched no column at all. That is the same failure the null-role
+    // column above exists to prevent, just reached through a different door.
+    const cells = matrixFrom(
+      [sim('retail', 'r1', 'agreed'), sim('retail', 'deleted-role', 'refused')],
+      [{ id: 'r1', name: 'מנהל חנות' }],
+    )
+
+    expect(cells.reduce((n, c) => n + c.runs, 0)).toBe(2)
+  })
 })
