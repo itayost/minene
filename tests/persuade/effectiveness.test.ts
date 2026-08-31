@@ -117,6 +117,38 @@ describe('what a technique report says', () => {
     expect(reports[0]!.negativeReactionPct).toBe(100)
   })
 
+  test('an agreed run with no score counts as neither a win nor a loss', () => {
+    // The scorer can fail after a conversation ends in agreement -- the route
+    // stores the run anyway, with `score: null` (see app/api/persuade/
+    // simulate/route.ts). That run genuinely proves nothing about which
+    // offered category moved the person: it is not evidence the technique
+    // failed, only evidence nobody got to judge it. Counting it as a loss for
+    // every category the plan offered is the same "0 where the honest answer
+    // is null" mistake `pct()` exists to prevent, just reached a different way.
+    const reports = buildEffectiveness([
+      input('agreed', 'personal_benefit', 'no_value', 'adi', ['personal_benefit']),
+      input('agreed', null, 'no_value', 'adi', ['personal_benefit']),
+    ])
+
+    const personal = reports.find((r) => r.category === 'personal_benefit')!
+    expect(personal.runs).toBe(1)
+    expect(personal.wins).toBe(1)
+    expect(personal.winPct).toBe(100)
+  })
+
+  test('an unscored agreed run still counts toward exhaustion, on its own denominator', () => {
+    // Sitting out the win/loss count is not the same as never having happened:
+    // the fatigue signal comes straight off the run, not off the scorer, so an
+    // unscored run that ran the counterpart ragged still belongs in this rate.
+    const reports = buildEffectiveness([
+      input('agreed', null, 'no_value', 'adi', ['personal_benefit'], 0.9),
+    ])
+
+    const personal = reports.find((r) => r.category === 'personal_benefit')!
+    expect(personal.runs).toBe(0)
+    expect(personal.negativeReactionPct).toBe(100)
+  })
+
   test('reports no evidence as null rather than as zero', () => {
     // "Nobody has tried this" and "this never works" are opposite facts, and
     // the same null-is-not-zero rule like_pct already follows.
