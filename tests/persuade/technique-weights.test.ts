@@ -154,6 +154,23 @@ describe('turning evidence into a suggestion', () => {
     expect(propose([worldless, report('authority', 20)])[0]!.caveat).toMatch(/בלי עולם/)
   })
 
+  it('flags a technique whose runs are only PARTLY covered by a world', () => {
+    // 20 runs total, byReason only accounts for 12 of them: 8 ran without a
+    // world and are pooled into the same winPct as a different, incomparable
+    // population -- the exact failure technique-report.ts already guards
+    // against at the dataset level ("four pre-world refusals and seven world
+    // runs that agreed 86% of the time, averaged to a number describing
+    // neither"). `byReason.length === 0` only catches the all-or-nothing case
+    // and misses this partial mix, so today it says nothing.
+    const partiallyWorldless = {
+      ...report('numbers', 60, 20),
+      byReason: [{ key: 'forgot', runs: 12, wins: 7, winPct: 58 }],
+    } as TechniqueReport
+
+    const [proposal] = propose([partiallyWorldless])
+    expect(proposal!.caveat).toMatch(/בלי עולם/)
+  })
+
   it('ignores a technique nothing is known about', () => {
     expect(propose([report('numbers', null)])).toEqual([])
   })
