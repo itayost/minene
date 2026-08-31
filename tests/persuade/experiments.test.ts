@@ -196,6 +196,20 @@ describe('whether the comparison is worth reading yet', () => {
     ]
     expect(readiness(compareArms(runs), 10, runs).join(' ')).toMatch(/לא נרשם אילו מודלים/)
   })
+
+  test('warns when a fractional grade shows an old 0-10 scale pooled with 0-100', () => {
+    // score.ts pins `grade` to a whole number on 0-100 because the judge used
+    // to pick a scale per run -- an agreed run in three messages once came back
+    // 8.4, a deferred one 72 (see git history on engine/score.ts). Nothing
+    // rewrites a row scored before that fix, so a fraction here is the same
+    // tell the schema comment names: proof this arm's mean is averaging two
+    // scales as if they were one.
+    const runs = [
+      ...Array.from({ length: 20 }, () => run('a', 'agreed', 80, 2)),
+      ...Array.from({ length: 20 }, () => run('b', 'refused', 8.4, 4)),
+    ]
+    expect(readiness(compareArms(runs), 10, runs).join(' ')).toMatch(/סולם/)
+  })
 })
 
 describe('sweeping the world space', () => {

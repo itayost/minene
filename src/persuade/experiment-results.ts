@@ -108,6 +108,21 @@ export function readiness(
     warnings.push('לא נרשם אילו מודלים הריצו — אי אפשר לדעת אם כולן רצו על אותו דבר')
   }
 
+  /**
+   * The other comparison-breaking change, and it leaves no fingerprint at all.
+   *
+   * `grade` is pinned to a whole number on 0-100 (see the schema comment on
+   * `scoreSchema` in engine/score.ts) because the judge used to pick a scale per
+   * run -- an agreed run in three messages once came back 8.4, a deferred one
+   * 72. Nothing rewrites a row scored before that fix, so a fractional grade
+   * turning up here is the same tell: proof `meanGrade` above is averaging a
+   * 0-10 judgment and a 0-100 one as if they were the same number.
+   */
+  const grades = runs.map((r) => r.score?.grade).filter((g): g is number => typeof g === 'number')
+  if (grades.some((g) => !Number.isInteger(g))) {
+    warnings.push('חלק מהציונים אינם מספרים שלמים — סימן לריצות שנוקדו לפני שהסולם נקבע ל-0 עד 100')
+  }
+
   if (arms.length < 2) {
     warnings.push('פחות משתי זרועות עם תוצאות — אין השוואה')
     return warnings
