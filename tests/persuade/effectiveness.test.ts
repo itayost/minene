@@ -117,6 +117,22 @@ describe('what a technique report says', () => {
     expect(reports[0]!.negativeReactionPct).toBe(100)
   })
 
+  test('does not lose a win when the scorer names a category the plan never offered', () => {
+    // The judge is shown every category in the universe (score.ts passes the
+    // full ARGUMENT_LABELS list, not this plan's arguments), so it can name a
+    // winner outside what this plan's static argument list put on the table --
+    // a real conversation can move through an improvised escalation the plan
+    // never scripted. If that category has no report of its own and was never
+    // "offered", the win has nowhere to land: not credited to anything the
+    // plan did offer, and invisible as its own category too.
+    const reports = buildEffectiveness([
+      input('agreed', 'authority', 'no_value', 'adi', ['personal_benefit', 'social_proof']),
+    ])
+
+    const authority = reports.find((r) => r.category === 'authority')
+    expect(authority?.wins).toBe(1)
+  })
+
   test('reports no evidence as null rather than as zero', () => {
     // "Nobody has tried this" and "this never works" are opposite facts, and
     // the same null-is-not-zero rule like_pct already follows.

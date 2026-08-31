@@ -90,6 +90,18 @@ const mean = (xs: number[]): number | null =>
  * those would make the denominator "times mentioned" and the numerator "times
  * won", which is a ratio of two unrelated things. So a loss contributes to a
  * technique's denominator only through the categories the plan actually offered.
+ *
+ * A win is different: the scorer is shown every category in the universe
+ * (`score.ts` passes the full label list, not this plan's arguments), so it
+ * can name a winner the plan's static argument list never put on the table --
+ * a real conversation can move through an improvised escalation the plan
+ * never scripted. Dropping that win because it falls outside `offered` does
+ * not just under-credit the category that actually moved the person, it
+ * deletes the win from the report entirely: no category ends up crediting it,
+ * so a reader summing wins across every technique gets a number smaller than
+ * the count of agreed runs. The category the scorer actually named is always
+ * "in play" for its own run, whether or not the plan called it out ahead of
+ * time.
  */
 function categoriesInPlay(
   run: EffectivenessRun,
@@ -99,7 +111,8 @@ function categoriesInPlay(
   won: ArgumentCategory | null
 } {
   const won = run.outcome === 'agreed' ? (run.score?.winningCategory ?? null) : null
-  return { attempted: [...offered], won }
+  const attempted = won && !offered.includes(won) ? [...offered, won] : [...offered]
+  return { attempted, won }
 }
 
 function sliceBy<T extends string>(rows: { key: T | null; won: boolean }[]): Slice[] {
