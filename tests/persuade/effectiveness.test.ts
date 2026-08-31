@@ -246,3 +246,20 @@ describe('the rendered report', () => {
     expect(plentyLine).not.toMatch(/!/)
   })
 })
+
+describe('a win the plan never offered', () => {
+  test('is credited to the category that earned it, not dropped', () => {
+    // The scorer picks from the whole category list, not from this plan's
+    // arguments, so an off-plan winner is a real outcome. Matching only within
+    // `offered` dropped the win entirely while still counting the run in every
+    // offered technique's denominator: a conversation that succeeded read as a
+    // loss for everything and a win for nothing.
+    const reports = buildEffectiveness([
+      input('agreed', 'authority', 'forgot', 'adi', ['personal_benefit', 'numbers']),
+    ])
+
+    const authority = reports.find((r) => r.category === 'authority')
+    expect(authority?.wins).toBe(1)
+    expect(reports.find((r) => r.category === 'personal_benefit')?.wins).toBe(0)
+  })
+})

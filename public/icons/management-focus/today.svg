@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Calendar and time">
+  <defs>
+    <radialGradient id="bg" cx="30%" cy="23%" r="84%">
+      <stop offset="0" stop-color="#5ad9d6"/>
+      <stop offset="0.58" stop-color="#13aaa9"/>
+      <stop offset="1" stop-color="#087a83"/>
+    </radialGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="160%">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#064b50" flood-opacity=".3"/>
+    </filter>
+  </defs>
+  <circle cx="128" cy="121" r="101" fill="url(#bg)" filter="url(#shadow)"/>
+  <rect x="60" y="70" width="132" height="121" rx="15" fill="#fff"/>
+  <path d="M60 104h132" stroke="url(#bg)" stroke-width="10"/>
+  <path d="M91 54v30M161 54v30" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round"/>
+  <g fill="url(#bg)">
+    <rect x="82" y="121" width="20" height="18" rx="3"/>
+    <rect x="116" y="121" width="20" height="18" rx="3"/>
+    <rect x="150" y="121" width="20" height="18" rx="3"/>
+    <rect x="82" y="151" width="20" height="18" rx="3"/>
+    <rect x="116" y="151" width="20" height="18" rx="3"/>
+  </g>
+  <circle cx="174" cy="173" r="36" fill="#fff" stroke="url(#bg)" stroke-width="7"/>
+  <path d="M174 152v22l14 10" fill="none" stroke="url(#bg)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

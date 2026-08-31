@@ -101,11 +101,21 @@ export function readiness(
   const fingerprints = new Set(
     runs.filter((r) => r.variant).map((r) => JSON.stringify(r.models ?? null)),
   )
-  if (fingerprints.size > 1) {
+  // A run with no models recorded is an unknown, not a second model. Counting
+  // it as one turns "some rows predate the recording" into "this comparison
+  // measures a model swap" -- a far stronger claim, and the one that was
+  // actually being made: every pool mixing pre- and post-recording runs
+  // reported a confirmed swap it had no evidence for.
+  const recorded = new Set([...fingerprints].filter((f) => f !== 'null'))
+  if (recorded.size > 1) {
     warnings.push('הריצות רצו על יותר מצירוף מודלים אחד — ההשוואה מודדת את החלפת המודל')
   }
-  if (fingerprints.has('null') && fingerprints.size === 1) {
-    warnings.push('לא נרשם אילו מודלים הריצו — אי אפשר לדעת אם כולן רצו על אותו דבר')
+  if (fingerprints.has('null')) {
+    warnings.push(
+      recorded.size === 0
+        ? 'לא נרשם אילו מודלים הריצו — אי אפשר לדעת אם כולן רצו על אותו דבר'
+        : 'לחלק מהריצות לא נרשמו מודלים — ייתכן שהן מאותו צירוף וייתכן שלא',
+    )
   }
 
   /**

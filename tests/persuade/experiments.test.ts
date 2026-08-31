@@ -309,3 +309,29 @@ describe('sweeping the world space', () => {
     expect(jobs[0]!.need).toBe(jobs[0]!.world!.reason)
   })
 })
+
+describe('a recording gap is not a model swap', () => {
+  test('does not claim a swap when the only difference is unrecorded models', () => {
+    // The stronger claim needs stronger evidence. Rows written before models
+    // were recorded are an unknown, and counting the unknown as a second model
+    // made every pool that spanned that change report a confirmed swap.
+    const runs = [
+      ...Array.from({ length: 20 }, () => run('a', 'agreed', 80, 2)),
+      ...Array.from({ length: 20 }, () => run('b', 'refused', 40, 4, null)),
+    ]
+
+    const text = readiness(compareArms(runs), 10, runs).join(' ')
+    expect(text).not.toMatch(/מודדת את החלפת המודל/)
+    expect(text).toMatch(/לחלק מהריצות לא נרשמו מודלים/)
+  })
+
+  test('still claims a swap when two different combinations really ran', () => {
+    const runs = [
+      ...Array.from({ length: 20 }, () => run('a', 'agreed', 80, 2)),
+      ...Array.from({ length: 20 }, () =>
+        run('b', 'refused', 40, 4, { persuader: 'gpt-5.4-mini', target: 'x', judge: 'y' }),
+      ),
+    ]
+    expect(readiness(compareArms(runs), 10, runs).join(' ')).toMatch(/מודדת את החלפת המודל/)
+  })
+})

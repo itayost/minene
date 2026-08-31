@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Life and wellbeing">
+  <defs>
+    <radialGradient id="bg" cx="30%" cy="23%" r="84%">
+      <stop offset="0" stop-color="#ff6da9"/>
+      <stop offset="0.58" stop-color="#e62978"/>
+      <stop offset="1" stop-color="#b91559"/>
+    </radialGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="160%">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#6f0a34" flood-opacity=".28"/>
+    </filter>
+  </defs>
+  <circle cx="128" cy="121" r="101" fill="url(#bg)" filter="url(#shadow)"/>
+  <path d="M128 181C91 155 66 132 66 101c0-24 17-42 40-42 14 0 26 7 34 19 8-12 20-19 34-19 23 0 40 18 40 42 0 31-25 54-62 80l-12 8Z" fill="#fff"/>
+</svg>

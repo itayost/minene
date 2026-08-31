@@ -38,19 +38,45 @@ function env(): { url: string; key: string } {
 
 const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1]
 
+/**
+ * Reads every row rather than the first slice.
+ *
+ * `.limit(5000)` is a silent ceiling: past it the report describes a subset
+ * while looking exactly like a report on everything. PostgREST applies its own
+ * max-rows too, so even a large limit is not a guarantee. Paging is the only
+ * version that cannot quietly truncate.
+ */
+async function readAll(
+  page: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>,
+  size = 1000,
+): Promise<Record<string, any>[]> {
+  const rows: Record<string, any>[] = []
+  for (let from = 0; ; from += size) {
+    const { data, error } = await page(from, from + size - 1)
+    if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
+    const batch = (data ?? []) as Record<string, any>[]
+    rows.push(...batch)
+    if (batch.length < size) return rows
+  }
+}
+
 async function main(): Promise<void> {
   const { url, key } = env()
   const db = createClient(url, key, { auth: { persistSession: false } })
   const minRuns = Number(arg('min-runs') ?? '10')
 
-  const { data, error } = await db
-    .from('simulations')
-    .select('outcome,turns,state,score,world,persona_id,plan,models')
-    .order('created_at', { ascending: false })
-    .limit(5000)
-  if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
+  const rows = await readAll((from, to) =>
+    db
+      .from('simulations')
+      .select('outcome,turns,state,score,world,persona_id,plan,models')
+      .order('created_at', { ascending: false })
+      .range(from, to),
+  )
 
-  const inputs: EffectivenessInput[] = (data ?? []).map((row) => ({
+  const inputs: EffectivenessInput[] = rows.map((row) => ({
     run: {
       outcome: row.outcome,
       turns: row.turns ?? [],

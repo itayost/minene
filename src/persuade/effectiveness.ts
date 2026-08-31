@@ -106,7 +106,14 @@ function categoriesInPlay(
   won: ArgumentCategory | null
 } {
   const won = run.outcome === 'agreed' ? (run.score?.winningCategory ?? null) : null
-  return { attempted: [...offered], won }
+  // The winner joins the attempted set even when the plan never offered it.
+  // Otherwise `won === category` matches nothing, the win is dropped, and the
+  // run still lands in every offered technique's denominator -- a conversation
+  // that succeeded counted as a loss for everything and a win for nothing.
+  // Off-plan winners are real: the scorer picks from the whole category list,
+  // not from this plan's arguments.
+  const attempted = won && !offered.includes(won) ? [...offered, won] : [...offered]
+  return { attempted, won }
 }
 
 /**
