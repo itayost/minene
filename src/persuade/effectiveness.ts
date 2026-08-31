@@ -27,6 +27,8 @@ export interface EffectivenessRun {
   personaId: string | null
   /** Fatigue at the end. The proxy for a reaction that went badly. */
   fatigue: number
+  /** The model id per role that produced the run. Null on rows predating it. */
+  models?: Record<string, string> | null
 }
 
 export interface Slice {
@@ -186,6 +188,21 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       byPersona: sliceBy(v.personas),
     }))
     .sort((a, b) => (b.winPct ?? -1) - (a.winPct ?? -1))
+}
+
+/**
+ * How many distinct persuader-model fingerprints the compared runs carry.
+ *
+ * A win rate credits the message, and the message came from a specific
+ * persuader model as much as from the category it reached for. Pooling runs
+ * from two persuader models into one technique's win rate has the same
+ * failure shape `experiment-results.ts`'s `readiness` already guards an A/B
+ * comparison against -- two arms on different models are two experiments, not
+ * one -- so the caller should treat more than one fingerprint here as reason
+ * to distrust the comparison the same way.
+ */
+export function distinctModelFingerprints(inputs: readonly EffectivenessInput[]): number {
+  return new Set(inputs.map((i) => JSON.stringify(i.run.models ?? null))).size
 }
 
 /**

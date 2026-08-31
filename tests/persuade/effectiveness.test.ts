@@ -4,6 +4,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   buildEffectiveness,
+  distinctModelFingerprints,
   type EffectivenessInput,
   formatTechnique,
 } from '../../src/persuade/effectiveness'
@@ -126,6 +127,45 @@ describe('what a technique report says', () => {
     const [only] = buildEffectiveness([input('agreed', 'numbers', 'forgot', 'adi', ['numbers'])])
     expect(only!.winPct).toBe(100)
     expect(only!.byReason.find((s) => s.key === 'no_value')).toBeUndefined()
+  })
+})
+
+describe('whether the technique comparison crosses a model change', () => {
+  // experiment-results.ts's readiness() already refuses to call an A/B
+  // comparison clean when its arms ran on different models -- two arms on
+  // different models are two experiments, not one. A technique's win rate is
+  // exactly as vulnerable: it is a property of the persuader model that wrote
+  // the winning message as much as of the category it reached for, so pooling
+  // runs from two persuader models into one win rate has the same failure
+  // shape and deserves the same guard.
+  const withModels = (models: Record<string, string> | null): EffectivenessInput => ({
+    run: {
+      outcome: 'agreed',
+      turns: turns(2),
+      score: { winningCategory: 'personal_benefit' } as RunScore,
+      world: world('forgot'),
+      personaId: 'adi',
+      fatigue: 0,
+      models,
+    },
+    offered: ['personal_benefit'],
+  })
+
+  test('one model fingerprint across every run is not a warning', () => {
+    const count = distinctModelFingerprints([
+      withModels({ persuader: 'gpt-5' }),
+      withModels({ persuader: 'gpt-5' }),
+    ])
+    expect(count).toBe(1)
+  })
+
+  test('a persuader model swap between runs shows up as more than one fingerprint', () => {
+    const count = distinctModelFingerprints([
+      withModels({ persuader: 'gpt-4o-mini' }),
+      withModels({ persuader: 'gpt-4o-mini' }),
+      withModels({ persuader: 'gpt-5' }),
+    ])
+    expect(count).toBe(2)
   })
 })
 
