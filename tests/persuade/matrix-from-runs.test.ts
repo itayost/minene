@@ -88,4 +88,19 @@ describe('runs that carry no role', () => {
     const cells = matrixFrom([sim('retail', 'r1', 'agreed')], [{ id: 'r1', name: 'מנהל חנות' }])
     expect(cells.every((c) => c.jobRoleId !== null)).toBe(true)
   })
+
+  it('does not vanish a run whose role id matches none of the current catalogue', () => {
+    // job_role_id is set when the job is queued, against the catalogue as it
+    // stood then. Roles are hard-deleted (see roles-api.ts's deleteRole), so a
+    // run recorded weeks ago can carry an id no role here answers to. That run
+    // is not "no role" (jobRoleId is not null) and it is not any known column
+    // either -- exactly the join failure this file already fixed once for the
+    // null case, just for a non-null id instead.
+    const cells = matrixFrom(
+      [sim('retail', 'deleted-role', 'agreed')],
+      [{ id: 'r1', name: 'מנהל חנות' }],
+    )
+
+    expect(cells.reduce((n, c) => n + c.runs, 0)).toBe(1)
+  })
 })
