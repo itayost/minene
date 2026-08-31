@@ -190,6 +190,21 @@ describe('resolving the recipient the persuader actually saw', () => {
     const { examples } = buildDataset(sourceRunsFromRows([row(null)], new Map()))
     expect(examples[0]!.messages[0]!.content).toContain('לא נמסר לך מי מולך')
   })
+
+  test('rejects a run whose persona cannot be resolved, rather than exporting it as recipient-less', () => {
+    // This row DID carry a persona_id -- runSimulation handed the persuader a
+    // real recipient turn by turn -- but the persona lookup found nothing for
+    // it (the persona row is gone). That is not the same fact as a row that
+    // never had a persona_id at all, and treating it as one recreates the exact
+    // contradiction the previous fix removed: a system prompt claiming no
+    // recipient was stated, paired with an answer produced under a real one.
+    const { examples, rejected } = buildDataset(
+      sourceRunsFromRows([row('ghost-persona')], new Map()),
+    )
+
+    expect(examples).toHaveLength(0)
+    expect(rejected['persona-unresolvable']).toBe(1)
+  })
 })
 
 describe('deduplication', () => {

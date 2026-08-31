@@ -132,6 +132,18 @@ export function examplesFromRun(
   const { run, score, rules, persona } = source
   const examples: TrainingExample[] = []
 
+  // A row that carried a persona_id was handed a real recipient at generation
+  // time -- runSimulation never passes null. If that persona cannot be
+  // resolved now (the persona row is gone), persona is null here for a
+  // different reason than a row that never had a persona_id at all, and
+  // exporting it the same way recreates the contradiction the recipient fix
+  // removed: a system prompt claiming no recipient was stated, paired with an
+  // answer produced under a real one.
+  if (run.personaId && !persona) {
+    reject(report, 'persona-unresolvable')
+    return examples
+  }
+
   if (filter.requireAgreed && run.state.outcome !== 'agreed') {
     reject(report, 'run-not-agreed')
     return examples
