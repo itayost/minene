@@ -3,12 +3,10 @@
 export type MatrixCell = {
   industry: string
   /**
-   * Null for runs recorded against no role.
-   *
-   * A sweep of the world space is tenant-free by design, and public.roles is
-   * per-tenant -- so a lab run cannot borrow a role id without crossing the
-   * boundary that makes this matrix shareable. Those runs get their own column
-   * rather than being dropped from the grid.
+   * Null for runs recorded against no role, or against a role id the current
+   * catalogue no longer recognises (roles are hard-deleted, so an old run can
+   * outlive the role it was queued against). Either way the run gets its own
+   * column rather than being dropped from the grid -- see matrix-data.ts.
    */
   jobRoleId: string | null
   jobRoleName: string

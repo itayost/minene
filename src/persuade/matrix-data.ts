@@ -15,6 +15,7 @@ export function matrixFrom(
   roles: readonly { id: string; name: string }[],
 ): MatrixCell[] {
   const industries = [...new Set(simulations.map((s) => s.cell.industry))].sort()
+  const knownRoleIds = new Set(roles.map((r) => r.id))
 
   const cell = (
     industry: string,
@@ -46,7 +47,8 @@ export function matrixFrom(
     )
 
     /**
-     * Runs with no role get a column of their own.
+     * Runs with no role, or with one the current catalogue no longer answers
+     * to, get a column of their own rather than vanishing.
      *
      * A sweep of the world space is deliberately tenant-free, and public.roles
      * is per-tenant, so those runs carry no role id and matched none of the
@@ -55,10 +57,17 @@ export function matrixFrom(
      * the worst way for a measurement screen to be wrong: it showed a smaller
      * number confidently rather than showing nothing.
      *
+     * A role id that IS set can go stale the same way: roles are hard-deleted
+     * (see roles-api.ts's deleteRole), so a run queued against a role that has
+     * since been removed or renamed carries an id none of today's columns
+     * match either -- the same join failure, just not null this time.
+     *
      * Added only when such runs exist, so a tenant that always records a role
      * never sees an empty extra column.
      */
-    const roleless = here.filter((s) => s.cell.jobRoleId === null)
+    const roleless = here.filter(
+      (s) => s.cell.jobRoleId === null || !knownRoleIds.has(s.cell.jobRoleId),
+    )
     return roleless.length > 0
       ? [...columns, cell(industry, null, UNASSIGNED_ROLE, roleless)]
       : columns
