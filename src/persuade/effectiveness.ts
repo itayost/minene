@@ -90,6 +90,15 @@ const mean = (xs: number[]): number | null =>
  * those would make the denominator "times mentioned" and the numerator "times
  * won", which is a ratio of two unrelated things. So a loss contributes to a
  * technique's denominator only through the categories the plan actually offered.
+ *
+ * A win is different: the persuader is not bound to the plan's pre-written
+ * argument list, and the plan itself may only cover 6 of the 11 categories
+ * (see `argumentSchema` in prepare.ts). The scorer naming a category the plan
+ * never offered as what moved the person is itself the evidence that it was
+ * raised. Dropping it from `attempted` would silently erase the win from
+ * every report and count it as a loss for whatever the plan happened to
+ * offer -- an agreed run doing double damage to the very techniques that did
+ * not cause it.
  */
 function categoriesInPlay(
   run: EffectivenessRun,
@@ -99,7 +108,7 @@ function categoriesInPlay(
   won: ArgumentCategory | null
 } {
   const won = run.outcome === 'agreed' ? (run.score?.winningCategory ?? null) : null
-  return { attempted: [...offered], won }
+  return { attempted: won && !offered.includes(won) ? [...offered, won] : [...offered], won }
 }
 
 function sliceBy<T extends string>(rows: { key: T | null; won: boolean }[]): Slice[] {

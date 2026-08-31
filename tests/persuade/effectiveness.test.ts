@@ -60,6 +60,30 @@ describe('what a technique report says', () => {
     expect(social.wins).toBe(0)
   })
 
+  test('a win the plan never offered still counts, and does not sink the categories that were offered', () => {
+    // A plan covers 6-10 of the 11 categories (see argumentSchema in
+    // prepare.ts). The persuader is not bound to that list, so the scorer can
+    // credit a category the plan never put on the table. Dropping it would
+    // erase the win from every report and count it as a loss for whatever the
+    // plan happened to offer instead.
+    const reports = buildEffectiveness([
+      input('agreed', 'authority', 'no_value', 'adi', ['numbers', 'social_proof']),
+    ])
+
+    const authority = reports.find((r) => r.category === 'authority')
+    expect(authority?.wins).toBe(1)
+    expect(authority?.runs).toBe(1)
+    expect(authority?.winPct).toBe(100)
+
+    // The runs that were actually on the table still show the loss, not a
+    // technique that never appeared in the plan.
+    expect(reports.find((r) => r.category === 'numbers')?.wins).toBe(0)
+    expect(reports.find((r) => r.category === 'social_proof')?.wins).toBe(0)
+
+    const totalWins = reports.reduce((sum, r) => sum + r.wins, 0)
+    expect(totalWins).toBe(1)
+  })
+
   test('a losing run never credits the category the scorer mentioned', () => {
     // The scorer names the closest thing to a winner even in a refusal, which
     // is a different claim from "this worked". Counting it would make the
