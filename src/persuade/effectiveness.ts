@@ -51,6 +51,11 @@ export interface TechniqueReport {
    * That makes this a fair comparison BETWEEN techniques within the same plan,
    * and a poor absolute rate. Making it exact means having the persuader name
    * the category it used each turn, which is a prompt and schema change.
+   *
+   * One further exclusion: an agreed run the scorer never got to (or that came
+   * back with no winning category) is left out of this count entirely, for
+   * every category the plan offered. It is not a loss for any of them -- it is
+   * a conversation nobody has a verdict on. See `isInformative`.
    */
   runs: number
   wins: number
@@ -102,6 +107,24 @@ function categoriesInPlay(
   return { attempted: [...offered], won }
 }
 
+/**
+ * Whether a run says anything at all about which offered category worked.
+ *
+ * A loss is informative on its own: nothing was named because nothing won,
+ * and every offered category shares that loss. An agreement is informative
+ * only once a scorer named a winner. Scoring is a separate pass that can fail
+ * after the conversation already ended in a yes (see app/api/persuade/
+ * simulate/route.ts, which stores the run with `score: null` rather than
+ * lose the conversation) -- and a run like that proves nothing about which
+ * category moved the person. Folding it in as a loss for every category the
+ * plan offered would be the same "0 where the honest answer is null" mistake
+ * `pct()` exists to prevent, just reached through the numerator's inputs
+ * instead of the ratio itself.
+ */
+function isInformative(run: EffectivenessRun): boolean {
+  return run.outcome !== 'agreed' || run.score?.winningCategory != null
+}
+
 function sliceBy<T extends string>(rows: { key: T | null; won: boolean }[]): Slice[] {
   const byKey = new Map<string, { runs: number; wins: number }>()
   for (const row of rows) {
@@ -129,6 +152,8 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       runs: number
       wins: number
       messages: number[]
+      /** Every run that offered this category, informative or not -- the exhaustion denominator. */
+      offeredCount: number
       negative: number
       reasons: { key: Reason | null; won: boolean }[]
       personas: { key: string | null; won: boolean }[]
@@ -137,25 +162,39 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
 
   for (const { run, offered } of inputs) {
     const { attempted, won } = categoriesInPlay(run, offered)
+    const informative = isInformative(run)
 
     for (const category of new Set(attempted)) {
       const at = byCategory.get(category) ?? {
         runs: 0,
         wins: 0,
         messages: [],
+        offeredCount: 0,
         negative: 0,
         reasons: [],
         personas: [],
       }
       const isWin = won === category
-      at.runs += 1
-      if (isWin) {
-        at.wins += 1
-        at.messages.push(run.turns.filter((t) => t.role === 'persuader').length)
+      // An uninformative run (agreed, never scored) sits out the win/loss
+      // count entirely -- for every category the plan offered, not just this
+      // one, since the run says nothing about any of them.
+      if (informative) {
+        at.runs += 1
+        if (isWin) {
+          at.wins += 1
+          at.messages.push(run.turns.filter((t) => t.role === 'persuader').length)
+        }
+        at.reasons.push({ key: run.world?.reason ?? null, won: isWin })
+        at.personas.push({ key: run.personaId, won: isWin })
       }
       // Worn down rather than persuaded. Counted per technique that was on the
       // table, because a technique cannot be credited for a win and excused
-      // from the exhaustion in the same conversation.
+      // from the exhaustion in the same conversation. Kept on its own
+      // denominator (`offeredCount`, every run that offered the category)
+      // rather than `runs`: whether the scorer later named a winner has no
+      // bearing on whether the conversation wore the person down, so an
+      // uninformative run still belongs in this ratio even though it sits out
+      // the win rate above.
       //
       // Two signals, not one: `stopped_fatigue` is the engine's own verdict,
       // reached against whatever fatigueThreshold that run's RuleConfig
@@ -167,9 +206,8 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       // exists to compare. The fixed bar stays, for the case this outcome
       // doesn't cover: an agreed run where fatigue crept high without ever
       // tripping the stop.
+      at.offeredCount += 1
       if (run.outcome === 'stopped_fatigue' || run.fatigue >= 0.7) at.negative += 1
-      at.reasons.push({ key: run.world?.reason ?? null, won: isWin })
-      at.personas.push({ key: run.personaId, won: isWin })
       byCategory.set(category, at)
     }
   }
@@ -181,7 +219,7 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       wins: v.wins,
       winPct: pct(v.wins, v.runs),
       avgMessagesToWin: mean(v.messages),
-      negativeReactionPct: pct(v.negative, v.runs),
+      negativeReactionPct: pct(v.negative, v.offeredCount),
       byReason: sliceBy(v.reasons),
       byPersona: sliceBy(v.personas),
     }))
