@@ -68,6 +68,17 @@ describe('the two rates, and why they never merge', () => {
     expect(rates.byBlocker[0]).toEqual({ blocker: 'overloaded', encountered: 2, overcome: 1 })
   })
 
+  it('does not credit every blocker in a run for a win only one of them earned', () => {
+    // Two distinct blockers diagnosed in one conversation that ends in
+    // agreement is no evidence about which of the two was actually broken.
+    const rates = computeRates([run({ outcome: 'agreed', blockers: ['overloaded', 'no_price'] })])
+
+    const overloaded = rates.byBlocker.find((b) => b.blocker === 'overloaded')
+    const noPrice = rates.byBlocker.find((b) => b.blocker === 'no_price')
+    expect(overloaded).toMatchObject({ encountered: 1, overcome: 0 })
+    expect(noPrice).toMatchObject({ encountered: 1, overcome: 0 })
+  })
+
   it('says nothing rather than zero when there are no runs at all', () => {
     const rates = computeRates([])
 
