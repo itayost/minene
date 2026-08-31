@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 import {
   buildEffectiveness,
+  distinctModelFingerprints,
   type EffectivenessInput,
   formatTechnique,
 } from '../src/persuade/effectiveness'
@@ -44,7 +45,7 @@ async function main(): Promise<void> {
 
   const { data, error } = await db
     .from('simulations')
-    .select('outcome,turns,state,score,world,persona_id,plan')
+    .select('outcome,turns,state,score,world,persona_id,plan,models')
     .order('created_at', { ascending: false })
     .limit(5000)
   if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
@@ -57,6 +58,7 @@ async function main(): Promise<void> {
       world: row.world ?? null,
       personaId: row.persona_id,
       fatigue: row.state?.fatigue ?? 0,
+      models: row.models ?? null,
     },
     // What the plan actually put on the table. A technique the plan never
     // offered cannot be credited or blamed for the outcome.
@@ -96,6 +98,18 @@ async function main(): Promise<void> {
     console.log(
       `\nמוצג: ${withWorld.length} הריצות עם עולם בלבד. ` +
         `${worldless.length} ריצות ישנות הושמטו — הן מהגדרה אחרת ואין להן סיבה. ל--all כדי לכלול.`,
+    )
+  }
+
+  // A win rate credits the message, and the message came from a specific
+  // persuader model. Two persuader models pooled into one technique's win
+  // rate is the same failure readiness() already refuses to call clean for
+  // an A/B comparison -- two arms on different models are two experiments.
+  const teachers = distinctModelFingerprints(used)
+  if (teachers > 1) {
+    console.log(
+      `\nשים לב: הריצות המוצגות מגיעות מ-${teachers} צירופי מודלים שונים — ` +
+        'ההשוואה בין הטכניקות עלולה למדוד את החלפת המודל ולא את הטכניקה.',
     )
   }
   console.log('')
