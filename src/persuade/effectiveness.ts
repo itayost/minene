@@ -245,9 +245,18 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
  * comparison against -- two arms on different models are two experiments, not
  * one -- so the caller should treat more than one fingerprint here as reason
  * to distrust the comparison the same way.
+ *
+ * A run with no `models` recorded is an unknown, not a second model: rows
+ * written before the column existed all carry null. Counting null as its own
+ * fingerprint turns "some rows predate the recording" into "two combinations
+ * ran here", so every technique whose history spans that day reports a swap
+ * it has no evidence for -- the same distinction `readiness` already draws
+ * between `recorded` and `fingerprints`.
  */
 export function distinctModelFingerprints(inputs: readonly EffectivenessInput[]): number {
-  return new Set(inputs.map((i) => JSON.stringify(i.run.models ?? null))).size
+  const fingerprints = new Set(inputs.map((i) => JSON.stringify(i.run.models ?? null)))
+  fingerprints.delete('null')
+  return fingerprints.size
 }
 
 /**

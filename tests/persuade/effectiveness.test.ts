@@ -199,6 +199,22 @@ describe('whether the technique comparison crosses a model change', () => {
     ])
     expect(count).toBe(2)
   })
+
+  test('rows predating the models column do not count as a second model', () => {
+    // readiness() already draws this line for experiment arms: a row with no
+    // models recorded is an unknown, not evidence of a second combination.
+    // Counting null as its own fingerprint here means every technique whose
+    // history spans the day `models` started being written reports "2
+    // combinations" and warns of a swap that never happened -- for a pool
+    // that in fact ran on one model the whole time.
+    const count = distinctModelFingerprints([
+      withModels(null),
+      withModels(null),
+      withModels({ persuader: 'gpt-5' }),
+      withModels({ persuader: 'gpt-5' }),
+    ])
+    expect(count).toBe(1)
+  })
 })
 
 describe('the rendered report', () => {
