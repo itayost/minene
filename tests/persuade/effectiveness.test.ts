@@ -177,4 +177,32 @@ describe('the rendered report', () => {
     // as though it meant something.
     expect(text).toContain('too few to read')
   })
+
+  test('flags a thin slice even when the overall sample clears the bar', () => {
+    // The top-line warning only looks at report.runs, so an overall count of
+    // ten stays quiet -- but a single persona buried inside "By persona" can
+    // still print a 100% built from one run, sitting unflagged right next to
+    // rows built from real samples. A reader scanning the list has no way to
+    // tell the two apart without the same warning applied per row.
+    const plenty = Array.from({ length: 9 }, (_, i) =>
+      input(
+        i % 3 === 0 ? 'refused' : 'agreed',
+        i % 3 === 0 ? null : 'social_proof',
+        'forgot',
+        'plenty',
+        ['social_proof'],
+      ),
+    )
+    const rare = input('agreed', 'social_proof', 'forgot', 'rare', ['social_proof'])
+    const [report] = buildEffectiveness([...plenty, rare])
+    const text = formatTechnique(report!, 5)
+
+    expect(report!.runs).toBeGreaterThanOrEqual(5)
+    const rareLine = text.split('\n').find((l) => l.includes('rare'))!
+    expect(rareLine).toContain('100%')
+    expect(rareLine).toMatch(/!/)
+
+    const plentyLine = text.split('\n').find((l) => l.includes('plenty'))!
+    expect(plentyLine).not.toMatch(/!/)
+  })
 })
