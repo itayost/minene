@@ -18,8 +18,23 @@ function fake(rows: Row[] = []) {
           selected = cols
           return q
         },
-        order: () => q,
-        limit: () => q,
+        // A real read is select().order().range(from, to) -- paged, so a table
+        // bigger than one page has to come back as more than one page.
+        order: (column: string, options?: { ascending?: boolean }) => {
+          const sorted = [...rows].sort((a, b) => {
+            const left = String(a[column] ?? '')
+            const right = String(b[column] ?? '')
+            return options?.ascending === false
+              ? right.localeCompare(left)
+              : left.localeCompare(right)
+          })
+          return {
+            range: async (from: number, to: number) => ({
+              data: sorted.slice(from, to + 1),
+              error: null,
+            }),
+          }
+        },
         then: (resolve: (v: unknown) => unknown) => resolve({ data: rows, error: null }),
       }
       return q
@@ -110,5 +125,30 @@ describe('reading simulations back', () => {
     expect(first?.run.state.outcome).toBe('agreed')
     expect(first?.run.score?.winningCategory).toBe('numbers')
     expect(first?.cell).toEqual({ industry: 'אופנה', jobRoleId: 'r1' })
+  })
+
+  it('returns every simulation, not just the newest page of them', async () => {
+    // The matrix and the bank read this list and trust it is the whole table --
+    // neither warns about a sample. A table larger than one page silently
+    // losing its older rows is exactly the failure this store's own comments
+    // (and the matrix's, and the bank's) say to never let happen: a smaller
+    // number shown confidently instead of the real one.
+    const row = (i: number): Row => ({
+      id: `sim-${i}`,
+      industry: 'אופנה',
+      job_role_id: 'r1',
+      persona_id: 'rona',
+      plan: { id: 'p1' },
+      turns: [],
+      state: { outcome: 'agreed', blockers: [], interaction: 1 },
+      score: null,
+      created_at: new Date(2026, 0, 1, 0, 0, i).toISOString(),
+    })
+    const total = 650
+    const { store } = fake(Array.from({ length: total }, (_, i) => row(i)))
+
+    const all = await store.listSimulations()
+
+    expect(all).toHaveLength(total)
   })
 })

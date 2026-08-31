@@ -92,15 +92,31 @@ export function createSimulationsStore(client: SupabaseClient) {
       if (error) throw new Error(`שמירת הסימולציה נכשלה: ${error.message}`)
     },
 
-    async listSimulations(limit = 500): Promise<StoredSimulation[]> {
-      const { data, error } = await client
-        .from('simulations')
-        .select(SIMULATION_COLUMNS)
-        .order('created_at', { ascending: false })
-        .limit(limit)
+    /**
+     * Every row, paged rather than capped.
+     *
+     * A `.limit(n)` here would silently drop everything older than the newest
+     * n once the table passed that size -- the matrix would show cells as
+     * unrun and the bank would forget arguments that won, both without saying
+     * a number was ever left out. The worker queues up to
+     * `PERSUADER_DAILY_RUN_CAP` runs a day, so a fixed cap is not a distant
+     * risk here, it is a matter of days.
+     */
+    async listSimulations(pageSize = 1000): Promise<StoredSimulation[]> {
+      const rows: SimulationRow[] = []
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await client
+          .from('simulations')
+          .select(SIMULATION_COLUMNS)
+          .order('created_at', { ascending: false })
+          .range(from, from + pageSize - 1)
 
-      if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
-      return ((data ?? []) as SimulationRow[]).map(toStored)
+        if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
+        const page = (data ?? []) as SimulationRow[]
+        rows.push(...page)
+        if (page.length < pageSize) break
+      }
+      return rows.map(toStored)
     },
   }
 }
