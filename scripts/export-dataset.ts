@@ -66,9 +66,11 @@ async function main(): Promise<void> {
       const persona = await getPersona(id)
       personas.set(id, { name: persona.name, role: persona.role })
     } catch {
-      // A persona a very old run pointed at can be gone entirely. The
-      // example still exports; it just states no recipient, same as a row
-      // that never carried one.
+      // A persona a very old run pointed at can be gone entirely. Its rows
+      // are not exported: they still had a real recipient at generation time,
+      // so stating "no recipient" for them (see dataset.ts's
+      // `persona-unresolvable` rejection) would be the same contradiction the
+      // recipient fix removed, not a harmless fallback.
     }
   }
 
