@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Run } from '../engine/types'
+import { modelId } from './model'
 
 /**
  * Where a simulation belongs in the matrix.
@@ -87,6 +88,17 @@ export function createSimulationsStore(client: SupabaseClient) {
         // Explicitly null rather than omitted: null means "not yet scored",
         // which is a different fact from a column that was never written.
         score: run.score ?? null,
+        // Recorded for the same reason the worker records it: a run is the
+        // output of a config AND the models that executed it. This writer was
+        // omitting it, so every run started from the lab landed unattributed
+        // and held the reporting gap open indefinitely. The readers tolerate
+        // unattributed rows because of the historical backfill, and that
+        // tolerance was quietly covering for a live writer as well.
+        models: {
+          persuader: modelId('persuader'),
+          target: modelId('target'),
+          judge: modelId('judge'),
+        },
       })
 
       if (error) throw new Error(`שמירת הסימולציה נכשלה: ${error.message}`)

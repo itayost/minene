@@ -75,6 +75,23 @@ describe('saving a simulation', () => {
     expect(inserted[0]).not.toHaveProperty('assignment_id')
   })
 
+  it('records which models ran it, so the row is attributable evidence', async () => {
+    const { store, inserted } = fake()
+    await store.saveSimulation(run(), { industry: 'אופנה', jobRoleId: 'r1', need: null })
+
+    // The worker recorded this and the lab writer did not, so every run started
+    // from the UI was unattributable. The readers tolerate unattributed rows
+    // because of a historical backfill, which meant a live writer omitting the
+    // column produced no complaint from anything -- it just quietly widened the
+    // set of runs no comparison can safely span.
+    expect(inserted[0]).toHaveProperty('models')
+    expect(inserted[0]?.models).toMatchObject({
+      persuader: expect.any(String),
+      target: expect.any(String),
+      judge: expect.any(String),
+    })
+  })
+
   it('persists the score, which is the whole reason the bank can exist', async () => {
     const scored = run({
       score: { winningCategory: 'numbers', winningArgument: 'פי שלוש', grade: 80 },
