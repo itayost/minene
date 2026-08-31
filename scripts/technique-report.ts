@@ -46,18 +46,18 @@ const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`
  * max-rows too, so even a large limit is not a guarantee. Paging is the only
  * version that cannot quietly truncate.
  */
-async function readAll(
+async function readAll<T>(
   page: (
     from: number,
     to: number,
-  ) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>,
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
   size = 1000,
-): Promise<Record<string, any>[]> {
-  const rows: Record<string, any>[] = []
+): Promise<T[]> {
+  const rows: T[] = []
   for (let from = 0; ; from += size) {
     const { data, error } = await page(from, from + size - 1)
     if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
-    const batch = (data ?? []) as Record<string, any>[]
+    const batch = data ?? []
     rows.push(...batch)
     if (batch.length < size) return rows
   }
