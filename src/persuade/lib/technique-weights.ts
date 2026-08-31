@@ -54,7 +54,22 @@ export function propose(
   } = {},
 ): WeightProposal[] {
   const minRuns = options.minRuns ?? 10
-  const rated = reports.filter((r) => r.winPct !== null)
+  // Two kinds of "no usable evidence", treated the same way.
+  //
+  // The first is a technique nothing has measured (`winPct === null`).
+  //
+  // The second is subtler and produces the more dangerous number: a category
+  // the plan never offered is credited when the scorer names it as the winner,
+  // but nothing records it having been reached for and FAILED, so it can only
+  // ever enter its own denominator by winning (see TechniqueReport.offPlanWins).
+  // Left in, a category with twenty such runs reads as 100% over a sample large
+  // enough to clear `minRuns`, earns the ceiling weight, and is handed to a
+  // person as the best-evidenced row in the table -- ahead of a technique with
+  // four hundred honest runs. It is excluded from the proposals AND from the
+  // peer baseline, because an impossible win rate distorts what "the peers did"
+  // for everyone else too.
+  const isArtefact = (r: TechniqueReport) => r.offPlanWins > r.runs / 2
+  const rated = reports.filter((r) => r.winPct !== null && !isArtefact(r))
   if (rated.length === 0) return []
 
   // Pooled by runs, not one winPct per technique averaged flat: a technique

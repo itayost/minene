@@ -8,30 +8,17 @@
  * exchange with a named employee about their own performance, and it does not
  * belong in a training file however good it was.
  */
-import { readFileSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 import type { Recipient } from '../src/persuade/engine/prompts'
 import { getPersona } from '../src/persuade/lib/content'
-import { buildDataset, sourceRunsFromRows, toJsonl } from '../src/persuade/lib/dataset'
-
-function env(): { url: string; key: string } {
-  try {
-    const file = readFileSync(new URL('../.env.local', import.meta.url), 'utf8')
-    for (const line of file.split('\n')) {
-      const at = line.indexOf('=')
-      if (at > 0 && !line.trimStart().startsWith('#')) {
-        const name = line.slice(0, at).trim()
-        if (!process.env[name]) process.env[name] = line.slice(at + 1).trim()
-      }
-    }
-  } catch {
-    // Already in the environment is fine.
-  }
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SECRET_KEY
-  if (!url || !key) throw new Error('חסרים SUPABASE_URL ו-SUPABASE_SECRET_KEY.')
-  return { url, key }
-}
+import {
+  buildDataset,
+  type DatasetSourceRow,
+  sourceRunsFromRows,
+  toJsonl,
+} from '../src/persuade/lib/dataset'
+import { env, readAll } from './lib/db'
 
 const arg = (name: string): string | undefined =>
   process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1]
@@ -46,14 +33,19 @@ async function main(): Promise<void> {
   const minGrade = Number(arg('min-grade') ?? '70')
   const requireCleanTurns = !process.argv.includes('--allow-dirty')
 
-  const { data, error } = await db
-    .from('simulations')
-    .select('id,created_at,plan,persona_id,turns,state,score,rules,models,experiment,variant')
-    .order('created_at', { ascending: false })
-    .limit(5000)
-  if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
-
-  const rows = data ?? []
+  // Paged rather than capped. `.limit(5000)` looked generous and was not:
+  // PostgREST caps the response at its own max-rows regardless, so past that
+  // the export quietly trained on the newest slice of the table while
+  // reporting the number it read as if it were the number that exists.
+  const rows = await readAll<DatasetSourceRow & { models: Record<string, string> | null }>(
+    (from, to) =>
+      db
+        .from('simulations')
+        .select('id,created_at,plan,persona_id,turns,state,score,rules,models,experiment,variant')
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+  )
 
   // runSimulation always hands the persuader the real persona as its
   // recipient, so the replay needs the same name and role back -- not the
@@ -90,9 +82,17 @@ async function main(): Promise<void> {
   // A model swap invalidates a comparison; for a training set it is milder but
   // still worth seeing, since examples from two different teachers are two
   // different behaviours being averaged.
-  const teachers = new Set(rows.map((r) => JSON.stringify(r.models ?? null)))
+  // A row with nothing recorded is an unknown, not a second teacher: counting
+  // it as one made this line claim two teachers for every table that spans the
+  // day models started being recorded (and /api/persuade/simulate still writes
+  // rows without them), which is a stronger statement than the evidence.
+  const teachers = new Set(rows.filter((r) => r.models).map((r) => JSON.stringify(r.models)))
   if (teachers.size > 1) {
     console.log(`\nשים לב: הדוגמאות מגיעות מ-${teachers.size} צירופי מודלים שונים.`)
+  }
+  const unrecorded = rows.filter((r) => !r.models).length
+  if (unrecorded > 0) {
+    console.log(`\nשים לב: ל-${unrecorded} מהשורות לא נרשמו מודלים — לא ידוע מי ייצר אותן.`)
   }
 
   if (examples.length === 0) {

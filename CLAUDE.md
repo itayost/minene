@@ -99,7 +99,11 @@ a measurement of a bot reading an answer key.
 - `pnpm report:techniques` reads what each technique is doing, sliced by persona
   and by the reason. Note the denominator: a technique's `runs` counts runs
   where the plan **offered** it, not where it was used — fair between techniques
-  in one plan, poor as an absolute rate.
+  in one plan, poor as an absolute rate. One category can break even that: a
+  technique the plan never offered is credited when the scorer names it the
+  winner, and its losses are unrecorded, so it reads near 100%. The report
+  prints how many runs came in that way, and `propose()` refuses to weight a
+  row where they are the majority.
 - `pnpm export:dataset` builds a fine-tuning JSONL from runs that ended agreed
   with zero rule violations and a passing grade.
 

@@ -9,27 +9,17 @@
  * two questions that make a result obviously worthless (too few runs, lopsided
  * arms) plus the one that makes it false (the arms ran on different models).
  */
-import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 import { compareArms, type ExperimentRun, readiness } from '../src/persuade/experiment-results'
+import { env, readAll } from './lib/db'
 
-function env(): { url: string; key: string } {
-  try {
-    const file = readFileSync(new URL('../.env.local', import.meta.url), 'utf8')
-    for (const line of file.split('\n')) {
-      const at = line.indexOf('=')
-      if (at > 0 && !line.trimStart().startsWith('#')) {
-        const name = line.slice(0, at).trim()
-        if (!process.env[name]) process.env[name] = line.slice(at + 1).trim()
-      }
-    }
-  } catch {
-    // Already in the environment is fine.
-  }
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SECRET_KEY
-  if (!url || !key) throw new Error('חסרים SUPABASE_URL ו-SUPABASE_SECRET_KEY.')
-  return { url, key }
+interface ExperimentRow {
+  experiment: string
+  variant: string | null
+  outcome: ExperimentRun['outcome']
+  turns: ExperimentRun['turns'] | null
+  score: ExperimentRun['score'] | null
+  models: ExperimentRun['models']
 }
 
 async function main(): Promise<void> {
@@ -37,20 +27,25 @@ async function main(): Promise<void> {
   const db = createClient(url, key, { auth: { persistSession: false } })
   const wanted = process.argv[2]
 
-  const { data, error } = await db
-    .from('simulations')
-    .select('experiment,variant,outcome,turns,score,models')
-    .not('experiment', 'is', null)
-  if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
-
-  const rows = data ?? []
+  // Paged rather than taken in one shot: an unbounded select still comes back
+  // capped at PostgREST's max-rows, so past that an arm silently loses its
+  // older runs and the comparison reads as if those runs never happened.
+  const rows = await readAll<ExperimentRow>((from, to) =>
+    db
+      .from('simulations')
+      .select('experiment,variant,outcome,turns,score,models')
+      .not('experiment', 'is', null)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
   if (rows.length === 0) {
     console.log('לא רצה עדיין אף ניסוי.')
     console.log('כדי להתחיל אחד: queueExperiment ב-src/persuade/lib/experiments.ts')
     return
   }
 
-  const names = [...new Set(rows.map((r) => r.experiment as string))]
+  const names = [...new Set(rows.map((r) => r.experiment))]
   if (!wanted) {
     console.log('ניסויים שרצו:')
     for (const name of names) {

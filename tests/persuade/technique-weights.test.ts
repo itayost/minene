@@ -12,6 +12,7 @@ const report = (
   winPct: number | null,
   runs = 20,
   negativeReactionPct: number | null = 0,
+  offPlanWins = 0,
 ): TechniqueReport =>
   ({
     category,
@@ -20,6 +21,7 @@ const report = (
     winPct,
     avgMessagesToWin: 3,
     negativeReactionPct,
+    offPlanWins,
     byReason: [{ key: 'forgot', runs, wins: 1, winPct }],
     byPersona: [],
   }) as TechniqueReport
@@ -183,5 +185,25 @@ describe('turning evidence into a suggestion', () => {
       expect(p.weight).toBeGreaterThanOrEqual(0)
       expect(p.weight).toBeLessThanOrEqual(3)
     }
+  })
+})
+
+describe('off-plan artefacts never become weights', () => {
+  it('drops a report whose runs are mostly off-plan wins, and keeps it out of the peer baseline', () => {
+    // authority only ever entered its denominator by winning, so its 100% is
+    // structural. Left in, it took the ceiling weight for itself AND dragged
+    // the honestly-measured technique down to a third of the peer average.
+    const out = propose([
+      report('authority', 100, 20, 0, 20),
+      report('social_proof', 30, 400, 0, 0),
+    ])
+
+    expect(out.map((p) => p.category)).toEqual(['social_proof'])
+    expect(out[0]?.weight).toBe(1)
+  })
+
+  it('keeps a report where off-plan credit is a small minority', () => {
+    const out = propose([report('social_proof', 30, 400, 0, 2), report('scarcity', 40, 100)])
+    expect(out.map((p) => p.category).sort()).toEqual(['scarcity', 'social_proof'])
   })
 })
