@@ -262,4 +262,21 @@ describe('a win the plan never offered', () => {
     expect(authority?.wins).toBe(1)
     expect(reports.find((r) => r.category === 'personal_benefit')?.wins).toBe(0)
   })
+
+  test('does not join the exhaustion denominator it was never part of', () => {
+    // Crediting the win reuses the same `attempted` set that drives
+    // `negativeReactionPct`'s denominator (`offeredCount`) -- but the plan
+    // never put `authority` on the table in this conversation, so this run
+    // cannot say anything about whether deploying `authority` wears people
+    // down. Folding it in anyway lets a technique nobody has tried yet show a
+    // spotless, fully-populated exhaustion rate built out of wins it merely
+    // stumbled into.
+    const reports = buildEffectiveness([
+      input('agreed', 'authority', 'forgot', 'adi', ['personal_benefit', 'numbers']),
+    ])
+
+    const authority = reports.find((r) => r.category === 'authority')!
+    expect(authority.wins).toBe(1)
+    expect(authority.negativeReactionPct).toBeNull()
+  })
 })
