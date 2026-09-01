@@ -75,7 +75,21 @@ export function propose(
     const peerRuns = totalRuns - report.runs
     const peerWins = totalWins - report.wins
     const average = peerRuns === 0 ? 0 : (peerWins / peerRuns) * 100
-    const ratio = average === 0 ? 1 : win / average
+    // As the peer average falls toward zero, `win / average` climbs toward
+    // the ceiling -- a peer winning even 2 of 50 already sends a 90% technique
+    // to WEIGHT_CEILING below. Treating average === 0 as a flat "neutral" ratio
+    // does not continue that curve, it inverts it: a peer with a REAL 0% across
+    // real runs is the strongest possible peer evidence, not an absence of it,
+    // and this technique's non-zero win rate against that baseline is the clear
+    // best case, not an average one. `peerRuns === 0` (no peers exist at all) is
+    // the actual absence-of-evidence case and keeps the neutral ratio; so does
+    // this technique also sitting at 0%, where there is nothing to distinguish.
+    const ratio =
+      peerRuns === 0 || (average === 0 && win === 0)
+        ? 1
+        : average === 0
+          ? WEIGHT_CEILING
+          : win / average
     const weight = Math.min(WEIGHT_CEILING, Math.max(WEIGHT_FLOOR, Number(ratio.toFixed(2))))
 
     const caveats: string[] = []
