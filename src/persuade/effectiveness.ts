@@ -205,6 +205,13 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       // uninformative run still belongs in this ratio even though it sits out
       // the win rate above.
       //
+      // Gated on `offered`, not `attempted`: an off-plan winner (see
+      // categoriesInPlay) joined `attempted` so its win is credited, but the
+      // plan never put that category on the table, so the conversation cannot
+      // say whether deploying it wears people down. Counting it here would
+      // let a technique nobody has actually tried show a fully-populated,
+      // spotless exhaustion rate built entirely out of wins it stumbled into.
+      //
       // Two signals, not one: `stopped_fatigue` is the engine's own verdict,
       // reached against whatever fatigueThreshold that run's RuleConfig
       // actually used -- which an experiment is free to set below 0.7 (it is
@@ -215,8 +222,10 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       // exists to compare. The fixed bar stays, for the case this outcome
       // doesn't cover: an agreed run where fatigue crept high without ever
       // tripping the stop.
-      at.offeredCount += 1
-      if (run.outcome === 'stopped_fatigue' || run.fatigue >= 0.7) at.negative += 1
+      if (offered.includes(category)) {
+        at.offeredCount += 1
+        if (run.outcome === 'stopped_fatigue' || run.fatigue >= 0.7) at.negative += 1
+      }
       byCategory.set(category, at)
     }
   }
