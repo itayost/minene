@@ -4,7 +4,12 @@
 import { describe, expect, test } from 'vitest'
 import { DEFAULT_RULES } from '../../src/persuade/engine/rules'
 import type { Run, RunScore, Turn } from '../../src/persuade/engine/types'
-import { buildDataset, type SourceRun, sourceRunsFromRows } from '../../src/persuade/lib/dataset'
+import {
+  buildDataset,
+  distinctRecordedModelFingerprints,
+  type SourceRun,
+  sourceRunsFromRows,
+} from '../../src/persuade/lib/dataset'
 import { TEST_PLAN } from './helpers'
 
 const output = (over: Record<string, unknown> = {}) => ({
@@ -204,6 +209,36 @@ describe('resolving the recipient the persuader actually saw', () => {
 
     expect(examples).toHaveLength(0)
     expect(rejected['persona-unresolvable']).toBe(1)
+  })
+})
+
+describe('how many teachers the export mixes', () => {
+  test('rows that predate model recording are not a second teacher', () => {
+    // Before the fix this counted the unrecorded rows' shared 'null'
+    // fingerprint as a real combination: two rows with no `models` at all
+    // plus one recorded combination reported as "2 different model
+    // combinations" instead of the one that was actually ever recorded.
+    const count = distinctRecordedModelFingerprints([
+      null,
+      undefined,
+      { persuader: 'gpt-5' },
+      { persuader: 'gpt-5' },
+    ])
+    expect(count).toBe(1)
+  })
+
+  test('a genuine model swap still counts as more than one', () => {
+    const count = distinctRecordedModelFingerprints([
+      { persuader: 'gpt-4o-mini' },
+      { persuader: 'gpt-5' },
+      null,
+    ])
+    expect(count).toBe(2)
+  })
+
+  test('no row ever recorded a model at all reads as zero, not one', () => {
+    const count = distinctRecordedModelFingerprints([null, null, undefined])
+    expect(count).toBe(0)
   })
 })
 
