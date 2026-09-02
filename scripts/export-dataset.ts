@@ -12,7 +12,12 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 import type { Recipient } from '../src/persuade/engine/prompts'
 import { getPersona } from '../src/persuade/lib/content'
-import { buildDataset, sourceRunsFromRows, toJsonl } from '../src/persuade/lib/dataset'
+import {
+  buildDataset,
+  distinctRecordedModelFingerprints,
+  sourceRunsFromRows,
+  toJsonl,
+} from '../src/persuade/lib/dataset'
 
 function env(): { url: string; key: string } {
   try {
@@ -89,10 +94,12 @@ async function main(): Promise<void> {
 
   // A model swap invalidates a comparison; for a training set it is milder but
   // still worth seeing, since examples from two different teachers are two
-  // different behaviours being averaged.
-  const teachers = new Set(rows.map((r) => JSON.stringify(r.models ?? null)))
-  if (teachers.size > 1) {
-    console.log(`\nשים לב: הדוגמאות מגיעות מ-${teachers.size} צירופי מודלים שונים.`)
+  // different behaviours being averaged. Rows that predate `models` being
+  // recorded carry no fingerprint at all and must not count as a second one --
+  // see `distinctRecordedModelFingerprints`.
+  const teachers = distinctRecordedModelFingerprints(rows.map((r) => r.models))
+  if (teachers > 1) {
+    console.log(`\nשים לב: הדוגמאות מגיעות מ-${teachers} צירופי מודלים שונים.`)
   }
 
   if (examples.length === 0) {

@@ -268,3 +268,21 @@ export function buildDataset(
 
 export const toJsonl = (examples: readonly TrainingExample[]): string =>
   examples.map((e) => JSON.stringify(e)).join('\n')
+
+/**
+ * How many distinct persuader-model combinations the exported rows carry.
+ *
+ * Same fix as `effectiveness.ts`'s `distinctModelFingerprints` and
+ * `experiment-results.ts`'s `readiness()`: a row written before `models` was
+ * recorded serializes to the same `'null'` fingerprint as every other
+ * unrecorded row, so counting it as a second combination turns "some rows
+ * predate the recording" into a false "this export mixes teachers" warning --
+ * the exact claim the export script prints to whoever reads its output.
+ */
+export function distinctRecordedModelFingerprints(
+  models: readonly (Record<string, string> | null | undefined)[],
+): number {
+  const fingerprints = new Set(models.map((m) => JSON.stringify(m ?? null)))
+  fingerprints.delete('null')
+  return fingerprints.size
+}
