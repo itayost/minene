@@ -58,6 +58,15 @@ export interface TechniqueReport {
    * back with no winning category) is left out of this count entirely, for
    * every category the plan offered. It is not a loss for any of them -- it is
    * a conversation nobody has a verdict on. See `isInformative`.
+   *
+   * A category the plan never offered can still show up here with `wins`
+   * above zero -- the scorer named it anyway, see `categoriesInPlay` -- but it
+   * never joins `runs`. A loss can't add an unoffered category to the count
+   * (there is no winner to add it), so if a win did, wins and runs would
+   * always be equal for that category: a manufactured 100%, not a measured
+   * one, and one that only gets harder to spot as it clears the thin-sample
+   * warning. `wins` without `runs` is the honest way to say "this happened,
+   * but not on a run this technique was actually being tested on".
    */
   runs: number
   wins: number
@@ -184,17 +193,33 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
         personas: [],
       }
       const isWin = won === category
+      const isOffered = offered.includes(category)
       // An uninformative run (agreed, never scored) sits out the win/loss
       // count entirely -- for every category the plan offered, not just this
       // one, since the run says nothing about any of them.
       if (informative) {
-        at.runs += 1
-        if (isWin) {
+        if (isOffered) {
+          at.runs += 1
+          if (isWin) {
+            at.wins += 1
+            at.messages.push(run.turns.filter((t) => t.role === 'persuader').length)
+          }
+          at.reasons.push({ key: run.world?.reason ?? null, won: isWin })
+          at.personas.push({ key: run.personaId, won: isWin })
+        } else if (isWin) {
+          // categoriesInPlay() puts an off-plan winner here so the win is never
+          // silently dropped -- but a LOSS never adds an unoffered category to
+          // `attempted` (there is no `won` to add), so an unoffered category
+          // only ever shows up on the runs it wins. Letting it join `runs` too
+          // would make wins === runs a certainty of the accounting, not a
+          // result: a technique the plan has never once deliberately offered
+          // would read as a flawless 100%, and stay flawless no matter how
+          // many more off-plan wins pile on top -- eventually clearing the
+          // thin-sample warning and reading as a real, clean rate. So the win
+          // is credited without a matching run, which leaves `runs` at 0 and
+          // `winPct` at null: visible, but correctly unrated.
           at.wins += 1
-          at.messages.push(run.turns.filter((t) => t.role === 'persuader').length)
         }
-        at.reasons.push({ key: run.world?.reason ?? null, won: isWin })
-        at.personas.push({ key: run.personaId, won: isWin })
       }
       // Worn down rather than persuaded. Counted per technique that was on the
       // table, because a technique cannot be credited for a win and excused
