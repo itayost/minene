@@ -262,4 +262,27 @@ describe('a win the plan never offered', () => {
     expect(authority?.wins).toBe(1)
     expect(reports.find((r) => r.category === 'personal_benefit')?.wins).toBe(0)
   })
+
+  test('does not manufacture a perfect win rate out of runs it was never offered on', () => {
+    // A loss never adds an unoffered category to `attempted` -- there is no
+    // `won` to add -- so a category the plan has never once put on the table
+    // can only ever appear here on the runs it happens to win. If those wins
+    // also counted toward `runs`, wins === runs would be a certainty of the
+    // bookkeeping, not a finding: three off-plan wins would read as a flawless
+    // "100% (3 runs)", and the more it happens the more convincing that fake
+    // rate gets, eventually clearing the thin-sample warning entirely and
+    // feeding `propose()`'s weight ratio as if it were earned.
+    const reports = buildEffectiveness([
+      input('agreed', 'authority', 'forgot', 'p1', ['personal_benefit', 'numbers']),
+      input('agreed', 'authority', 'no_time', 'p2', ['personal_benefit', 'numbers']),
+      input('agreed', 'authority', 'no_value', 'p3', ['personal_benefit', 'numbers']),
+    ])
+
+    const authority = reports.find((r) => r.category === 'authority')!
+    // The wins are still visible, not dropped.
+    expect(authority.wins).toBe(3)
+    // But not one of them was a deliberately offered run, so there is no rate.
+    expect(authority.runs).toBe(0)
+    expect(authority.winPct).toBeNull()
+  })
 })
