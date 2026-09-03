@@ -10,12 +10,37 @@ import type { MatrixCell } from './Matrix'
  * showing. The first would be hatching that says nothing; the second says
  * "here is a question nobody has asked yet".
  */
+/**
+ * The runs a cell of the grid is made of.
+ *
+ * Exported because the cell's headline rate and everything read out of the cell
+ * beneath it -- the bank, the blockers -- have to select the same runs, and the
+ * UNASSIGNED column is where "same industry, same role id" stops being that
+ * selection: it holds runs with no role id AND runs whose role id no longer
+ * resolves. A second copy of the predicate written as `jobRoleId === null`
+ * therefore reads a smaller population than the cell counted, and puts both on
+ * one screen -- a headline over runs the bank below it cannot see.
+ */
+export function runsInCell(
+  simulations: readonly StoredSimulation[],
+  cell: { industry: string; jobRoleId: string | null },
+  roles: readonly { id: string }[],
+): StoredSimulation[] {
+  const knownRoleIds = new Set(roles.map((r) => r.id))
+  return simulations.filter(
+    (s) =>
+      s.cell.industry === cell.industry &&
+      (cell.jobRoleId === null
+        ? s.cell.jobRoleId === null || !knownRoleIds.has(s.cell.jobRoleId)
+        : s.cell.jobRoleId === cell.jobRoleId),
+  )
+}
+
 export function matrixFrom(
   simulations: readonly StoredSimulation[],
   roles: readonly { id: string; name: string }[],
 ): MatrixCell[] {
   const industries = [...new Set(simulations.map((s) => s.cell.industry))].sort()
-  const knownRoleIds = new Set(roles.map((r) => r.id))
 
   const cell = (
     industry: string,
@@ -36,13 +61,12 @@ export function matrixFrom(
   }
 
   return industries.flatMap((industry) => {
-    const here = simulations.filter((s) => s.cell.industry === industry)
     const columns = roles.map((role) =>
       cell(
         industry,
         role.id,
         role.name,
-        here.filter((s) => s.cell.jobRoleId === role.id),
+        runsInCell(simulations, { industry, jobRoleId: role.id }, roles),
       ),
     )
 
@@ -65,9 +89,7 @@ export function matrixFrom(
      * Added only when such runs exist, so a tenant that always records a role
      * never sees an empty extra column.
      */
-    const roleless = here.filter(
-      (s) => s.cell.jobRoleId === null || !knownRoleIds.has(s.cell.jobRoleId),
-    )
+    const roleless = runsInCell(simulations, { industry, jobRoleId: null }, roles)
     return roleless.length > 0
       ? [...columns, cell(industry, null, UNASSIGNED_ROLE, roleless)]
       : columns
