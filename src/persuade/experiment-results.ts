@@ -127,8 +127,17 @@ export function readiness(
    * 72. Nothing rewrites a row scored before that fix, so a fractional grade
    * turning up here is the same tell: proof `meanGrade` above is averaging a
    * 0-10 judgment and a 0-100 one as if they were the same number.
+   *
+   * Filtered to `r.variant` for the same reason the fingerprint check above
+   * is: a hand-started run carries no variant and `compareArms` drops it from
+   * every arm, so it never touches any arm's `meanGrade`. Scanning every run
+   * regardless of variant means a stray pre-scale-fix score on one of those
+   * can trigger this warning about a comparison it was never part of.
    */
-  const grades = runs.map((r) => r.score?.grade).filter((g): g is number => typeof g === 'number')
+  const grades = runs
+    .filter((r) => r.variant)
+    .map((r) => r.score?.grade)
+    .filter((g): g is number => typeof g === 'number')
   if (grades.some((g) => !Number.isInteger(g))) {
     warnings.push('חלק מהציונים אינם מספרים שלמים — סימן לריצות שנוקדו לפני שהסולם נקבע ל-0 עד 100')
   }
