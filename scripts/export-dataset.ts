@@ -9,10 +9,16 @@
  * belong in a training file however good it was.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
-import { createClient } from '@supabase/supabase-js'
+import { pathToFileURL } from 'node:url'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Recipient } from '../src/persuade/engine/prompts'
 import { getPersona } from '../src/persuade/lib/content'
-import { buildDataset, sourceRunsFromRows, toJsonl } from '../src/persuade/lib/dataset'
+import {
+  buildDataset,
+  type DatasetSourceRow,
+  sourceRunsFromRows,
+  toJsonl,
+} from '../src/persuade/lib/dataset'
 
 function env(): { url: string; key: string } {
   try {
@@ -36,6 +42,37 @@ function env(): { url: string; key: string } {
 const arg = (name: string): string | undefined =>
   process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1]
 
+interface SimulationRow extends DatasetSourceRow {
+  models: Record<string, string> | null
+  experiment: string | null
+  variant: string | null
+}
+
+/**
+ * Every stored simulation, paged rather than capped.
+ *
+ * `.limit(5000)` was a silent ceiling: past it, the export describes a subset
+ * of the history while looking exactly like a run over everything, and
+ * PostgREST enforces its own row cap besides -- the identical shape already
+ * fixed in `technique-report.ts`'s `readAll` and `experiment-report.ts`'s
+ * `fetchExperimentRows`, just never applied to this reader.
+ */
+export async function fetchSimulationRows(db: SupabaseClient): Promise<SimulationRow[]> {
+  const rows: SimulationRow[] = []
+  const size = 1000
+  for (let from = 0; ; from += size) {
+    const { data, error } = await db
+      .from('simulations')
+      .select('id,created_at,plan,persona_id,turns,state,score,rules,models,experiment,variant')
+      .order('created_at', { ascending: false })
+      .range(from, from + size - 1)
+    if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
+    const batch = (data ?? []) as SimulationRow[]
+    rows.push(...batch)
+    if (batch.length < size) return rows
+  }
+}
+
 async function main(): Promise<void> {
   const { url, key } = env()
   const db = createClient(url, key, { auth: { persistSession: false } })
@@ -46,14 +83,7 @@ async function main(): Promise<void> {
   const minGrade = Number(arg('min-grade') ?? '70')
   const requireCleanTurns = !process.argv.includes('--allow-dirty')
 
-  const { data, error } = await db
-    .from('simulations')
-    .select('id,created_at,plan,persona_id,turns,state,score,rules,models,experiment,variant')
-    .order('created_at', { ascending: false })
-    .limit(5000)
-  if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
-
-  const rows = data ?? []
+  const rows = await fetchSimulationRows(db)
 
   // runSimulation always hands the persuader the real persona as its
   // recipient, so the replay needs the same name and role back -- not the
@@ -104,4 +134,9 @@ async function main(): Promise<void> {
   console.log(`\nנכתב: ${outfile}`)
 }
 
-await main()
+// Guarded rather than a bare top-level call: `fetchSimulationRows` needs to be
+// importable from a test without running the whole CLI against a real
+// database (see tests/persuade/export-dataset.test.ts).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main()
+}
