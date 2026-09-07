@@ -52,12 +52,25 @@ export interface SourceRun {
   score: RunScore | null
   rules: RuleConfig | null
   persona: Recipient | null
+  /** The model id per role that produced the run, carried through so a caller can tell which teacher an exported example actually came from. */
+  models?: Record<string, string> | null
 }
 
 export interface ExportReport {
   examples: TrainingExample[]
   /** Every reason a turn was dropped, counted. A silent filter is unreadable. */
   rejected: Record<string, number>
+  /**
+   * The source run's `models` behind each surviving example, aligned 1:1 with
+   * `examples` -- not one entry per row read.
+   *
+   * A row that got rejected (unscored, below grade, refused, an unresolvable
+   * persona) taught the exported set nothing, so its model has no business in
+   * a count of which teachers the examples came from. Counting it anyway is
+   * how a caller ends up reporting "these examples come from two model
+   * combinations" about a set that, after filtering, was produced by one.
+   */
+  exampleModels: (Record<string, string> | null)[]
 }
 
 /** The columns `export:dataset` reads. Kept separate from `Run` because the row is flat and the type is not. */
@@ -70,6 +83,8 @@ export interface DatasetSourceRow {
   state: Run['state']
   score: RunScore | null
   rules: RuleConfig | null
+  /** The model id per role that produced the run. Null on rows predating it. */
+  models?: Record<string, string> | null
 }
 
 /**
@@ -107,6 +122,7 @@ export function sourceRunsFromRows(
     // genuinely unresolvable -- a row with no persona_id at all -- rather
     // than whenever the caller did not bother to look one up.
     persona: row.persona_id ? (personas.get(row.persona_id) ?? null) : null,
+    models: row.models ?? null,
   }))
 }
 
@@ -246,6 +262,7 @@ export function buildDataset(
   const merged = { ...DEFAULT_FILTER, ...filter }
   const rejected: Record<string, number> = {}
   const examples: TrainingExample[] = []
+  const exampleModels: (Record<string, string> | null)[] = []
   const seen = new Set<string>()
 
   for (const source of sources) {
@@ -260,10 +277,11 @@ export function buildDataset(
       }
       seen.add(key)
       examples.push(example)
+      exampleModels.push(source.models ?? null)
     }
   }
 
-  return { examples, rejected }
+  return { examples, rejected, exampleModels }
 }
 
 export const toJsonl = (examples: readonly TrainingExample[]): string =>
