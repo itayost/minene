@@ -76,7 +76,10 @@ async function main(): Promise<void> {
 
   const sources = sourceRunsFromRows(rows, personas)
 
-  const { examples, rejected } = buildDataset(sources, { minGrade, requireCleanTurns })
+  const { examples, rejected, exampleModels } = buildDataset(sources, {
+    minGrade,
+    requireCleanTurns,
+  })
 
   console.log(`סימולציות שנקראו: ${rows.length}`)
   console.log(`דוגמאות אימון: ${examples.length}`)
@@ -89,8 +92,12 @@ async function main(): Promise<void> {
 
   // A model swap invalidates a comparison; for a training set it is milder but
   // still worth seeing, since examples from two different teachers are two
-  // different behaviours being averaged.
-  const teachers = new Set(rows.map((r) => JSON.stringify(r.models ?? null)))
+  // different behaviours being averaged. Counted over the examples that
+  // actually survived the filter above, not over every row read -- a row
+  // rejected as unscored, below grade, refused or persona-unresolvable taught
+  // the exported set nothing, so its model has no business in a count of
+  // which teachers the examples came from.
+  const teachers = new Set(exampleModels.map((m) => JSON.stringify(m ?? null)))
   if (teachers.size > 1) {
     console.log(`\nשים לב: הדוגמאות מגיעות מ-${teachers.size} צירופי מודלים שונים.`)
   }

@@ -207,6 +207,34 @@ describe('resolving the recipient the persuader actually saw', () => {
   })
 })
 
+describe('which models the exported examples actually came from', () => {
+  test('excludes a rejected row from the count, even though it was read', () => {
+    // Two source rows read from two different persuader models. Only the
+    // second one survives buildDataset's filter (the first is unscored and
+    // dropped whole) -- so the training set this run actually produces was
+    // taught by one model, not two, however many models the raw rows carried.
+    const { examples, exampleModels } = buildDataset([
+      source({ models: { persuader: 'gpt-4o-mini' }, score: null }),
+      source({ models: { persuader: 'gpt-5' } }),
+    ])
+
+    expect(examples).toHaveLength(1)
+    expect(exampleModels).toEqual([{ persuader: 'gpt-5' }])
+  })
+
+  test('one entry in exampleModels per surviving example, not per source row', () => {
+    const { examples, exampleModels } = buildDataset([
+      source({
+        models: { persuader: 'gpt-5' },
+        run: run([persuader(), target('אין לי זמן'), persuader({ interaction: 2 })]),
+      }),
+    ])
+
+    expect(examples).toHaveLength(2)
+    expect(exampleModels).toEqual([{ persuader: 'gpt-5' }, { persuader: 'gpt-5' }])
+  })
+})
+
 describe('deduplication', () => {
   test('two identical openers become one example', () => {
     // Every run of one plan opens from the same state, so this is the common
