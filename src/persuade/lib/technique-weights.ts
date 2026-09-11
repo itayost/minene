@@ -80,6 +80,12 @@ export function propose(
 
     const caveats: string[] = []
     if (report.runs < minRuns) caveats.push(`${report.runs} ריצות בלבד`)
+    // `weight` is a ratio against the peer average, not against report.runs --
+    // a technique can clear every other caveat here on its own volume and
+    // still be rated off a peer group with almost nothing in it. The thinness
+    // that matters for trusting the ratio is the peer group's, not this
+    // technique's own.
+    if (peerRuns < minRuns) caveats.push(`${peerRuns} ריצות בלבד אצל המתחרות`)
 
     // byReason only counts runs that carried a world -- a run with none has no
     // reason to key by, and sliceBy drops it. Comparing that total back to
