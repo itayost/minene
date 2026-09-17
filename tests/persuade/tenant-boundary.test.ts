@@ -43,6 +43,19 @@ describe('a simulation never touches a tenant’s knowledge', () => {
     expect(feed).not.toMatch(/ammunition/i)
     expect(feed).not.toMatch(/tenantId|tenant_id/)
     expect(feed).not.toMatch(/assignmentId|assignment_id/)
+
+    // Generated lab content becomes the loop's inputs, so its source is held to
+    // the same boundary: role_needs describes roles, never a business.
+    for (const path of [
+      'src/persuade/lib/lab-generator.ts',
+      'src/persuade/lib/generate-lab-content.ts',
+    ]) {
+      const text = source(path)
+      expect(text).not.toMatch(/ammunition/i)
+      expect(text).not.toMatch(/tenantId|tenant_id/)
+      expect(text).not.toMatch(/assignmentId|assignment_id/)
+      expect(text).not.toMatch(/from\('(rules|roles|documents|profiles)'\)/)
+    }
   })
 
   it('keeps the turn-taking it drives free of them too', () => {
