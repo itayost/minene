@@ -12,10 +12,16 @@ import {
   planChunk,
 } from '../../src/persuade/lib/feed'
 
-const persona = (key: string, industry: string, jobRoleName: string | null): FeedInput => ({
+const persona = (
+  key: string,
+  industry: string,
+  jobRoleName: string | null,
+  source: 'manual' | 'generated' = 'manual',
+): FeedInput => ({
   key,
   industry,
   jobRoleName,
+  source,
 })
 
 describe('pairInputs', () => {
@@ -32,7 +38,7 @@ describe('pairInputs', () => {
     expect(unpairedPersonas).toEqual(['b', 'c'])
   })
 
-  test('a plan with no target role meets every persona in its industry', () => {
+  test('a plan with no target role meets every hand-written persona in its industry', () => {
     // This is the manual `briefings` plan, and why the feed has work before
     // any content is generated.
     const { pairs } = pairInputs(
@@ -44,6 +50,21 @@ describe('pairInputs', () => {
       [persona('briefings', 'retail', null)],
     )
     expect(pairs.map((p) => p.personaKey)).toEqual(['adi', 'yossi'])
+  })
+
+  test('a plan with no target role skips generated personas in its industry', () => {
+    // A generated CEO or COO answering the hand-written morning-briefing plan
+    // measures nothing: pairing it with every generated persona would defeat
+    // the point of the null job_role_name being "general", not "everyone".
+    const { pairs, unpairedPersonas } = pairInputs(
+      [
+        persona('yossi', 'retail', 'עובד מכירות ותיק', 'manual'),
+        persona('gen-retail-ceo-1', 'retail', 'מנכ"ל', 'generated'),
+      ],
+      [persona('briefings', 'retail', null)],
+    )
+    expect(pairs.map((p) => p.personaKey)).toEqual(['yossi'])
+    expect(unpairedPersonas).toEqual(['gen-retail-ceo-1'])
   })
 
   test('pair order does not depend on the order rows came back in', () => {

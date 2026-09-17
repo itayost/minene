@@ -1610,7 +1610,7 @@ supabase db query --linked "select count(*) from information_schema.columns wher
 ```
 Expected: no error from the first command; the count is `0` (rolled back). Also run a negative control once: the migration followed by `do $$ begin raise exception 'negative control'; end $$;` inside `begin; ... rollback;` must return that error.
 
-- [ ] **Step 2: Push both branches, open PRs.** The minene PR must say it depends on the eran-task migration: `lab:generate` writes `source` and `generated_at`, which do not exist until it is applied. Nothing in the running app reads the new columns, so merging minene first breaks nothing; only the script needs the migration.
+- [ ] **Step 2: Push both branches, open PRs.** The minene PR must say it depends on the eran-task migration: `lab:generate` writes `source` and `generated_at`, which do not exist until it is applied. The feed reads `source` too, so the minene PR must not merge before the migration is applied -- a refill would error every tick until then, while ticks still drain already-queued jobs. Keep the order migration, then merge (Steps 3-4 below already do).
 
 - [ ] **Step 3: Merge eran-task, `supabase migration list --linked` (only `20260917120000` pending), `supabase db push --linked`.**
 

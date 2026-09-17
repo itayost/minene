@@ -90,7 +90,8 @@ that produced it.
 - **The feed** (`src/persuade/lib/feed.ts`, table `public.simulation_feed`)
   walks active (persona, plan) pairs times world cells and commits each chunk
   with a compare-and-set, so overlapping ticks cannot queue the same cells. A
-  plan with a null `job_role_name` pairs with every persona in its industry.
+  plan with a null `job_role_name` pairs with every hand-written
+  (`source = 'manual'`) persona in its industry, never a generated one.
   Changing the active personas or plans restarts the walk.
 - **Generated content** comes from `pnpm lab:generate [--industry=retail]
   [--force]`, which writes two personas per role and one plan per need from

@@ -48,20 +48,20 @@ function fakeClient(state: FakeState) {
 }
 
 const PERSONAS = [
-  { persona_key: 'adi', industry: 'retail', job_role_name: 'מנהלת חנות' },
-  { persona_key: 'rona', industry: 'retail', job_role_name: 'מנהלת משמרת' },
-  { persona_key: 'bank-1', industry: 'bank', job_role_name: 'בנקאי' },
+  { persona_key: 'adi', industry: 'retail', job_role_name: 'מנהלת חנות', source: 'manual' },
+  { persona_key: 'rona', industry: 'retail', job_role_name: 'מנהלת משמרת', source: 'manual' },
+  { persona_key: 'bank-1', industry: 'bank', job_role_name: 'בנקאי', source: 'manual' },
 ]
-const PLANS = [{ plan_key: 'briefings', industry: 'retail', job_role_name: null }]
+const PLANS = [{ plan_key: 'briefings', industry: 'retail', job_role_name: null, source: 'manual' }]
 const SETTINGS = { lowWater: 50, refillChunk: 5 }
 
 const retailPairs = () =>
   pairInputs(
     [
-      { key: 'adi', industry: 'retail', jobRoleName: 'מנהלת חנות' },
-      { key: 'rona', industry: 'retail', jobRoleName: 'מנהלת משמרת' },
+      { key: 'adi', industry: 'retail', jobRoleName: 'מנהלת חנות', source: 'manual' },
+      { key: 'rona', industry: 'retail', jobRoleName: 'מנהלת משמרת', source: 'manual' },
     ],
-    [{ key: 'briefings', industry: 'retail', jobRoleName: null }],
+    [{ key: 'briefings', industry: 'retail', jobRoleName: null, source: 'manual' }],
   ).pairs
 
 describe('refillFeed', () => {
