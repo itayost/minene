@@ -5,7 +5,7 @@ import { runSimulation } from '../engine/simulation'
 import type { Run } from '../engine/types'
 import { createUsageMeter, withUsageMeter } from '../engine/usage'
 import { isWorldState, personaInWorld, type WorldState } from '../engine/world'
-import { breakerVerdict, DEFAULT_BREAKER, readRecentOutcomes } from './breaker'
+import { type BreakerOutcome, breakerVerdict, DEFAULT_BREAKER, readRecentOutcomes } from './breaker'
 import { getPersona, getPlan } from './content'
 import { type FeedReport, refillFeed } from './feed'
 import { modelId } from './model'
@@ -29,6 +29,14 @@ import { type WorkerSettings, workerSettings } from './worker-settings'
  * budget. A cap that stops the loop is the difference between a lab and a leak.
  * The cap itself now lives in worker-settings.ts, read per tick, so it can be
  * lowered in Vercel without a deploy.
+ *
+ * The cap bounds attempts, not successes: it counts jobs claimed today,
+ * whatever their outcome. A failed job has still spent up to eleven model
+ * calls before it failed, so counting only rows that made it into
+ * `simulations` would leave a failing loop unbounded. Room is read once per
+ * tick, so two overlapping ticks can each claim up to a full batch before
+ * either sees the other's claims -- the cap can overshoot by at most one
+ * batch.
  */
 export const CALLS_PER_RUN = 11
 
@@ -62,19 +70,19 @@ export interface WorkerReport {
 /** The tick's collaborators. Injected so the tick can be tested without a database or a model. */
 export interface TickDeps {
   settings: WorkerSettings
-  readOutcomes: (client: SupabaseClient) => Promise<string[]>
+  readOutcomes: (client: SupabaseClient) => Promise<BreakerOutcome[]>
   refill: (client: SupabaseClient, settings: WorkerSettings) => Promise<FeedReport>
   runJob: (client: SupabaseClient, job: JobRow) => Promise<string>
 }
 
-/** Runs completed today, which is what the cap is measured against. */
-async function runsToday(client: SupabaseClient): Promise<number> {
+/** Jobs claimed today, any status, which is what the cap is measured against. */
+async function attemptsToday(client: SupabaseClient): Promise<number> {
   const since = new Date()
   since.setUTCHours(0, 0, 0, 0)
   const { count, error } = await client
-    .from('simulations')
+    .from('simulation_jobs')
     .select('id', { count: 'exact', head: true })
-    .gte('created_at', since.toISOString())
+    .gte('claimed_at', since.toISOString())
 
   // A cap that cannot be read is a cap that is not enforced. Failing closed
   // costs a batch; failing open costs money until somebody notices.
@@ -136,7 +144,7 @@ export async function tick(
   }
   const { settings } = deps
 
-  const today = await runsToday(client)
+  const today = await attemptsToday(client)
   if (today >= settings.dailyCap) {
     return {
       claimed: 0,
@@ -146,7 +154,7 @@ export async function tick(
     }
   }
 
-  const verdict = breakerVerdict(await deps.readOutcomes(client), DEFAULT_BREAKER)
+  const verdict = breakerVerdict(await deps.readOutcomes(client), DEFAULT_BREAKER, new Date())
   if (verdict.open) {
     return {
       claimed: 0,

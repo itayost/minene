@@ -36,9 +36,15 @@ const job = (id: string): JobRow => ({
 function fakeClient(today: number, claimable: JobRow[]) {
   const updates: { id: string; status: unknown; error: unknown }[] = []
   const claims: { p_limit: number }[] = []
+  const counted: { table: string; column: string }[] = []
   const client = {
-    from: () => ({
-      select: () => ({ gte: async () => ({ count: today, error: null }) }),
+    from: (table: string) => ({
+      select: () => ({
+        gte: async (column: string) => {
+          counted.push({ table, column })
+          return { count: today, error: null }
+        },
+      }),
       update: (patch: Record<string, unknown>) => ({
         eq: async (_column: string, id: string) => {
           updates.push({ id, status: patch.status, error: patch.error })
@@ -51,7 +57,7 @@ function fakeClient(today: number, claimable: JobRow[]) {
       return { data: claimable.slice(0, args.p_limit), error: null }
     },
   } as unknown as SupabaseClient
-  return { client, updates, claims }
+  return { client, updates, claims, counted }
 }
 
 const quiet: FeedReport = { status: 'enough', pending: 100 }
@@ -92,13 +98,15 @@ describe('tick', () => {
   })
 
   test('claims no more than the room left under the cap', async () => {
-    const { client, claims } = fakeClient(
+    const { client, claims, counted } = fakeClient(
       997,
       Array.from({ length: 8 }, (_, i) => job(`j${i}`)),
     )
     const report = await tick(client, deps())
     expect(claims).toEqual([{ p_limit: 3, p_stale_minutes: 30 }])
     expect(report.claimed).toBe(3)
+    // The cap counts attempts (jobs claimed today), not stored simulations.
+    expect(counted).toEqual([{ table: 'simulation_jobs', column: 'claimed_at' }])
   })
 
   test('stops at the cap without refilling or claiming', async () => {
@@ -127,7 +135,13 @@ describe('tick', () => {
     const { client, claims } = fakeClient(0, [job('j0')])
     const report = await tick(
       client,
-      deps({ readOutcomes: async () => Array.from({ length: 20 }, () => 'failed') }),
+      deps({
+        readOutcomes: async () =>
+          Array.from({ length: 20 }, () => ({
+            status: 'failed',
+            updatedAt: new Date().toISOString(),
+          })),
+      }),
     )
     expect(report).toEqual({
       claimed: 0,

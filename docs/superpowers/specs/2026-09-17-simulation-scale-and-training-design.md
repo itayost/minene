@@ -81,8 +81,13 @@ repo's CLAUDE.md requires.
 ### Cap
 
 `DAILY_RUN_CAP` default changes from `200` to `1000` in code and in the Vercel
-env. The cap check remains fail-closed. Room is computed once per tick
+env. The cap counts jobs claimed today (`simulation_jobs.claimed_at >= UTC
+midnight`), any status -- attempts, including failures -- not rows stored in
+`simulations`, since a failed or in-flight job has still spent model calls.
+The cap check remains fail-closed. Room is computed once per tick
 (`min(batch, cap - today)`), and concurrency never claims more than that room.
+Two overlapping ticks each read `today` before either claims, so the cap can
+overshoot by at most one batch.
 
 ### Queue refill
 
@@ -142,14 +147,24 @@ Nullable: rows before this change have no usage, and null means unknown.
 
 ### Circuit breaker
 
-Before claiming, the worker reads jobs whose `updated_at` is within the last
-hour and whose status is `done` or `failed`. If there are at least 20 and more
-than 80% are `failed`, the tick claims nothing and returns
-`stopped: 'מפסק: <failed>/<total> נכשלו בשעה האחרונה'`. It resets on its own as
-the window moves. A manual `POST` with the secret still goes through the same
-check; there is no bypass flag.
+Before claiming, the worker reads the last `minSamples` (default 20) jobs
+whose status is `done` or `failed`, newest first, with no time filter. If
+there are at least `minSamples` and more than 80% are `failed`, the tick
+claims nothing and returns
+`stopped: 'מפסק: <failed>/<total> נכשלו בשעה האחרונה'`. A manual `POST` with
+the secret still goes through the same check; there is no bypass flag.
 
-New index: `simulation_jobs (status, updated_at)`.
+It latches rather than closing on its own: since an open breaker claims
+nothing, no new outcomes arrive to dilute the failing sample, so the count-based
+rule alone would stay open forever once tripped. The escape is a one-batch
+probe -- once the newest of those samples is older than `windowMinutes`
+(default 60) before now, the breaker reports closed for that one tick so a
+fresh batch can run and refresh the sample. If the probe batch also fails, it
+becomes the newest sample and the latch holds for another window; if it
+mostly succeeds, the failure ratio drops and the breaker stays closed.
+
+New index: `simulation_jobs (status, updated_at)`, for the breaker's read.
+New index: `simulation_jobs (claimed_at)`, for the cap's attempt count.
 
 ### Tests
 
