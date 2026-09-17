@@ -72,18 +72,29 @@ reverses it.
 
 ### The simulation loop
 
-`vercel.json` runs `/api/persuade/worker` hourly. Each tick claims a small batch
-from `public.simulation_jobs`, runs the simulations, scores them and stores them
-with the `RuleConfig` that produced each one -- which is what makes two arms of
-an experiment comparable afterwards.
+`vercel.json` runs `/api/persuade/worker` every ten minutes. Each tick checks
+the daily cap and the failure breaker, tops the queue up from the feed, claims a
+batch from `public.simulation_jobs`, runs it four at a time, scores each run and
+stores it with the `RuleConfig`, the models, the token usage and the feed pass
+that produced it.
 
 - **It needs `CRON_SECRET` set in Vercel.** Without it the route refuses every
   request, including the cron's. That is deliberate: the endpoint spends money.
-- **`PERSUADER_DAILY_RUN_CAP` stops the loop**, default 200 runs a UTC day. One
-  run is up to eleven model calls.
-- Queue work with `queueExperiment` in `src/persuade/lib/experiments.ts`. It
-  refuses an experiment whose arms differ in more than one setting, because that
-  is an expensive way to learn nothing.
+- **`PERSUADER_DAILY_RUN_CAP` stops the loop**, default 1,000 runs a UTC day.
+  One run is up to eleven model calls. `PERSUADER_TICK_BATCH`,
+  `PERSUADER_TICK_CONCURRENCY`, `PERSUADER_QUEUE_LOW_WATER` and
+  `PERSUADER_REFILL_CHUNK` are read per tick; an unreadable value throws rather
+  than falling back.
+- **The breaker** skips a tick when at least 20 jobs finished in the last hour
+  and more than 80% failed. It closes on its own as the window moves.
+- **The feed** (`src/persuade/lib/feed.ts`, table `public.simulation_feed`)
+  walks active (persona, plan) pairs times world cells and commits each chunk
+  with a compare-and-set, so overlapping ticks cannot queue the same cells. A
+  plan with a null `job_role_name` pairs with every persona in its industry.
+  Changing the active personas or plans restarts the walk.
+- Queue a one-off experiment with `queueExperiment` in
+  `src/persuade/lib/experiments.ts`. It refuses an experiment whose arms differ
+  in more than one setting, because that is an expensive way to learn nothing.
 ### The scenario, and what the persuader is not told
 
 A run happens inside a `WorldState` — motivation, workload, the real reason it
