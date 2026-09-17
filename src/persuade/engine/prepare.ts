@@ -1,69 +1,14 @@
 import { generateObject } from 'ai'
-import { z } from 'zod'
 import { callOptions, model } from '../lib/model'
 import { type Ammunition, formatAmmunition, strengthFromLikePct } from './ammunition'
 import { ARGUMENT_LABELS, RUNG_LABELS } from './knowledge'
+import { normalizeEscalation, planSchema } from './plan-schema'
 import type { Argument, PersuasionPlan } from './types'
 
 /**
  * Stage 0. Nothing is said to the counterpart before this exists.
  * "A persuading AI does not start by talking. It starts by preparing."
  */
-
-const argumentSchema = z.object({
-  id: z.string(),
-  category: z.enum([
-    'personal_benefit',
-    'emotional_benefit',
-    'career_money',
-    'less_work_later',
-    'org_benefit',
-    'values_culture',
-    'role_standard',
-    'cost_of_inaction',
-    'numbers',
-    'social_proof',
-    'authority',
-  ]),
-  text: z.string().describe('הטיעון עצמו, כפי שייאמר. עברית פשוטה, עד 20 מילים.'),
-  strength: z.number().min(1).max(10).describe('כמה חזק הטיעון הזה לאדם הספציפי הזה'),
-  why: z.string().describe('למה נתת לו את הציון הזה דווקא לאדם הזה'),
-  // Nullable rather than optional: the model must say "this one is mine" out
-  // loud instead of leaving the key off, which is indistinguishable from
-  // having forgotten it.
-  sourceRuleNumber: z
-    .number()
-    .nullable()
-    .describe('מספר החוק שממנו נלקח הטיעון, או null אם ניסחת אותו בעצמך'),
-})
-
-const planSchema = z.object({
-  topic: z.string(),
-  ask: z.object({
-    what: z.string().describe('הפעולה עצמה. קונקרטית. אפשר לצלם אותה.'),
-    withWhom: z.string(),
-    durationMinutes: z.number().min(1),
-    frequency: z.string(),
-    when: z.string().describe('נקודת זמן ביום או בשבוע'),
-    script: z.array(z.string()).min(1).describe('מה בפועל אומרים או עושים. שאלות או צעדים.'),
-    trialPeriod: z.string().describe('לכמה זמן מבקשים לנסות'),
-    oneLiner: z.string().describe('הבקשה במשפט אחד שהמשתמש יוכל לחזור עליו'),
-  }),
-  currentStateQuestions: z
-    .array(z.string())
-    .min(2)
-    .max(4)
-    .describe('שאלות לבדיקת המצב הקיים לפני שמציעים דרך חדשה'),
-  arguments: z.array(argumentSchema).min(6).max(10),
-  objections: z
-    .array(z.object({ objection: z.string(), response: z.string() }))
-    .min(3)
-    .max(6)
-    .describe('התנגדויות צפויות ותשובה קצרה לכל אחת'),
-  escalation: z.array(z.object({ rung: z.number().min(1).max(5), message: z.string() })).length(5),
-  stopPoint: z.string().describe('מתי מפסיקים לשכנע ומה עושים אז'),
-  successCriteria: z.string().describe('איך נדע שזה באמת קרה בעולם'),
-})
 
 export interface PrepareInput {
   id: string
@@ -224,9 +169,6 @@ export async function preparePlan(input: PrepareInput): Promise<PersuasionPlan> 
     id: input.id,
     onBehalfOf: input.onBehalfOf,
     arguments: applyMeasuredStrength(object.arguments as Argument[], input.ammunition),
-    escalation: object.escalation.map((e) => ({
-      rung: Math.min(Math.max(Math.round(e.rung), 1), 5) as 1 | 2 | 3 | 4 | 5,
-      message: e.message,
-    })),
+    escalation: normalizeEscalation(object.escalation),
   } as PersuasionPlan
 }
