@@ -12,6 +12,7 @@ import {
   shouldStop,
 } from './rules'
 import type { ConversationState, PersuasionPlan, RuleViolation, Rung, Turn } from './types'
+import { recordUsage } from './usage'
 
 const BLOCKER_IDS = [
   'no_why',
@@ -122,7 +123,8 @@ export async function persuaderTurn(
   recipient: Recipient | null = null,
 ): Promise<TurnResult> {
   const { workingState, call } = turnRequest(plan, turns, state, rules, recipient)
-  const { object } = await generateObject(call)
+  const { object, usage } = await generateObject(call)
+  recordUsage('persuader', usage)
   return gradeTurn(object, plan, turns, workingState, rules)
 }
 

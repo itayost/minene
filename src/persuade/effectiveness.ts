@@ -58,6 +58,17 @@ export interface TechniqueReport {
    * back with no winning category) is left out of this count entirely, for
    * every category the plan offered. It is not a loss for any of them -- it is
    * a conversation nobody has a verdict on. See `isInformative`.
+   *
+   * One inclusion, and it is the number's sharpest caveat: the category the
+   * scorer named is counted here even when the plan never offered it (see
+   * `categoriesInPlay`), because dropping the win outright was worse. But
+   * nothing records an off-plan category that was reached for and FAILED --
+   * the plan is the only record of what was on the table -- so a rarely
+   * offered category enters this denominator almost only when it wins, and
+   * reads near 100%. A category with few `runs` relative to how often plans
+   * offer it is that artefact, not a discovery; `formatTechnique` flags a thin
+   * sample but cannot flag a large biased one. The fix is the same prompt and
+   * schema change: have the persuader name the category it used each turn.
    */
   runs: number
   wins: number
@@ -78,6 +89,16 @@ export interface TechniqueReport {
    * different sets.
    */
   negativeReactionPct: number | null
+  /**
+   * How many of `runs` this category entered ONLY by winning off-plan.
+   *
+   * The measurable form of the caveat on `runs`. A category no plan offered
+   * cannot appear here as a loss, so when this approaches `runs` the win rate
+   * is near 100% by construction rather than by merit. `propose` refuses to
+   * turn such a report into a weight, which is the reason this is counted at
+   * all rather than only described.
+   */
+  offPlanWins: number
   byReason: Slice[]
   byPersona: Slice[]
 }
@@ -163,6 +184,8 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       messages: number[]
       /** Every run that offered this category, informative or not -- the exhaustion denominator. */
       offeredCount: number
+      /** Times this category was credited without the plan having offered it. */
+      offPlan: number
       negative: number
       reasons: { key: Reason | null; won: boolean }[]
       personas: { key: string | null; won: boolean }[]
@@ -179,6 +202,7 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
         wins: 0,
         messages: [],
         offeredCount: 0,
+        offPlan: 0,
         negative: 0,
         reasons: [],
         personas: [],
@@ -216,6 +240,7 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       // doesn't cover: an agreed run where fatigue crept high without ever
       // tripping the stop.
       at.offeredCount += 1
+      if (informative && isWin && !offered.includes(category)) at.offPlan += 1
       if (run.outcome === 'stopped_fatigue' || run.fatigue >= 0.7) at.negative += 1
       byCategory.set(category, at)
     }
@@ -229,6 +254,7 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       winPct: pct(v.wins, v.runs),
       avgMessagesToWin: mean(v.messages),
       negativeReactionPct: pct(v.negative, v.offeredCount),
+      offPlanWins: v.offPlan,
       byReason: sliceBy(v.reasons),
       byPersona: sliceBy(v.personas),
     }))
@@ -245,9 +271,21 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
  * comparison against -- two arms on different models are two experiments, not
  * one -- so the caller should treat more than one fingerprint here as reason
  * to distrust the comparison the same way.
+ *
+ * Runs with nothing recorded are not counted, for the same reason `readiness`
+ * stopped counting them: an unrecorded run is an unknown, not a second model.
+ * They are not only old rows either -- /api/persuade/simulate stores a run
+ * without models to this day -- so counting the gap as a fingerprint made this
+ * report claim a model swap permanently, on no evidence. Ask
+ * `unrecordedModels` for the gap and say that separately.
  */
 export function distinctModelFingerprints(inputs: readonly EffectivenessInput[]): number {
-  return new Set(inputs.map((i) => JSON.stringify(i.run.models ?? null))).size
+  return new Set(inputs.filter((i) => i.run.models).map((i) => JSON.stringify(i.run.models))).size
+}
+
+/** Runs carrying no model fingerprint at all -- an unknown, reported as one. */
+export function unrecordedModels(inputs: readonly EffectivenessInput[]): number {
+  return inputs.filter((i) => !i.run.models).length
 }
 
 /**
@@ -266,6 +304,18 @@ export function formatTechnique(report: TechniqueReport, minRuns = 10): string {
 
   if (report.runs < minRuns) {
     lines.push(`  ! only ${report.runs} runs — too few to read`)
+  }
+
+  // The bias a large sample cannot outgrow, so it is flagged independently of
+  // minRuns: these runs entered the denominator by winning, and the matching
+  // losses are unrecorded, so the percentage above is an artefact to that
+  // extent. At a majority, `propose` will not turn this row into a weight.
+  if (report.offPlanWins > 0) {
+    const share = Math.round((report.offPlanWins / report.runs) * 100)
+    lines.push(
+      `  ! ${report.offPlanWins} of ${report.runs} counted only because they won ` +
+        `off-plan (${share}%) — losses of this kind are not recorded`,
+    )
   }
 
   // The same bar the overall figure is checked against, applied per row: an

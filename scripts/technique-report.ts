@@ -7,72 +7,35 @@
  * a saved copy would drift the moment a run is re-scored, and this cannot
  * disagree with its own evidence.
  */
-import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 import {
   buildEffectiveness,
   distinctModelFingerprints,
   type EffectivenessInput,
   formatTechnique,
+  unrecordedModels,
 } from '../src/persuade/effectiveness'
 import type { ArgumentCategory, PersuasionPlan } from '../src/persuade/engine/types'
-
-function env(): { url: string; key: string } {
-  try {
-    const file = readFileSync(new URL('../.env.local', import.meta.url), 'utf8')
-    for (const line of file.split('\n')) {
-      const at = line.indexOf('=')
-      if (at > 0 && !line.trimStart().startsWith('#')) {
-        const name = line.slice(0, at).trim()
-        if (!process.env[name]) process.env[name] = line.slice(at + 1).trim()
-      }
-    }
-  } catch {
-    // Already in the environment is fine.
-  }
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SECRET_KEY
-  if (!url || !key) throw new Error('חסרים SUPABASE_URL ו-SUPABASE_SECRET_KEY.')
-  return { url, key }
-}
+import { env, readAll } from './lib/db'
 
 const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1]
-
-/**
- * Reads every row rather than the first slice.
- *
- * `.limit(5000)` is a silent ceiling: past it the report describes a subset
- * while looking exactly like a report on everything. PostgREST applies its own
- * max-rows too, so even a large limit is not a guarantee. Paging is the only
- * version that cannot quietly truncate.
- */
-async function readAll<T>(
-  page: (
-    from: number,
-    to: number,
-  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
-  size = 1000,
-): Promise<T[]> {
-  const rows: T[] = []
-  for (let from = 0; ; from += size) {
-    const { data, error } = await page(from, from + size - 1)
-    if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
-    const batch = data ?? []
-    rows.push(...batch)
-    if (batch.length < size) return rows
-  }
-}
 
 async function main(): Promise<void> {
   const { url, key } = env()
   const db = createClient(url, key, { auth: { persistSession: false } })
   const minRuns = Number(arg('min-runs') ?? '10')
 
+  // Oldest first, and `id` as a tiebreaker, because the window moves between
+  // requests: newest-first puts every insert the hourly worker makes mid-read
+  // at offset 0 and shifts a row across the page boundary into being counted
+  // twice, and rows sharing a `created_at` have no defined order at all
+  // without a second key.
   const rows = await readAll((from, to) =>
     db
       .from('simulations')
       .select('outcome,turns,state,score,world,persona_id,plan,models')
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
       .range(from, to),
   )
 
@@ -136,6 +99,13 @@ async function main(): Promise<void> {
     console.log(
       `\nשים לב: הריצות המוצגות מגיעות מ-${teachers} צירופי מודלים שונים — ` +
         'ההשוואה בין הטכניקות עלולה למדוד את החלפת המודל ולא את הטכניקה.',
+    )
+  }
+  const unrecorded = unrecordedModels(used)
+  if (unrecorded > 0) {
+    console.log(
+      `\nשים לב: ל-${unrecorded} מהריצות המוצגות לא נרשמו מודלים — ` +
+        'ייתכן שהן מאותו צירוף וייתכן שלא.',
     )
   }
   console.log('')

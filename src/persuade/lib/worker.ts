@@ -3,9 +3,14 @@ import type { RuleConfig } from '../engine/rules'
 import { scoreRun } from '../engine/score'
 import { runSimulation } from '../engine/simulation'
 import type { Run } from '../engine/types'
+import { createUsageMeter, withUsageMeter } from '../engine/usage'
 import { isWorldState, personaInWorld, type WorldState } from '../engine/world'
+import { type BreakerOutcome, breakerVerdict, DEFAULT_BREAKER, readRecentOutcomes } from './breaker'
 import { getPersona, getPlan } from './content'
+import { type FeedReport, refillFeed } from './feed'
 import { modelId } from './model'
+import { runPool } from './pool'
+import { type WorkerSettings, workerSettings } from './worker-settings'
 
 /**
  * The loop that runs simulations without anybody clicking anything.
@@ -22,9 +27,18 @@ import { modelId } from './model'
  * this project has already had one enforcement mechanism switched off for
  * exactly that reason -- brain-backend's CI, paused to stay inside an Actions
  * budget. A cap that stops the loop is the difference between a lab and a leak.
+ * The cap itself now lives in worker-settings.ts, read per tick, so it can be
+ * lowered in Vercel without a deploy.
+ *
+ * The cap bounds attempts, not successes: it counts jobs claimed today,
+ * whatever their outcome. A failed job has still spent up to eleven model
+ * calls before it failed, so counting only rows that made it into
+ * `simulations` would leave a failing loop unbounded. Room is read once per
+ * tick, so two overlapping ticks can each claim up to a full batch before
+ * either sees the other's claims -- the cap can overshoot by at most one
+ * batch.
  */
 export const CALLS_PER_RUN = 11
-const DAILY_RUN_CAP = Number(process.env.PERSUADER_DAILY_RUN_CAP ?? '200')
 
 export interface JobRow {
   id: string
@@ -39,24 +53,36 @@ export interface JobRow {
   rules: RuleConfig
   world: WorldState | null
   attempts: number
+  /** Which pass of the feed queued this job. Null when queued by hand or by an experiment. */
+  pass: number | null
 }
 
 export interface WorkerReport {
   claimed: number
   completed: number
   failed: number
-  /** Set when the cap stopped the batch, so a quiet worker is never ambiguous. */
+  /** Set when the cap or the breaker stopped the batch, so a quiet worker is never ambiguous. */
   stopped?: string
+  /** What the refill did this tick. An error here does not stop the tick from draining what is queued. */
+  feed?: FeedReport | { status: 'error'; message: string }
 }
 
-/** Runs completed today, which is what the cap is measured against. */
-async function runsToday(client: SupabaseClient): Promise<number> {
+/** The tick's collaborators. Injected so the tick can be tested without a database or a model. */
+export interface TickDeps {
+  settings: WorkerSettings
+  readOutcomes: (client: SupabaseClient) => Promise<BreakerOutcome[]>
+  refill: (client: SupabaseClient, settings: WorkerSettings) => Promise<FeedReport>
+  runJob: (client: SupabaseClient, job: JobRow) => Promise<string>
+}
+
+/** Jobs claimed today, any status, which is what the cap is measured against. */
+async function attemptsToday(client: SupabaseClient): Promise<number> {
   const since = new Date()
   since.setUTCHours(0, 0, 0, 0)
   const { count, error } = await client
-    .from('simulations')
+    .from('simulation_jobs')
     .select('id', { count: 'exact', head: true })
-    .gte('created_at', since.toISOString())
+    .gte('claimed_at', since.toISOString())
 
   // A cap that cannot be read is a cap that is not enforced. Failing closed
   // costs a batch; failing open costs money until somebody notices.
@@ -64,33 +90,90 @@ async function runsToday(client: SupabaseClient): Promise<number> {
   return count ?? 0
 }
 
+/** Runs one claimed job and records its outcome on the queue row. Never throws. */
+async function settle(
+  client: SupabaseClient,
+  job: JobRow,
+  run: TickDeps['runJob'],
+): Promise<'done' | 'failed'> {
+  try {
+    const simulationId = await run(client, job)
+    await client
+      .from('simulation_jobs')
+      .update({
+        status: 'done',
+        simulation_id: simulationId,
+        error: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', job.id)
+    return 'done'
+  } catch (cause) {
+    const message = cause instanceof Error ? cause.message : 'שגיאה לא ידועה'
+    await client
+      .from('simulation_jobs')
+      .update({ status: 'failed', error: message, updated_at: new Date().toISOString() })
+      .eq('id', job.id)
+    return 'failed'
+  }
+}
+
 /**
- * One tick: claim a few jobs, run them, record what happened.
+ * One tick: check the cap and the breaker, top the queue up, claim a batch, run
+ * it with bounded concurrency, record what happened.
  *
  * A failed job is marked and left rather than retried in place. The claim
  * function re-offers a stale `running` row after thirty minutes and increments
  * `attempts` each time, so a job that fails for a real reason stops being
  * retried by a person looking at `attempts`, not by a silent loop.
- */
-/**
- * Batch size is the real ceiling on volume, not the size of the cell space.
  *
- * Three per hourly tick is 72 runs a day against a space of 324 worlds times
- * personas times plans -- so the loop would take months to see each cell once
- * and could never see one twice. Six is measured rather than guessed: three
- * runs took 125 seconds against production, so six sits around 250s inside a
- * maxDuration of 800 with room for a slow one.
- *
- * The daily cap still governs. Six an hour is 144 a day, under the 200 default,
- * so raising throughput does not quietly raise spend past the ceiling.
+ * Throughput: a tick every ten minutes, eight jobs, four at a time. Runs take
+ * about 42 seconds (three took 125s against production), so a tick is roughly
+ * two minutes inside maxDuration = 800, and 144 ticks a day can reach 1,152 --
+ * above the cap, so the cap is what governs.
  */
-export async function tick(client: SupabaseClient, batchSize = 6): Promise<WorkerReport> {
-  const today = await runsToday(client)
-  if (today >= DAILY_RUN_CAP) {
-    return { claimed: 0, completed: 0, failed: 0, stopped: `תקרה יומית: ${today}/${DAILY_RUN_CAP}` }
+export async function tick(
+  client: SupabaseClient,
+  overrides: Partial<TickDeps> = {},
+): Promise<WorkerReport> {
+  const deps: TickDeps = {
+    settings: overrides.settings ?? workerSettings(),
+    readOutcomes: overrides.readOutcomes ?? ((c) => readRecentOutcomes(c, DEFAULT_BREAKER)),
+    refill: overrides.refill ?? ((c, s) => refillFeed(c, s)),
+    runJob: overrides.runJob ?? runJob,
+  }
+  const { settings } = deps
+
+  const today = await attemptsToday(client)
+  if (today >= settings.dailyCap) {
+    return {
+      claimed: 0,
+      completed: 0,
+      failed: 0,
+      stopped: `תקרה יומית: ${today}/${settings.dailyCap}`,
+    }
   }
 
-  const room = Math.min(batchSize, DAILY_RUN_CAP - today)
+  const verdict = breakerVerdict(await deps.readOutcomes(client), DEFAULT_BREAKER, new Date())
+  if (verdict.open) {
+    return {
+      claimed: 0,
+      completed: 0,
+      failed: 0,
+      stopped: `מפסק: ${verdict.failed}/${verdict.total} נכשלו בשעה האחרונה`,
+    }
+  }
+
+  // Refill before claiming, and never let a refill failure stop the claim: a
+  // broken refill with a full queue should still run the queue.
+  const feed: WorkerReport['feed'] = await deps
+    .refill(client, settings)
+    .catch((cause: unknown) => ({
+      status: 'error' as const,
+      message: cause instanceof Error ? cause.message : 'שגיאה לא ידועה',
+    }))
+
+  const room = Math.min(settings.batch, settings.dailyCap - today)
   const { data, error } = await client.rpc('claim_simulation_jobs', {
     p_limit: room,
     p_stale_minutes: 30,
@@ -98,33 +181,16 @@ export async function tick(client: SupabaseClient, batchSize = 6): Promise<Worke
   if (error) throw new Error(`נטילת עבודות נכשלה: ${error.message}`)
 
   const jobs = (data ?? []) as JobRow[]
-  let completed = 0
-  let failed = 0
+  const outcomes = await runPool(jobs, settings.concurrency, (job) =>
+    settle(client, job, deps.runJob),
+  )
 
-  for (const job of jobs) {
-    try {
-      const simulationId = await runJob(client, job)
-      await client
-        .from('simulation_jobs')
-        .update({
-          status: 'done',
-          simulation_id: simulationId,
-          error: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', job.id)
-      completed += 1
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'שגיאה לא ידועה'
-      await client
-        .from('simulation_jobs')
-        .update({ status: 'failed', error: message, updated_at: new Date().toISOString() })
-        .eq('id', job.id)
-      failed += 1
-    }
+  return {
+    claimed: jobs.length,
+    completed: outcomes.filter((o) => o === 'done').length,
+    failed: outcomes.filter((o) => o === 'failed').length,
+    feed,
   }
-
-  return { claimed: jobs.length, completed, failed }
 }
 
 /** One simulation, scored and stored. Returns the simulation id. */
@@ -138,13 +204,28 @@ export async function runJob(client: SupabaseClient, job: JobRow): Promise<strin
   }
   const persona = job.world ? personaInWorld(loaded, job.world) : loaded
 
-  let run: Run | null = null
-  for await (const event of runSimulation({ plan, persona, rules: job.rules, world: job.world })) {
-    if (event.type === 'done') run = event.run
-  }
-  if (!run) throw new Error('הסימולציה הסתיימה בלי תוצאה')
-
-  const score = await scoreRun(run.plan, run.turns, run.state, run.violations)
+  // One meter per job. Jobs run concurrently in this process, and the meter's
+  // AsyncLocalStorage scope is what keeps their token counts apart.
+  const meter = createUsageMeter()
+  const { run, score } = await withUsageMeter(meter, async () => {
+    let finished: Run | null = null
+    for await (const event of runSimulation({
+      plan,
+      persona,
+      rules: job.rules,
+      world: job.world,
+    })) {
+      if (event.type === 'done') finished = event.run
+    }
+    if (!finished) throw new Error('הסימולציה הסתיימה בלי תוצאה')
+    const judged = await scoreRun(
+      finished.plan,
+      finished.turns,
+      finished.state,
+      finished.violations,
+    )
+    return { run: finished, score: judged }
+  })
 
   const { data, error } = await client
     .from('simulations')
@@ -185,6 +266,10 @@ export async function runJob(client: SupabaseClient, job: JobRow): Promise<strin
         target: modelId('target'),
         judge: modelId('judge'),
       },
+      // What this run cost, so the cap can become a budget once the real
+      // number is known rather than guessed.
+      usage: meter.totals(),
+      pass: job.pass ?? null,
     })
     .select('id')
     .single()

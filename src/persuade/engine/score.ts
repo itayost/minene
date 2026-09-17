@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { model } from '../lib/model'
 import { ARGUMENT_LABELS } from './knowledge'
 import type { ConversationState, PersuasionPlan, RuleViolation, RunScore, Turn } from './types'
+import { recordUsage } from './usage'
 
 /**
  * "Persuasion does not end when I spoke. It ends when I got a clear answer --
@@ -67,7 +68,7 @@ export async function scoreRun(
     ? violations.map((v) => `- [${v.severity}] ${v.rule}: ${v.detail}`).join('\n')
     : 'אין הפרות חוקים שזוהו אוטומטית.'
 
-  const { object } = await generateObject({
+  const { object, usage } = await generateObject({
     // Variants were removed from the engine after this file was parked, so the
     // judge is the registry's own rather than one carried per run.
     model: model('judge'),
@@ -110,6 +111,8 @@ ${violationList}
 
 תן ציון וניתוח.`,
   })
+
+  recordUsage('judge', usage)
 
   return { ...object, interactionsUsed: state.interaction }
 }

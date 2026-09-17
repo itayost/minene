@@ -37,6 +37,12 @@ describe('a simulation never touches a tenant’s knowledge', () => {
     expect(worker).not.toMatch(/ammunition/i)
     expect(worker).not.toMatch(/tenantId|tenant_id/)
     expect(worker).not.toMatch(/assignmentId|assignment_id/)
+
+    // The feed decides what the loop runs next, so it is part of the same loop.
+    const feed = source('src/persuade/lib/feed.ts')
+    expect(feed).not.toMatch(/ammunition/i)
+    expect(feed).not.toMatch(/tenantId|tenant_id/)
+    expect(feed).not.toMatch(/assignmentId|assignment_id/)
   })
 
   it('keeps the turn-taking it drives free of them too', () => {

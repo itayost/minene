@@ -55,6 +55,11 @@ export interface QueuedJob {
   need: string | null
   rules: RuleConfig
   world: WorldState | null
+  /**
+   * Which pass over the feed's enumeration queued this job. Absent on jobs
+   * queued by an experiment or a hand sweep, which are not part of a pass.
+   */
+  pass?: number | null
 }
 
 /**

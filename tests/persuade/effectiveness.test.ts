@@ -7,6 +7,7 @@ import {
   distinctModelFingerprints,
   type EffectivenessInput,
   formatTechnique,
+  unrecordedModels,
 } from '../../src/persuade/effectiveness'
 import type { ArgumentCategory, RunScore, Turn } from '../../src/persuade/engine/types'
 import { buildWorld } from '../../src/persuade/engine/world'
@@ -199,6 +200,17 @@ describe('whether the technique comparison crosses a model change', () => {
     ])
     expect(count).toBe(2)
   })
+
+  test('a run with nothing recorded is an unknown, not a second model', () => {
+    // The same correction readiness() already carries. /api/persuade/simulate
+    // stores a run without models to this day, so counting the gap as a
+    // fingerprint made this report announce a model swap on every table that
+    // holds one of those rows -- permanently, and on no evidence.
+    const inputs = [withModels({ persuader: 'gpt-5' }), withModels(null), withModels(null)]
+
+    expect(distinctModelFingerprints(inputs)).toBe(1)
+    expect(unrecordedModels(inputs)).toBe(2)
+  })
 })
 
 describe('the rendered report', () => {
@@ -261,5 +273,22 @@ describe('a win the plan never offered', () => {
     const authority = reports.find((r) => r.category === 'authority')
     expect(authority?.wins).toBe(1)
     expect(reports.find((r) => r.category === 'personal_benefit')?.wins).toBe(0)
+  })
+
+  test('is counted as off-plan, so the 100% it produces is legible as an artefact', () => {
+    // Crediting the win is right; letting the resulting rate pass for evidence
+    // is not. Nothing records this category having been reached for and lost,
+    // so it can only enter its own denominator by winning.
+    const reports = buildEffectiveness([
+      input('agreed', 'authority', 'forgot', 'adi', ['personal_benefit', 'numbers']),
+    ])
+
+    const authority = reports.find((r) => r.category === 'authority')
+    expect(authority?.offPlanWins).toBe(1)
+    expect(authority?.winPct).toBe(100)
+    expect(formatTechnique(authority!, 1)).toMatch(/counted only because they won off-plan/)
+
+    // A category the plan did offer carries no such flag.
+    expect(reports.find((r) => r.category === 'personal_benefit')?.offPlanWins).toBe(0)
   })
 })

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Run } from '../engine/types'
+import { modelId } from './model'
 
 /**
  * Where a simulation belongs in the matrix.
@@ -87,6 +88,17 @@ export function createSimulationsStore(client: SupabaseClient) {
         // Explicitly null rather than omitted: null means "not yet scored",
         // which is a different fact from a column that was never written.
         score: run.score ?? null,
+        // Recorded for the same reason the worker records it: a run is the
+        // output of a config AND the models that executed it. This writer was
+        // omitting it, so every run started from the lab landed unattributed
+        // and held the reporting gap open indefinitely. The readers tolerate
+        // unattributed rows because of the historical backfill, and that
+        // tolerance was quietly covering for a live writer as well.
+        models: {
+          persuader: modelId('persuader'),
+          target: modelId('target'),
+          judge: modelId('judge'),
+        },
       })
 
       if (error) throw new Error(`שמירת הסימולציה נכשלה: ${error.message}`)
@@ -104,7 +116,12 @@ export function createSimulationsStore(client: SupabaseClient) {
      */
     async listSimulations(pageSize = 1000): Promise<StoredSimulation[]> {
       const rows: SimulationRow[] = []
-      for (let from = 0; ; from += pageSize) {
+      // The window advances by what came back, not by what was asked for, and
+      // stops only on an empty page. PostgREST caps a response at its own
+      // max-rows: if that cap is below `pageSize` every page arrives short,
+      // and treating a short page as the last one would stop on the first --
+      // reintroducing the truncation this loop exists to prevent.
+      for (let from = 0; ; ) {
         const { data, error } = await client
           .from('simulations')
           .select(SIMULATION_COLUMNS)
@@ -113,8 +130,9 @@ export function createSimulationsStore(client: SupabaseClient) {
 
         if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
         const page = (data ?? []) as SimulationRow[]
+        if (page.length === 0) break
         rows.push(...page)
-        if (page.length < pageSize) break
+        from += page.length
       }
       return rows.map(toStored)
     },
