@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { DEFAULT_RULES } from '../engine/rules'
 import { buildWorld, type WorldCell, worldCells } from '../engine/world'
 import { goldenStride, type QueuedJob } from './experiments'
@@ -140,4 +141,119 @@ export function jobsForChunk(
       pass: position.pass,
     }
   })
+}
+
+export interface RefillSettings {
+  lowWater: number
+  refillChunk: number
+}
+
+export type FeedReport =
+  | { status: 'enough'; pending: number }
+  | { status: 'no-pairs'; pending: number; unpairedPersonas: string[] }
+  | {
+      status: 'queued'
+      pending: number
+      queued: number
+      nextIndex: number
+      pass: number
+      unpairedPersonas: string[]
+    }
+  | { status: 'lost-race'; pending: number }
+
+async function countPending(client: SupabaseClient): Promise<number> {
+  const { count, error } = await client
+    .from('simulation_jobs')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending')
+  if (error) throw new Error(`ספירת התור נכשלה: ${error.message}`)
+  return count ?? 0
+}
+
+async function readInputs(
+  client: SupabaseClient,
+  table: 'persuasion_personas' | 'persuasion_lab_plans',
+  keyColumn: 'persona_key' | 'plan_key',
+): Promise<FeedInput[]> {
+  const { data, error } = await client
+    .from(table)
+    .select(`${keyColumn},industry,job_role_name`)
+    .eq('is_active', true)
+  if (error) throw new Error(`קריאת ${table} נכשלה: ${error.message}`)
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    key: String(row[keyColumn]),
+    industry: String(row.industry),
+    jobRoleName: (row.job_role_name as string | null | undefined) ?? null,
+  }))
+}
+
+interface FeedRow {
+  next_index: number
+  pass: number
+  inputs_version: string | null
+}
+
+async function readFeed(client: SupabaseClient): Promise<FeedRow> {
+  const { data, error } = await client
+    .from('simulation_feed')
+    .select('next_index,pass,inputs_version')
+    .eq('id', 1)
+    .maybeSingle()
+  if (error) throw new Error(`קריאת simulation_feed נכשלה: ${error.message}`)
+  if (!data) throw new Error('אין שורה ב-simulation_feed. המיגרציה לא הוחלה.')
+  return data as FeedRow
+}
+
+/**
+ * Tops the queue up when it runs low. Safe to call from overlapping ticks.
+ *
+ * The commit expects the position that was READ, even when the inputs changed
+ * and planning restarted from zero: the guard is about what is stored, and two
+ * ticks that both saw the old version must not both reset it.
+ */
+export async function refillFeed(
+  client: SupabaseClient,
+  settings: RefillSettings,
+): Promise<FeedReport> {
+  const pending = await countPending(client)
+  if (pending >= settings.lowWater) return { status: 'enough', pending }
+
+  const [personas, plans] = await Promise.all([
+    readInputs(client, 'persuasion_personas', 'persona_key'),
+    readInputs(client, 'persuasion_lab_plans', 'plan_key'),
+  ])
+  const { pairs, unpairedPersonas } = pairInputs(personas, plans)
+  if (pairs.length === 0) return { status: 'no-pairs', pending, unpairedPersonas }
+
+  const cells = worldCells()
+  const stored = await readFeed(client)
+  const version = inputsVersion(pairs, cells.length)
+  const from =
+    stored.inputs_version === version
+      ? { nextIndex: stored.next_index, pass: stored.pass }
+      : { nextIndex: 0, pass: 0 }
+
+  const chunk = planChunk(from, pairs.length, cells.length, settings.refillChunk)
+  const jobs = jobsForChunk(chunk, pairs, cells)
+
+  const { data, error } = await client.rpc('commit_simulation_feed_chunk', {
+    p_expected_index: stored.next_index,
+    p_expected_pass: stored.pass,
+    p_expected_version: stored.inputs_version,
+    p_new_index: chunk.nextIndex,
+    p_new_pass: chunk.pass,
+    p_new_version: version,
+    p_jobs: jobs,
+  })
+  if (error) throw new Error(`מילוי התור נכשל: ${error.message}`)
+  if (data !== true) return { status: 'lost-race', pending }
+
+  return {
+    status: 'queued',
+    pending,
+    queued: jobs.length,
+    nextIndex: chunk.nextIndex,
+    pass: chunk.pass,
+    unpairedPersonas,
+  }
 }
