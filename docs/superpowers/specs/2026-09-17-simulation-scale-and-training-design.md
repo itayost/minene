@@ -95,7 +95,7 @@ New table `public.simulation_feed`, one row:
 | column | type | meaning |
 |---|---|---|
 | `id` | `smallint` pk, check `id = 1` | single row |
-| `cursor` | `integer` | index into the pair x world enumeration |
+| `next_index` | `integer` | index into the pair x world enumeration (not `cursor`, a PL/pgSQL keyword) |
 | `pass` | `integer` | how many full passes have completed |
 | `inputs_version` | `text` | hash of active persona keys + plan keys |
 | `refilled_at` | `timestamptz` | last refill |
@@ -103,12 +103,12 @@ New table `public.simulation_feed`, one row:
 The enumeration is computed in TypeScript, and supabase-js cannot hold a
 transaction across calls, so the commit is a compare-and-set:
 
-1. TS reads the feed row (`cursor`, `pass`, `inputs_version`).
-2. TS computes the active inputs hash. If it differs, it plans from cursor 0,
+1. TS reads the feed row (`next_index`, `pass`, `inputs_version`).
+2. TS computes the active inputs hash. If it differs, it plans from index 0,
    pass 0.
-3. TS builds the next chunk of jobs and the resulting `(cursor, pass)`.
-4. TS calls RPC `commit_simulation_feed_chunk(p_expected_cursor,
-   p_expected_pass, p_expected_version, p_new_cursor, p_new_pass,
+3. TS builds the next chunk of jobs and the resulting `(next_index, pass)`.
+4. TS calls RPC `commit_simulation_feed_chunk(p_expected_index,
+   p_expected_pass, p_expected_version, p_new_index, p_new_pass,
    p_new_version, p_jobs jsonb)`. In one transaction it locks the row
    (`for update`), returns `false` without writing if any expected value does
    not match, and otherwise inserts the jobs and advances the row.
@@ -116,10 +116,10 @@ transaction across calls, so the commit is a compare-and-set:
    claims as normal.
 
 So two overlapping ticks cannot queue the same chunk, and a failed insert never
-advances the cursor past cells that were not queued.
+advances `next_index` past cells that were not queued.
 
-- When the cursor passes the end of the enumeration, `pass` increments and the
-  cursor wraps.
+- When `next_index` passes the end of the enumeration, `pass` increments and the
+  index wraps.
 - New column `simulation_jobs.pass integer null`, copied onto
   `simulations.pass integer null`, so repeats are visible. Null = queued by hand
   or before this change.
@@ -155,12 +155,12 @@ New index: `simulation_jobs (status, updated_at)`.
 
 - The pool never runs more than `concurrency` jobs at once.
 - The cap is not exceeded when jobs run concurrently.
-- Refill resumes from the stored cursor; wraps and increments `pass`.
-- A changed inputs hash resets the cursor.
-- A refill whose expected cursor is stale writes nothing and the tick still
+- Refill resumes from the stored `next_index`; wraps and increments `pass`.
+- A changed inputs hash resets `next_index`.
+- A refill whose expected index is stale writes nothing and the tick still
   claims (mocked RPC returning `false`).
 - The SQL function itself: a mismatched expectation inserts no jobs and leaves
-  the row unchanged (checked against a local Supabase, not mocked).
+  the row unchanged (checked in a rolled-back transaction, not mocked).
 - The breaker trips at >80% of >=20 and does not trip below 20.
 - Usage sums across every model call in a run, including the judge.
 
@@ -233,12 +233,11 @@ for each active plan
 80 plans x 2 personas x 324 worlds = 51,840 unique runs, about 52 days at 1,000
 a day before pass 2.
 
-The 4 manual personas (`adi`, `eran`, `rona`, `yossi`) and the manual plan use
-role names that are not `role_needs` labels, so the pairing rule matches them to
-nothing and the feed skips them. That is intended, and the refill report says so
-(`skipped: manual inputs with no matching role`) rather than dropping them
-silently. They remain usable from the lab by hand and through explicit
-experiments.
+A plan whose `job_role_name` is null has no target role and pairs with every
+active persona in its industry. That is the existing manual `briefings` plan,
+so the feed has work (4 retail personas x 324 worlds) before any content is
+generated. A persona that matches no plan is counted in the refill report
+(`unpairedPersonas`) rather than dropped silently.
 
 ### Running it
 
