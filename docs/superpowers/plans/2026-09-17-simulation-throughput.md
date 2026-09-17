@@ -2117,13 +2117,15 @@ cd /Users/itayostraich/Documents/GitHub/eran-task && git push -u origin feat/sim
 cd /Users/itayostraich/Documents/GitHub/minene && git push -u origin feat/simulation-scale-and-training
 ```
 
-Open a PR for each with `gh pr create`. The minene PR body must state that it depends on the eran-task migration and on `fix/report-paging-and-offplan-bias`, and that merging deploys a cron that calls a function which does not exist until the migration is applied (the refill then reports `status: 'error'` and the tick still drains the queue, so it degrades rather than breaks).
+Open a PR for each with `gh pr create`. The minene PR body must state that it depends on the eran-task migration and on `fix/report-paging-and-offplan-bias`, and that the minene PR must not merge until the eran-task migration has been applied to production. The order is: apply the migration, then set `PERSUADER_DAILY_RUN_CAP=200` in Vercel, then merge the minene PR -- any job claimed before the migration exists still runs its full ~eleven model calls and only then fails, on the insert into `simulations`, because the `usage` and `pass` columns the new code writes do not exist yet. That is every job failing at full cost, not a degraded mode.
 
 ---
 
 ### Task 9: Rollout (every step requires user approval)
 
 **Files:** none
+
+Hard gate: Step 1, then Step 2, then Step 3, in that order. The eran-task migration must be applied and the cap set to 200 in Vercel before the minene PR merges -- merging first means every claimed job runs its full model-call cost and then fails on the `simulations` insert, not a degraded mode.
 
 - [ ] **Step 1: Apply the migration**
 
