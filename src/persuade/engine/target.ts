@@ -2,6 +2,7 @@ import { generateText } from 'ai'
 import { callOptions, model } from '../lib/model'
 import { historyForTarget, targetSystemPrompt } from './prompts'
 import type { PersuasionPlan, TargetPersona, Turn } from './types'
+import { recordUsage } from './usage'
 import type { WorldState } from './world'
 
 /**
@@ -16,11 +17,12 @@ export async function targetReply(
   turns: Turn[],
   world: WorldState | null = null,
 ): Promise<string> {
-  const { text } = await generateText({
+  const { text, usage } = await generateText({
     model: model('target'),
     system: targetSystemPrompt(persona, plan, world),
     messages: historyForTarget(turns),
     ...callOptions('target'),
   })
+  recordUsage('target', usage)
   return text.trim()
 }
