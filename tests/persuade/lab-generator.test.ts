@@ -118,9 +118,25 @@ describe('prompts', () => {
     expect(prompt).toContain('מנהל אזור')
   })
 
+  test('the plan prompt shows the industry in Hebrew, not the raw key', () => {
+    const { prompt } = planPrompt(need({ industry: 'bank' }), 'מנהל אזור')
+    expect(prompt).toContain('בנקאות')
+    expect(prompt).not.toContain('ענף: bank')
+  })
+
+  test('an unlisted industry key passes through as-is', () => {
+    const { prompt } = planPrompt(need({ industry: 'logistics' }), 'מנהל אזור')
+    expect(prompt).toContain('ענף: logistics')
+  })
+
   test('the persona prompt lists the names that are taken', () => {
     const { prompt } = personaPrompt(need(), 1, ['אושר', 'עדי'])
     expect(prompt).toContain('אושר, עדי')
+  })
+
+  test('the persona prompt shows the industry in Hebrew too', () => {
+    const { prompt } = personaPrompt(need({ industry: 'healthcare' }), 1, [])
+    expect(prompt).toContain('בריאות')
   })
 })
 

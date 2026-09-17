@@ -1,31 +1,34 @@
 /**
  * Writes the lab's generated personas and plans from role_needs.
  *
- *   pnpm lab:generate [--industry=retail] [--force]
+ *   pnpm lab:generate [--industry retail] [--force]
  *
  * Calls the planner model about 112 times for all three industries and writes
  * to the linked project, so run it deliberately. Existing keys are skipped
  * unless --force. Exits non-zero when anything was rejected, with the reasons.
  */
+import { parseArgs } from 'node:util'
 import { createClient } from '@supabase/supabase-js'
+import { generateLabContent } from '../src/persuade/lib/generate-lab-content'
+import { assertModelAccessConfigured } from '../src/persuade/lib/model'
 import { env } from './lib/db'
 
-const arg = (name: string): string | undefined =>
-  process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1]
-
 async function main(): Promise<void> {
-  // Credentials first, then the modules that read model settings from the
-  // environment: model.ts resolves model ids when it is imported, so a static
-  // import would miss anything env() just loaded from .env.local.
+  const { values } = parseArgs({
+    options: {
+      industry: { type: 'string' },
+      force: { type: 'boolean' },
+    },
+    strict: true,
+  })
+
   const { url, key } = env()
-  const { assertModelAccessConfigured } = await import('../src/persuade/lib/model')
-  const { generateLabContent } = await import('../src/persuade/lib/generate-lab-content')
   assertModelAccessConfigured()
 
   const db = createClient(url, key, { auth: { persistSession: false } })
   const report = await generateLabContent(db, {
-    industry: arg('industry'),
-    force: process.argv.includes('--force'),
+    industry: values.industry,
+    force: values.force ?? false,
   })
 
   console.log(

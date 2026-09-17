@@ -29,6 +29,15 @@ export interface RoleNeed extends RoleRef {
 
 export const COMPANY_MANAGEMENT = 'הנהלת החברה'
 
+const INDUSTRY_LABELS: Record<string, string> = {
+  retail: 'קמעונאות',
+  bank: 'בנקאות',
+  healthcare: 'בריאות',
+}
+
+/** The industry as the model should read it in a prompt; an unlisted key passes through as-is. */
+const industryLabel = (industry: string): string => INDUSTRY_LABELS[industry] ?? industry
+
 export const planKeyFor = (need: RoleNeed): string =>
   `gen-${need.industry}-${need.roleSlug}-${need.needKey}`
 
@@ -66,7 +75,7 @@ export function planPrompt(need: RoleNeed, requester: string): { system: string;
 - sourceRuleNumber הוא null בכל טיעון.
 - סולם ההסלמה הוא חמש מדרגות, לפי הסדר:
 ${ladder()}`,
-    prompt: `ענף: ${need.industry}
+    prompt: `ענף: ${industryLabel(need.industry)}
 התפקיד של מי שפונים אליו: ${need.roleLabel}
 הצורך שהבקשה משרתת: ${need.needLabel} (${need.metaNeed})
 מי מבקש: ${requester}
@@ -121,7 +130,7 @@ export function personaPrompt(
   return {
     system:
       'אתה כותב דמות של אדם בעבודה לסימולציית שיחה. הדמות מציאותית ולא קריקטורה. עברית פשוטה.',
-    prompt: `ענף: ${role.industry}
+    prompt: `ענף: ${industryLabel(role.industry)}
 תפקיד: ${role.roleLabel}
 אופי: ${index === 1 ? 'פתוח יחסית, עסוק אבל מוכן לשמוע.' : 'חשדן ועייף מבקשות, צריך סיבה טובה.'}
 שמות תפוסים שאסור להשתמש בהם: ${avoidNames.length > 0 ? avoidNames.join(', ') : 'אין'}`,
