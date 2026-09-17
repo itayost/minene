@@ -13,6 +13,53 @@ const NAME_MAX = 60
 const ROLE_MAX = 120
 const LADDER = JSON.stringify([1, 2, 3, 4, 5])
 
+/**
+ * First names that are also common Hebrew words.
+ *
+ * A generated persona called שני or מתן is a landmine: `mentionsName` matches
+ * it against every plan's prose, and a common word turns up in unrelated
+ * plans constantly, rejecting a large slice of an 80-plan run for a reason
+ * that has nothing to do with any actual persona collision. Deterministic and
+ * checked before the model is trusted with a name at all, so the retry in
+ * generate-lab-content.ts can steer around it up front instead of discovering
+ * it plan by plan.
+ *
+ * Not added to `personaProblems`: existing hand-written personas may already
+ * carry one of these names, and `validate:lab` must keep accepting them.
+ */
+export const COMMON_WORD_NAMES: ReadonlySet<string> = new Set([
+  'שני',
+  'מתן',
+  'עמית',
+  'טובה',
+  'אדם',
+  'אלה',
+  'חיים',
+  'קרן',
+  'גיל',
+  'תום',
+  'נתן',
+  'דן',
+  'אסף',
+  'יפה',
+  'ציון',
+  'אור',
+  'גל',
+  'שי',
+  'טל',
+  'חן',
+  'רון',
+  'שחר',
+  'ים',
+  'עוז',
+  'הדר',
+  'ליאור',
+  'נוי',
+  'רז',
+  'שקד',
+  'אביב',
+])
+
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /** Word boundaries matter: "ועדיין" contains "עדי" and is not a name. */

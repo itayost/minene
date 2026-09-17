@@ -1,6 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { NoObjectGeneratedError } from 'ai'
 import type { PersuasionPlan, TargetPersona } from '../engine/types'
-import { mentionsName, personaProblems, planProblems } from './lab-content-checks'
+import {
+  COMMON_WORD_NAMES,
+  mentionsName,
+  personaProblems,
+  planProblems,
+} from './lab-content-checks'
 import {
   generatePersona,
   generatePlan,
@@ -15,10 +21,13 @@ import { runPool } from './pool'
 /**
  * `pnpm lab:generate`: role_needs in, validated personas and plans out.
  *
- * Personas are written before plans, one at a time, so every plan is checked
- * against every persona name that will exist when it runs, and so no two new
- * personas share a name. Plans are independent of each other and run a few at
- * a time.
+ * Plans are written before personas. A persona named after something already
+ * said in a plan -- this run's plans included -- is a name no simulation can
+ * use, so plans go first and personas are checked against all of them, read
+ * fresh after the plan phase. Each persona key gets a few tries: a rejection
+ * for a name reason alone (taken, mentioned in a plan, or a common Hebrew
+ * word) adds that name to the avoid list and asks again, rather than losing
+ * the whole role to one bad draw.
  *
  * Reads role_needs and the two lab tables. It never reads rules, roles,
  * documents or profiles, which belong to a business; the tenant boundary test
@@ -28,6 +37,7 @@ import { runPool } from './pool'
 const KEY_PATTERN = /^[a-z0-9-]+$/
 const TITLE_MAX = 120
 const JOB_ROLE_MAX = 40
+const MAX_PERSONA_ATTEMPTS = 3
 
 export interface GenerateOptions {
   industry?: string
@@ -68,8 +78,36 @@ interface RoleNeedRow {
   meta_need: string
 }
 
-const describeError = (cause: unknown): string =>
-  cause instanceof Error ? cause.message : 'שגיאה לא ידועה'
+const describeError = (cause: unknown): string => {
+  // NoObjectGeneratedError's own message does not say why: appending the finish
+  // reason makes a truncation at the output cap (`finishReason: 'length'`)
+  // visible instead of looking like an ordinary parse failure.
+  if (NoObjectGeneratedError.isInstance(cause)) {
+    return `${cause.message} (finishReason: ${cause.finishReason})`
+  }
+  return cause instanceof Error ? cause.message : 'שגיאה לא ידועה'
+}
+
+const LAB_TABLES = ['persuasion_personas', 'persuasion_lab_plans'] as const
+
+/**
+ * Fails loudly, before any paid call, when the migration that adds `source`
+ * and `generated_at` has not been applied yet.
+ *
+ * Without this, a run against an un-migrated project would call the model for
+ * every item and only discover the missing columns at the first upsert --
+ * paying for generation whose result could never be stored.
+ */
+async function assertLabColumnsExist(client: SupabaseClient): Promise<void> {
+  for (const table of LAB_TABLES) {
+    const { error } = await client.from(table).select('source,generated_at').limit(1)
+    if (error) {
+      throw new Error(
+        `חסרות העמודות source ו-generated_at ב-${table}. צריך להחיל את המיגרציה לפני שמייצרים: ${error.message}`,
+      )
+    }
+  }
+}
 
 async function readRoleNeeds(
   client: SupabaseClient,
@@ -154,12 +192,112 @@ function keyAndRoleProblems(key: string, roleLabel: string): string[] {
   return problems
 }
 
+/**
+ * Name-reason problems for one generated persona, checked separately from
+ * `personaProblems`: these are the only reasons `generateOnePersona` retries,
+ * because a different name can fix all three and nothing else can.
+ */
+function personaNameProblems(
+  persona: TargetPersona,
+  takenByOthers: readonly string[],
+  planBlobs: readonly string[],
+): string[] {
+  const problems: string[] = []
+  if (takenByOthers.includes(persona.name)) {
+    problems.push(`השם "${persona.name}" כבר שייך לדמות אחרת`)
+  }
+  if (planBlobs.some((blob) => mentionsName(blob, persona.name))) {
+    problems.push(`השם "${persona.name}" מופיע בתוכנית קיימת`)
+  }
+  if (COMMON_WORD_NAMES.has(persona.name)) {
+    problems.push(`השם "${persona.name}" הוא גם מילה נפוצה`)
+  }
+  return problems
+}
+
+/**
+ * Generates and writes one persona, retrying up to `MAX_PERSONA_ATTEMPTS`
+ * times when a rejection is a name problem alone -- a different name is a
+ * different draw, worth asking the model for again. Any other rejection, or a
+ * thrown error, stops immediately: retrying would not change the outcome.
+ */
+async function generateOnePersona(
+  client: SupabaseClient,
+  role: RoleRef,
+  index: 1 | 2,
+  key: string,
+  names: Map<string, string>,
+  planBlobs: readonly string[],
+  deps: GeneratorDeps,
+): Promise<Rejection> {
+  // Every name but this key's own, so a regenerated persona may keep its name.
+  const takenByOthers = [...names.entries()]
+    .filter(([other]) => other !== key)
+    .map(([, name]) => name)
+  const avoidedThisKey: string[] = []
+
+  for (let attempt = 1; attempt <= MAX_PERSONA_ATTEMPTS; attempt += 1) {
+    const avoidNames = [...new Set([...takenByOthers, ...COMMON_WORD_NAMES, ...avoidedThisKey])]
+
+    let persona: TargetPersona
+    try {
+      persona = await deps.generatePersona(role, index, avoidNames)
+    } catch (cause) {
+      return { key, problems: [describeError(cause)] }
+    }
+
+    const otherProblems = [...personaProblems(persona), ...keyAndRoleProblems(key, role.roleLabel)]
+    const nameProblems = personaNameProblems(persona, takenByOthers, planBlobs)
+
+    if (otherProblems.length === 0 && nameProblems.length === 0) {
+      const { error } = await client.from('persuasion_personas').upsert(
+        {
+          persona_key: key,
+          industry: role.industry,
+          job_role_name: role.roleLabel,
+          name: persona.name,
+          role: role.roleLabel,
+          resistance: persona.resistance,
+          reliability: persona.reliability,
+          situation: persona.situation,
+          hidden_truth: persona.hiddenTruth,
+          motivated_by: persona.motivatedBy,
+          style: persona.style,
+          agrees_when: persona.agreesWhen,
+          is_active: true,
+          source: 'generated',
+          generated_at: deps.now().toISOString(),
+        },
+        { onConflict: 'persona_key' },
+      )
+      if (error) return { key, problems: [`שמירה נכשלה: ${error.message}`] }
+
+      names.set(key, persona.name)
+      return { key, problems: [] }
+    }
+
+    const nameOnly = otherProblems.length === 0 && nameProblems.length > 0
+    if (nameOnly && attempt < MAX_PERSONA_ATTEMPTS) {
+      avoidedThisKey.push(persona.name)
+      continue
+    }
+
+    return { key, problems: [...otherProblems, ...nameProblems] }
+  }
+
+  // Unreachable: the loop above always returns by its last iteration.
+  throw new Error('generateOnePersona: no attempt returned')
+}
+
 async function generatePersonas(
   client: SupabaseClient,
   roles: readonly RoleRef[],
   options: GenerateOptions,
   deps: GeneratorDeps,
 ): Promise<GenerateReport> {
+  // Read after the plan phase, so this run's own plans are checked too: a
+  // persona named after something this run's plan just said must be caught,
+  // not just a name from a plan that already existed.
   const [names, plans] = await Promise.all([readPersonaNames(client), readPlans(client)])
   const planBlobs = [...plans.values()].map((plan) => JSON.stringify(plan))
   const written: string[] = []
@@ -174,51 +312,9 @@ async function generatePersonas(
         continue
       }
 
-      // Every name but this key's own, so a regenerated persona may keep its name.
-      const taken = [...names.entries()].filter(([other]) => other !== key).map(([, name]) => name)
-
-      try {
-        const persona = await deps.generatePersona(role, index, taken)
-        const problems = [...personaProblems(persona), ...keyAndRoleProblems(key, role.roleLabel)]
-        if (taken.includes(persona.name)) problems.push(`השם "${persona.name}" כבר שייך לדמות אחרת`)
-        if (planBlobs.some((blob) => mentionsName(blob, persona.name))) {
-          problems.push(`השם "${persona.name}" מופיע בתוכנית קיימת`)
-        }
-        if (problems.length > 0) {
-          rejected.push({ key, problems })
-          continue
-        }
-
-        const { error } = await client.from('persuasion_personas').upsert(
-          {
-            persona_key: key,
-            industry: role.industry,
-            job_role_name: role.roleLabel,
-            name: persona.name,
-            role: role.roleLabel,
-            resistance: persona.resistance,
-            reliability: persona.reliability,
-            situation: persona.situation,
-            hidden_truth: persona.hiddenTruth,
-            motivated_by: persona.motivatedBy,
-            style: persona.style,
-            agrees_when: persona.agreesWhen,
-            is_active: true,
-            source: 'generated',
-            generated_at: deps.now().toISOString(),
-          },
-          { onConflict: 'persona_key' },
-        )
-        if (error) {
-          rejected.push({ key, problems: [`שמירה נכשלה: ${error.message}`] })
-          continue
-        }
-
-        names.set(key, persona.name)
-        written.push(key)
-      } catch (cause) {
-        rejected.push({ key, problems: [describeError(cause)] })
-      }
+      const outcome = await generateOnePersona(client, role, index, key, names, planBlobs, deps)
+      if (outcome.problems.length > 0) rejected.push(outcome)
+      else written.push(key)
     }
   }
 
@@ -231,7 +327,10 @@ async function generatePlans(
   options: GenerateOptions,
   deps: GeneratorDeps,
 ): Promise<GenerateReport> {
-  // Read after the personas are written, so this run's names are checked too.
+  // Plans run before personas exist for this run, so only personas that
+  // already existed before this run are checked here. That is deliberate: a
+  // plan cannot see a name its own run has not generated yet, and personas
+  // are checked against plans (including this run's) afterwards instead.
   const [names, plans] = await Promise.all([readPersonaNames(client), readPlans(client)])
   const personaNames = [...names.values()]
 
@@ -285,6 +384,10 @@ export async function generateLabContent(
   options: GenerateOptions,
   deps: GeneratorDeps = DEFAULT_DEPS,
 ): Promise<GenerateReport> {
+  // Before any paid call: a project the migration has not reached yet would
+  // otherwise generate everything and fail only at the first write.
+  await assertLabColumnsExist(client)
+
   const needs = await readRoleNeeds(client, options.industry)
   if (needs.length === 0) {
     throw new Error(
@@ -294,12 +397,14 @@ export async function generateLabContent(
     )
   }
 
-  const personas = await generatePersonas(client, rolesOf(needs), options, deps)
+  // Plans first: a persona named after something a plan says -- this run's
+  // plans included -- is checked against the plans, not the other way round.
   const plans = await generatePlans(client, needs, options, deps)
+  const personas = await generatePersonas(client, rolesOf(needs), options, deps)
 
   return {
-    written: [...personas.written, ...plans.written],
-    skipped: [...personas.skipped, ...plans.skipped],
-    rejected: [...personas.rejected, ...plans.rejected],
+    written: [...plans.written, ...personas.written],
+    skipped: [...plans.skipped, ...personas.skipped],
+    rejected: [...plans.rejected, ...personas.rejected],
   }
 }

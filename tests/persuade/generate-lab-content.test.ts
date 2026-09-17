@@ -1,7 +1,9 @@
 /**
  * @vitest-environment node
  */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { NoObjectGeneratedError } from 'ai'
 import { describe, expect, test } from 'vitest'
 import type { PersuasionPlan, TargetPersona } from '../../src/persuade/engine/types'
 import { type GeneratorDeps, generateLabContent } from '../../src/persuade/lib/generate-lab-content'
@@ -11,7 +13,13 @@ import { TEST_PERSONA, TEST_PLAN } from './helpers'
 type Row = Record<string, unknown>
 
 /** Stores rows and answers exactly the reads and upserts the generator makes. */
-function fakeClient(seed: { needs: Row[]; personas?: Row[]; plans?: Row[]; failKey?: string }) {
+function fakeClient(seed: {
+  needs: Row[]
+  personas?: Row[]
+  plans?: Row[]
+  failKey?: string
+  failPreflightTable?: string
+}) {
   const tables: Record<string, Row[]> = {
     role_needs: seed.needs,
     persuasion_personas: seed.personas ?? [],
@@ -25,7 +33,13 @@ function fakeClient(seed: { needs: Row[]; personas?: Row[]; plans?: Row[]; failK
       touched.add(table)
       return {
         select() {
-          return { order: async () => ({ data: tables[table] ?? [], error: null }) }
+          return {
+            order: async () => ({ data: tables[table] ?? [], error: null }),
+            limit: async () =>
+              table === seed.failPreflightTable
+                ? { data: null, error: { message: 'column "source" does not exist' } }
+                : { data: tables[table] ?? [], error: null },
+          }
         },
         async upsert(row: Row, options: { onConflict: string }) {
           upserts.push({ table, row, onConflict: options.onConflict })
@@ -67,10 +81,12 @@ function deps(
   const calls = {
     plans: [] as { key: string; requester: string }[],
     personas: [] as { key: string; avoid: readonly string[] }[],
+    order: [] as ('plan' | 'persona')[],
   }
   let next = 0
   const value: GeneratorDeps = {
     generatePlan: async (need: RoleNeed, requester: string): Promise<PersuasionPlan> => {
+      calls.order.push('plan')
       calls.plans.push({ key: `gen-${need.industry}-${need.roleSlug}-${need.needKey}`, requester })
       return {
         ...TEST_PLAN,
@@ -83,6 +99,7 @@ function deps(
       index: 1 | 2,
       avoid: readonly string[],
     ): Promise<TargetPersona> => {
+      calls.order.push('persona')
       calls.personas.push({ key: `gen-${role.industry}-${role.roleSlug}-${index}`, avoid })
       const name = names[next] ?? `שם${next}`
       next += 1
@@ -213,31 +230,191 @@ describe('generateLabContent', () => {
     expect(report.rejected).toEqual([])
   })
 
-  test('rejects a persona whose name another persona has, or a stored plan mentions', async () => {
+  test('generates plans before any persona (plans-first order)', async () => {
     const { client } = fakeClient({
-      needs: [needRow('ceo', 1, 'growth')],
-      personas: [{ persona_key: 'adi', name: 'עדי' }],
-      // TEST_PLAN is made on behalf of אושר.
-      plans: [{ plan_key: 'briefings', plan: TEST_PLAN }],
+      needs: [needRow('ceo', 1, 'growth'), needRow('store-manager', 4, 'training')],
     })
-    const report = await generateLabContent(client, { force: false }, deps(['עדי', 'אושר']).value)
+    const scripted = deps()
 
+    await generateLabContent(client, { force: false }, scripted.value)
+
+    expect(scripted.calls.order[0]).toBe('plan')
+    const lastPlanCall = scripted.calls.order.lastIndexOf('plan')
+    const firstPersonaCall = scripted.calls.order.indexOf('persona')
+    expect(firstPersonaCall).toBeGreaterThan(lastPlanCall)
+  })
+
+  test('a persona name that appears in a plan written this same run is retried and written with the next name', async () => {
+    const { client, upserts } = fakeClient({ needs: [needRow('ceo', 1, 'growth')] })
+    // TEST_PLAN's requester is אושר, kept unchanged so the plan really carries
+    // it -- and it did not exist before this run, so only the plans-first
+    // order (reading plans after they are written) catches it.
+    const scripted = deps(['אושר', 'מיכל'], {
+      generatePlan: async (need) => ({
+        ...TEST_PLAN,
+        id: `gen-${need.industry}-${need.roleSlug}-${need.needKey}`,
+      }),
+    })
+
+    const report = await generateLabContent(client, { force: false }, scripted.value)
+
+    expect(report.rejected).toEqual([])
+    const attemptsForFirstPersona = scripted.calls.personas.filter(
+      (c) => c.key === 'gen-retail-ceo-1',
+    )
+    expect(attemptsForFirstPersona).toHaveLength(2)
+    expect(attemptsForFirstPersona[1]?.avoid).toContain('אושר')
+    expect(upserts.find((u) => u.row.persona_key === 'gen-retail-ceo-1')?.row.name).toBe('מיכל')
+  })
+
+  test('a denylisted first name is retried', async () => {
+    const { client, upserts } = fakeClient({ needs: [needRow('ceo', 1, 'growth')] })
+    // רון is on COMMON_WORD_NAMES; עדי is not.
+    const scripted = deps(['רון', 'עדי'])
+
+    const report = await generateLabContent(client, { force: false }, scripted.value)
+
+    expect(report.rejected).toEqual([])
+    expect(upserts.find((u) => u.row.persona_key === 'gen-retail-ceo-1')?.row.name).toBe('עדי')
+  })
+
+  test("after 3 name rejections the key is rejected with the last attempt's problems, not the first", async () => {
+    const { client } = fakeClient({ needs: [needRow('ceo', 1, 'growth')] })
+    const denylisted = ['שני', 'מתן', 'עמית'] // all three on COMMON_WORD_NAMES
+    let attempts = 0
+    const scripted = deps(undefined, {
+      generatePersona: async (role, index) => {
+        if (index === 2) {
+          return {
+            ...TEST_PERSONA,
+            id: `gen-${role.industry}-${role.roleSlug}-${index}`,
+            name: 'יונתן',
+          }
+        }
+        const name = denylisted[attempts] as string
+        attempts += 1
+        return { ...TEST_PERSONA, id: `gen-${role.industry}-${role.roleSlug}-${index}`, name }
+      },
+    })
+
+    const report = await generateLabContent(client, { force: false }, scripted.value)
+
+    expect(attempts).toBe(3)
     expect(report.rejected).toEqual([
-      { key: 'gen-retail-ceo-1', problems: ['השם "עדי" כבר שייך לדמות אחרת'] },
-      { key: 'gen-retail-ceo-2', problems: ['השם "אושר" מופיע בתוכנית קיימת'] },
+      { key: 'gen-retail-ceo-1', problems: ['השם "עמית" הוא גם מילה נפוצה'] },
     ])
   })
 
-  test('rejects a plan that mentions a persona, including one written in this run', async () => {
+  test('a name already taken by another persona is retried, then rejected with the last attempt if it persists', async () => {
+    const { client } = fakeClient({
+      needs: [needRow('ceo', 1, 'growth')],
+      personas: [{ persona_key: 'adi', name: 'עדי' }],
+    })
+    let attempts = 0
+    const scripted = deps(undefined, {
+      generatePersona: async (role, index) => {
+        if (index === 2) {
+          return {
+            ...TEST_PERSONA,
+            id: `gen-${role.industry}-${role.roleSlug}-${index}`,
+            name: 'יונתן',
+          }
+        }
+        // A model that keeps offering the same taken name however many times it is asked.
+        attempts += 1
+        return {
+          ...TEST_PERSONA,
+          id: `gen-${role.industry}-${role.roleSlug}-${index}`,
+          name: 'עדי',
+        }
+      },
+    })
+
+    const report = await generateLabContent(client, { force: false }, scripted.value)
+
+    expect(attempts).toBe(3)
+    expect(report.rejected).toEqual([
+      { key: 'gen-retail-ceo-1', problems: ['השם "עדי" כבר שייך לדמות אחרת'] },
+    ])
+  })
+
+  test('a thrown model error rejects immediately without retrying', async () => {
     const { client } = fakeClient({ needs: [needRow('ceo', 1, 'growth')] })
-    // The plan names its requester אושר, and the first persona is called אושר.
-    const scripted = deps(['אושר', 'רון'], {
+    let attempts = 0
+    const scripted = deps(undefined, {
+      generatePersona: async (role, index) => {
+        if (index === 2) {
+          return {
+            ...TEST_PERSONA,
+            id: `gen-${role.industry}-${role.roleSlug}-${index}`,
+            name: 'יונתן',
+          }
+        }
+        attempts += 1
+        throw new Error('rate limited')
+      },
+    })
+
+    const report = await generateLabContent(client, { force: false }, scripted.value)
+
+    expect(attempts).toBe(1)
+    expect(report.rejected).toEqual([{ key: 'gen-retail-ceo-1', problems: ['rate limited'] }])
+  })
+
+  test('a NoObjectGeneratedError names the finish reason, so truncation at the output cap is visible', async () => {
+    const { client } = fakeClient({ needs: [needRow('ceo', 1, 'growth')] })
+    const scripted = deps(undefined, {
+      generatePersona: async (role, index) => {
+        if (index === 2) {
+          return {
+            ...TEST_PERSONA,
+            id: `gen-${role.industry}-${role.roleSlug}-${index}`,
+            name: 'יונתן',
+          }
+        }
+        throw new NoObjectGeneratedError({
+          message: 'No object generated: could not parse the response.',
+          response: { id: 'r1', timestamp: new Date('2026-09-17T00:00:00Z'), modelId: 'm' },
+          usage: {
+            inputTokens: 10,
+            inputTokenDetails: {
+              noCacheTokens: 10,
+              cacheReadTokens: 0,
+              cacheWriteTokens: 0,
+            },
+            outputTokens: 5,
+            outputTokenDetails: { textTokens: 5, reasoningTokens: 0 },
+            totalTokens: 15,
+          },
+          finishReason: 'length',
+        })
+      },
+    })
+
+    const report = await generateLabContent(client, { force: false }, scripted.value)
+
+    expect(report.rejected).toEqual([
+      {
+        key: 'gen-retail-ceo-1',
+        problems: ['No object generated: could not parse the response. (finishReason: length)'],
+      },
+    ])
+  })
+
+  test('rejects a plan that mentions an already existing persona', async () => {
+    const { client } = fakeClient({
+      needs: [needRow('ceo', 1, 'growth')],
+      personas: [{ persona_key: 'someone', name: 'אושר' }],
+    })
+    // TEST_PLAN's requester is אושר, kept unchanged so the plan really carries it.
+    const scripted = deps(undefined, {
       generatePlan: async (need) => ({
         ...TEST_PLAN,
         id: `gen-${need.industry}-${need.roleSlug}-${need.needKey}`,
       }),
     })
     const report = await generateLabContent(client, { force: false }, scripted.value)
+
     expect(report.rejected).toEqual([
       { key: 'gen-retail-ceo-growth', problems: ['התוכנית מזכירה בשמה את הדמות "אושר"'] },
     ])
@@ -263,9 +440,21 @@ describe('generateLabContent', () => {
 
     expect(report.written.sort()).toEqual(['gen-retail-ceo-1', 'gen-retail-ceo-growth'])
     expect(report.rejected).toEqual([
-      { key: 'gen-retail-ceo-2', problems: ['rate limited'] },
       { key: 'gen-retail-ceo-people', problems: ['שמירה נכשלה: disk full'] },
+      { key: 'gen-retail-ceo-2', problems: ['rate limited'] },
     ])
+  })
+
+  test('checks both lab tables have source and generated_at before calling any model', async () => {
+    const { client } = fakeClient({
+      needs: [needRow('ceo', 1, 'growth')],
+      failPreflightTable: 'persuasion_personas',
+    })
+    const { value, calls } = deps()
+
+    await expect(generateLabContent(client, { force: false }, value)).rejects.toThrow(/source/)
+    expect(calls.plans).toEqual([])
+    expect(calls.personas).toEqual([])
   })
 
   test('refuses to run when there are no needs to generate from', async () => {
