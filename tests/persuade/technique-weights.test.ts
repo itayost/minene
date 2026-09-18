@@ -206,4 +206,17 @@ describe('off-plan artefacts never become weights', () => {
     const out = propose([report('social_proof', 30, 400, 0, 2), report('scarcity', 40, 100)])
     expect(out.map((p) => p.category).sort()).toEqual(['scarcity', 'social_proof'])
   })
+
+  it('warns when a kept report is still partly built from off-plan wins', () => {
+    // "small minority" is a filter, not an absence. 5% of social_proof's runs
+    // entered only by winning a category the plan never offered -- exactly
+    // what formatTechnique() warns a terminal reader about via this same
+    // report's offPlanWins (see effectiveness.ts). propose() is the path that
+    // actually turns evidence into a weight a person can promote, and a
+    // caveat-free proposal here gives that person no way to know part of the
+    // number they are about to accept was unloseable by construction.
+    const out = propose([report('social_proof', 30, 400, 0, 20), report('scarcity', 40, 100)])
+    const socialProof = out.find((p) => p.category === 'social_proof')!
+    expect(socialProof.caveat).toMatch(/מחוץ לתוכנית/)
+  })
 })
