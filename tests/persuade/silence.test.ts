@@ -130,17 +130,26 @@ describe('the ladder answers silence', () => {
   })
 
   test('each unanswered message climbs exactly one rung', () => {
-    let state: ConversationState = { ...initialState(), interaction: 1, rung: 1 }
+    // interaction: 0 is the state a real run actually occupies at the first
+    // silence: the opener does not spend an interaction, so nothing has
+    // advanced it yet. Starting this test at interaction: 1 (as it used to)
+    // hid the bug F1 fixes -- the ladder climbed in the test only because the
+    // test itself had already pre-advanced the counter the code was
+    // (wrongly) relying on.
+    const state: ConversationState = { ...initialState(), interaction: 0, rung: 1 }
     const turns: Turn[] = []
 
     const first = applySilence(turns, state)
-    expect(first.turn).toEqual({ role: 'target', text: '', silent: true, interaction: 1 })
+    expect(first.turn).toEqual({ role: 'target', text: '', silent: true, interaction: 0 })
     expect(first.state.rung).toBe(2)
+    expect(first.state.silences).toBe(1)
     expect(first.stopped.stop).toBe(false)
 
-    state = { ...first.state, interaction: 2 } as ConversationState
-    const second = applySilence([first.turn], state)
+    // interaction stays 0: nothing in this test states the ask, so nothing
+    // advances it. The climb below comes from silences alone.
+    const second = applySilence([first.turn], first.state)
     expect(second.state.rung).toBe(3)
+    expect(second.state.silences).toBe(2)
     expect(second.stopped.stop).toBe(false)
   })
 
@@ -193,6 +202,40 @@ describe('a vague yes is not a yes', () => {
   })
 })
 
+describe('F3: concrete-time markers stop mislabelling real commitments', () => {
+  test('a day named without the ב prefix still anchors the commitment', () => {
+    // The old list only matched "ביום ראשון". "אשתדל יום ראשון" names the same
+    // day without the prefix and was wrongly read as a vague deferral.
+    expect(detectOutcome('סגור, אשתדל יום ראשון')).toBe('agreed')
+  })
+
+  test('all seven days count, including the two that were missing', () => {
+    expect(detectOutcome('סגור, אשתדל ביום שישי')).toBe('agreed')
+  })
+
+  test('a digit time anchors the commitment even next to a vague word', () => {
+    expect(detectOutcome('כן כן, מחר ב-9')).toBe('agreed')
+  })
+
+  test('היום anchors the commitment the same way a named day does', () => {
+    expect(detectOutcome('סגור, אשתדל היום')).toBe('agreed')
+  })
+
+  test('בשעה טובה is the idiom, not a time, and anchors nothing', () => {
+    // בשעה only counts when a digit or a spelled-out hour follows it. "טובה"
+    // is neither, so this is a vague "כן כן" with nothing concrete behind it.
+    expect(detectOutcome('כן כן בשעה טובה')).toBe('deferred')
+  })
+
+  test('כן כן alone, with nothing to anchor it, still defers', () => {
+    expect(detectOutcome('כן כן')).toBe('deferred')
+  })
+
+  test('a real commitment with no vague marker still agrees', () => {
+    expect(detectOutcome('סגור, אני עושה את זה')).toBe('agreed')
+  })
+})
+
 import { runSimulation } from '../../src/persuade/engine/simulation'
 import type { Run } from '../../src/persuade/engine/types'
 import { setModelOverrides } from '../../src/persuade/lib/model'
@@ -206,6 +249,18 @@ import {
 } from './helpers'
 
 afterEach(() => setModelOverrides({}))
+
+/**
+ * statesAsk: false, unlike PERSUADER_PAYLOAD. Production forbids stating the
+ * ask in the opening message, and jsonModel repeats this reply for every
+ * later call too -- so it stands in for the opener and for every reminder
+ * that follows a silence, none of which restate the ask either (F2). The old
+ * fixture used PERSUADER_PAYLOAD (statesAsk: true) for the opener, which is
+ * not a message the production prompt would ever produce, and it hid F1's bug:
+ * the opener wrongly counted as a persuasion interaction, which by luck moved
+ * the broken rung formula off of 1 before anyone noticed it never climbed.
+ */
+const OPENER_PAYLOAD = { ...PERSUADER_PAYLOAD, statesAsk: false }
 
 async function collect(world: WorldState | null): Promise<Run> {
   let run: Run | null = null
@@ -221,7 +276,13 @@ describe('a run against someone who does not answer', () => {
     let targetCalls = 0
     const counting = textModel(['לא אמור להיקרא'])
     setModelOverrides({
-      persuader: jsonModel([PERSUADER_PAYLOAD]),
+      // statesAsk: false on every persuader turn, not just the opener: nobody
+      // ever hears the ask in a silent world, so every message after the
+      // opener is realistically a reminder (F2), never a restatement. This is
+      // also what makes the rung sequence below deterministic -- if the ask
+      // were marked stated, the interaction counter would climb the ladder a
+      // second time on top of the silences, past the spec's three rungs.
+      persuader: jsonModel([OPENER_PAYLOAD]),
       target: new Proxy(counting, {
         get(model, key, receiver) {
           if (key === 'doGenerate') targetCalls += 1
@@ -236,11 +297,12 @@ describe('a run against someone who does not answer', () => {
     expect(run.state.outcome).toBe('no_response')
     expect(run.turns.filter((t) => t.silent)).toHaveLength(3)
     expect(run.turns.filter((t) => t.role === 'persuader')).toHaveLength(3)
-    // The ladder climbed rather than standing still. Exactly one rung per
-    // silence is asserted as a unit in the applySilence test above; here the
-    // interaction counter also bounds the rung, so pinning a number would test
-    // that interaction instead of this behaviour.
-    expect(run.state.rung).toBeGreaterThanOrEqual(2)
+    // The spec's ladder for silence: reminder, personal approach, manager --
+    // rungs 1, 2, 3, exactly, on the three persuader messages. Not a lower
+    // bound: F1 was that the ladder never climbed at all in a real silent run
+    // (rungs 1, 1, 2), and a >= assertion would pass on that broken behaviour
+    // too.
+    expect(run.turns.filter((t) => t.role === 'persuader').map((t) => t.rung)).toEqual([1, 2, 3])
   })
 
   test('a slow world is ignored once and then answers', async () => {
@@ -307,5 +369,15 @@ describe('response validity', () => {
 
     const asked = prompts()[0] ?? ''
     expect(asked).toContain('(לא ענה)')
+    // F4: the prompt used to say "a valid response is one of the four" and
+    // then list `none` among them -- `none` is the absence of one, not a
+    // fourth kind of it. Asserted on the guidance itself, not only on the
+    // transcript marker the old version of this test stopped at.
+    expect(asked).toContain('שלושת הראשונים הם תשובה תקינה')
+    expect(asked).toContain('none הוא ההיעדר של תשובה תקינה')
+    expect(asked).not.toContain('תשובה תקינה היא אחת מהארבע')
+    // Kept from before the reword: a reasoned refusal is a valid response even
+    // when the persuasion itself failed.
+    expect(asked).toContain('סירוב מנומק הוא תשובה תקינה גם אם השכנוע נכשל')
   })
 })

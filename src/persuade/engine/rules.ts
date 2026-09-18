@@ -1,5 +1,7 @@
 import {
   COMMITMENT_MARKERS,
+  CONCRETE_DIGIT_TIME_PATTERN,
+  CONCRETE_HOUR_PATTERN,
   CONCRETE_TIME_MARKERS,
   FATIGUE_MARKERS,
   MAX_ARGUMENTS_PER_TURN,
@@ -113,13 +115,30 @@ export function fatigueScore(targetTurns: Turn[]): number {
   return Math.min(Number(score.toFixed(2)), 1)
 }
 
+/**
+ * Whether the text names an actual time, not just a word that sometimes does.
+ *
+ * `CONCRETE_TIME_MARKERS` covers the fixed phrases (named days, "today",
+ * "before opening"). The two patterns cover what a fixed list cannot: a digit
+ * time ("ב-9", "9:30"), and "בשעה" specifically, which is concrete in "בשעה 9"
+ * and the idiom "בשעה טובה" (good luck) the rest of the time -- so it only
+ * counts when a digit or a spelled-out hour actually follows it.
+ */
+function hasConcreteTime(text: string): boolean {
+  return (
+    containsAny(text, CONCRETE_TIME_MARKERS) ||
+    CONCRETE_HOUR_PATTERN.test(text) ||
+    CONCRETE_DIGIT_TIME_PATTERN.test(text)
+  )
+}
+
 /** Read the counterpart's reply for an explicit decision. Silence is not a yes. */
 export function detectOutcome(targetText: string): Outcome {
   if (containsAny(targetText, REFUSAL_MARKERS)) return 'refused'
   if (containsAny(targetText, COMMITMENT_MARKERS)) {
     // A yes with a vague time and no concrete start is the spec's "כן כן, מחר".
     const vague = containsAny(targetText, VAGUE_COMMITMENT_MARKERS)
-    const concrete = containsAny(targetText, CONCRETE_TIME_MARKERS)
+    const concrete = hasConcreteTime(targetText)
     return vague && !concrete ? 'deferred' : 'agreed'
   }
   return 'open'
@@ -136,9 +155,12 @@ export const silenceCount = (turns: readonly Turn[]): number =>
  * `maxSilences` because a fourth message to someone who has answered none of
  * three is not persuasion, it is noise.
  *
- * Relies on the caller advancing `state.interaction` between silences (a
- * persuader turn runs before each one in `runSimulation`), since `nextRung` is
- * also capped by the interaction counter.
+ * Escalation is computed from the state as it will be AFTER this silence, not
+ * before: `state.silences` is what earns the climb, so `nextRung` has to read
+ * it already incremented. Computing from the pre-increment state was F1's bug
+ * -- the ladder never climbed on the first silence, because at that point
+ * nothing had told `nextRung` a silence had happened at all, and the opener
+ * that came before it is deliberately not an interaction either.
  */
 export function applySilence(
   turns: Turn[],
@@ -147,10 +169,11 @@ export function applySilence(
 ): { turn: Turn; state: ConversationState; stopped: { stop: boolean; reason: string | null } } {
   const turn: Turn = { role: 'target', text: '', silent: true, interaction: state.interaction }
   const silences = silenceCount([...turns, turn])
+  const incrementedState: ConversationState = { ...state, silences: state.silences + 1 }
 
   const newState: ConversationState = {
-    ...state,
-    rung: rules.enforceSilenceLadder ? nextRung(state, rules) : state.rung,
+    ...incrementedState,
+    rung: rules.enforceSilenceLadder ? nextRung(incrementedState, rules) : state.rung,
     outcome: silences >= rules.maxSilences ? 'no_response' : state.outcome,
   }
 
@@ -174,13 +197,21 @@ export function initialState(): ConversationState {
     identityStated: false,
     startTimeSet: false,
     followUpAnnounced: false,
+    silences: 0,
   }
 }
 
-/** Climb one rung at a time, never jump. Rung is capped by the interaction number. */
+/**
+ * Climb one rung at a time, never jump. Rung is capped by the interaction
+ * number plus the number of silences: a silence is a reason to escalate
+ * exactly like a live interaction is, which is the whole point of the ladder
+ * the product spec describes for being ignored (reminder, personal approach,
+ * manager). A run with no silence has `silences: 0`, so this is unchanged
+ * from before F1 for every run that never goes quiet.
+ */
 export function nextRung(state: ConversationState, rules: RuleConfig = DEFAULT_RULES): Rung {
-  if (!rules.enforceOneRungAtATime) return Math.min(state.interaction + 1, 5) as Rung
-  const target = Math.min(state.interaction + 1, 5)
+  const target = Math.min(state.interaction + state.silences + 1, 5)
+  if (!rules.enforceOneRungAtATime) return target as Rung
   const allowed = Math.min(state.rung + 1, target, 5)
   return Math.max(1, allowed) as Rung
 }

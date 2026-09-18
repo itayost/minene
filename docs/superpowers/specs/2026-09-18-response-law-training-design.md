@@ -80,9 +80,14 @@ occurs:
 - **Silence is not fatigue.** `fatigueScore` ignores silent turns. A tired reply
   and no reply are different failures, and treating one as the other would end
   conversations that should escalate.
-- **Each unanswered message climbs exactly one rung**, so the three rungs a
-  silent run reaches are the spec's ladder: reminder, personal approach, manager.
-  The existing one-rung-at-a-time rule still holds.
+- **A silence advances the ladder through `silences`.** `ConversationState`
+  carries a `silences` count, 0 at the start of every run, and `applySilence`
+  increments it before computing the rung: a silence is a reason to escalate
+  exactly like a live interaction is, so `nextRung`'s target is
+  `interaction + silences + 1`, not `interaction + 1` alone. **Each unanswered
+  message climbs exactly one rung**, so the three persuader messages of a
+  silent run carry rungs 1, 2, 3 -- the spec's ladder: reminder, personal
+  approach, manager. The existing one-rung-at-a-time rule still holds.
 - **After `maxSilences` unanswered messages** the run ends with the new outcome
   `no_response`.
 - The interaction budget still applies: a silent run cannot outlive

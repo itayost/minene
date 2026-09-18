@@ -60,11 +60,14 @@ const run = (turns: Turn[], outcome = 'agreed'): Run => ({
     identityStated: true,
     startTimeSet: true,
     followUpAnnounced: true,
+    silences: 0,
   },
   violations: [],
 })
 
-const score = (grade: number): RunScore => ({ grade, responseValidity: 'did' }) as RunScore
+// responseValidity is optional on RunScore (F5): this fixture used to carry
+// it purely to satisfy the type, and no test here asserts on its value.
+const score = (grade: number): RunScore => ({ grade }) as RunScore
 
 const source = (over: Partial<SourceRun> = {}): SourceRun => ({
   run: run([persuader(), target('סגור')]),
