@@ -236,7 +236,71 @@ describe('F3: concrete-time markers stop mislabelling real commitments', () => {
   })
 })
 
+describe('R3: a digit followed by a duration unit is not a clock time', () => {
+  test('"ב-2 שבועות" (in two weeks) is a vague duration, not a time -- defers', () => {
+    expect(detectOutcome('כן כן, אשתדל ב-2 שבועות')).toBe('deferred')
+  })
+
+  test('the same duration with the definite article on the unit word also defers', () => {
+    expect(detectOutcome('כן כן, אשתדל ב2 השבועות הקרובים')).toBe('deferred')
+  })
+
+  test('a space before the digit anchors a commitment exactly like a hyphen does', () => {
+    // The old pattern only accepted "ב-9". "ב 9" named the same nine o'clock
+    // with a space instead of a hyphen and was missed.
+    expect(detectOutcome('כן כן, מחר ב-9')).toBe('agreed')
+    expect(detectOutcome('כן כן, מחר ב 9')).toBe('agreed')
+  })
+
+  test('every row from the previous wave keeps passing', () => {
+    expect(detectOutcome('סגור, אשתדל יום ראשון')).toBe('agreed')
+    expect(detectOutcome('סגור, אשתדל ביום שישי')).toBe('agreed')
+    expect(detectOutcome('סגור, אשתדל היום')).toBe('agreed')
+    expect(detectOutcome('כן כן בשעה טובה')).toBe('deferred')
+    expect(detectOutcome('כן כן')).toBe('deferred')
+    expect(detectOutcome('סגור, אני עושה את זה')).toBe('agreed')
+  })
+})
+
+describe('R4: a day/today marker does not match inside a longer, unrelated word', () => {
+  test('the required-by-the-brief pair still defers', () => {
+    // Both are already deferred under strict Hebrew spelling: "היום" ends in
+    // a word-final mem (ם), and neither "היומי" nor "ביומן" can validly carry
+    // that letter anywhere but their own final position, so plain substring
+    // matching never actually collided on these two specific words. Kept as
+    // regression coverage per the brief; see the report for the genuinely
+    // reproducing case below.
+    expect(detectOutcome('כן כן, היומי')).toBe('deferred')
+    expect(detectOutcome('כן כן, ביומן')).toBe('deferred')
+  })
+
+  test('היום still anchors a real commitment on its own', () => {
+    expect(detectOutcome('סגור, אשתדל היום')).toBe('agreed')
+  })
+
+  test('R4 genuine repro: "בערב" (evening) is a real substring prefix of "בערבית" (in Arabic)', () => {
+    // Unlike "היום", "בערב" does not end in a word-final letter, so Hebrew's
+    // own orthography gives it no protection: "בערבית" is spelled exactly as
+    // "בערב" + "ית", with no letter-form change required. This is the actual
+    // reproducible instance of the class of bug R4 describes -- containsAny
+    // is substring-based, and a marker with no distinguishing final letter
+    // matches straight into an unrelated longer word.
+    expect(detectOutcome('כן כן, אעשה את זה בערבית')).toBe('deferred')
+    // Control: the standalone word must keep working.
+    expect(detectOutcome('כן כן, אעשה את זה בערב')).toBe('agreed')
+  })
+
+  test('a day name still matches with its usual "ב" prefix and no space', () => {
+    // "יום ראשון" is deliberately unprefixed in the marker list so both
+    // "יום ראשון" and "ביום ראשון" match -- a boundary check must not
+    // require a space before the marker, only forbid another Hebrew letter
+    // after it.
+    expect(detectOutcome('סגור, אשתדל ביום שישי')).toBe('agreed')
+  })
+})
+
 import { runSimulation } from '../../src/persuade/engine/simulation'
+import { persuaderTurn as runPersuaderTurn } from '../../src/persuade/engine/turn'
 import type { Run } from '../../src/persuade/engine/types'
 import { setModelOverrides } from '../../src/persuade/lib/model'
 import {
@@ -303,6 +367,49 @@ describe('a run against someone who does not answer', () => {
     // (rungs 1, 1, 2), and a >= assertion would pass on that broken behaviour
     // too.
     expect(run.turns.filter((t) => t.role === 'persuader').map((t) => t.rung)).toEqual([1, 2, 3])
+  })
+
+  test('R1: a silent run whose opener states the ask still climbs one rung at a time', async () => {
+    // Unlike the OPENER_PAYLOAD test above, PERSUADER_PAYLOAD has
+    // statesAsk: true on every turn -- the realistic case where an
+    // interaction is being spent (askStated becomes true) on the same round
+    // a silence also lands. Before the fix, applySilence advances the rung
+    // for the reminder, and turnRequest for that same reminder advances it a
+    // second time from the already-advanced state, printing rungs [1, 3, 5]
+    // instead of the spec's [1, 2, 3].
+    setModelOverrides({
+      persuader: jsonModel([PERSUADER_PAYLOAD]),
+      target: textModel(['לא אמור להיקרא']),
+    })
+
+    const run = await collect(buildWorld({ ...cell(), responsiveness: 'silent' }))
+
+    expect(run.state.outcome).toBe('no_response')
+    expect(run.turns.filter((t) => t.role === 'persuader').map((t) => t.rung)).toEqual([1, 2, 3])
+  })
+
+  test('R1: two turnRequest calls straddling one silence never advance the rung by more than one', async () => {
+    // Unit-level companion to the run-level test above: drives persuaderTurn
+    // (which builds its call through turnRequest) directly across a single
+    // silence, without a full three-round simulation, so the rung delta at
+    // exactly that boundary is the only thing under test.
+    setModelOverrides({ persuader: jsonModel([PERSUADER_PAYLOAD]) })
+    const recipient = { name: TEST_PERSONA.name, role: TEST_PERSONA.role }
+
+    const opener = await runPersuaderTurn(TEST_PLAN, [], initialState(), DEFAULT_RULES, recipient)
+    expect(opener.turn.rung).toBe(1)
+
+    const silence = applySilence([opener.turn], opener.state, DEFAULT_RULES)
+    const reminder = await runPersuaderTurn(
+      TEST_PLAN,
+      [opener.turn, silence.turn],
+      silence.state,
+      DEFAULT_RULES,
+      recipient,
+    )
+
+    expect(reminder.turn.rung).toBe(2)
+    expect((reminder.turn.rung ?? 0) - (opener.turn.rung ?? 0)).toBeLessThanOrEqual(1)
   })
 
   test('a slow world is ignored once and then answers', async () => {

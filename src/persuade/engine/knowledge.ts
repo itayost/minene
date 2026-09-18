@@ -307,11 +307,20 @@ export const CONCRETE_HOUR_PATTERN = /בשעה\s*(\d|אחת|שתיים|שתים|
 
 /**
  * A time you could put in a calendar without spelling out a word for it:
- * "ב-9", "ב9", "9:30". The "ב-?" form is deliberately anchored to a leading
- * "ב" rather than a bare `\d`, so a number that is not a time ("יש לי 3
- * ילדים") does not read as a schedule.
+ * "ב-9", "ב 9", "ב9", "9:30". The "ב" form is deliberately anchored to a
+ * leading "ב" rather than a bare `\d`, so a number that is not a time ("יש
+ * לי 3 ילדים") does not read as a schedule, and accepts a space as well as a
+ * hyphen before the digit -- "ב-9" and "ב 9" name the same nine o'clock and
+ * only the hyphenated spelling used to match.
+ *
+ * The negative lookahead excludes a quantity, not a time: "ב-2 שבועות" ("in
+ * two weeks") and "ב2 השבועות הקרובים" ("in the next two weeks", with the
+ * definite article on the unit word) share the "ב + digit" shape with a real
+ * clock time but name a vague duration, exactly the "כן כן, אשתדל" failure
+ * this engine exists to catch, not a start you could put in a calendar.
  */
-export const CONCRETE_DIGIT_TIME_PATTERN = /ב-?\d{1,2}(:\d{2})?|\d{1,2}:\d{2}/
+export const CONCRETE_DIGIT_TIME_PATTERN =
+  /ב[-\s]?\d{1,2}(:\d{2})?(?!\s*ה?(?:שבועות|שבוע|חודשים|חודש|ימים|דקות|שעות))|\d{1,2}:\d{2}/
 
 export const MAX_INTERACTIONS = 4
 

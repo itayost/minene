@@ -12,7 +12,7 @@ import {
   nextRung,
   shouldStop,
 } from '../../src/persuade/engine/rules'
-import type { PersuasionPlan, Rung, Turn } from '../../src/persuade/engine/types'
+import type { ConversationState, PersuasionPlan, Rung, Turn } from '../../src/persuade/engine/types'
 
 function targetTurn(text: string): Turn {
   return { role: 'target', text, interaction: 1 }
@@ -87,6 +87,21 @@ describe('escalation ladder', () => {
   test('rung cannot outrun the interaction count', () => {
     const state = { ...initialState(), interaction: 0, rung: 1 as Rung }
     expect(nextRung(state)).toBe(1)
+  })
+
+  test('R2: a state from before the silence deploy has no silences field, and nextRung does not NaN on it', () => {
+    // app/api/persuade/chat/route.ts takes the state straight off the request
+    // body with no runtime validation (`rawState ?? initialState()`), so a
+    // browser holding an in-flight conversation from before this deploy posts
+    // a state object with no `silences` key at all -- not `silences: 0`, the
+    // key missing entirely. `state.interaction + state.silences + 1` turns
+    // that into `NaN`, which propagates through every `Math.min`/`Math.max`
+    // below it and out into the rendered rung.
+    const withSilences = { ...initialState(), interaction: 2, rung: 2 as Rung }
+    const withoutSilences: Partial<ConversationState> = { ...withSilences }
+    delete withoutSilences.silences
+
+    expect(nextRung(withoutSilences as ConversationState)).toBe(nextRung(withSilences))
   })
 })
 

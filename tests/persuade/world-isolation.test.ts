@@ -67,7 +67,11 @@ describe('the persuader cannot see the world', () => {
     })
 
     expect(rendered).not.toContain('אתה עונה להודעות שמגיעות אליך')
-    expect(rendered).not.toContain('אל תענה בכלל')
+    // R5: the silent text is 'אתה לא עונה בכלל. אל תענה לאף הודעה...' -- the
+    // old assertion checked for 'אל תענה בכלל', a string that appears nowhere
+    // in it (the actual second sentence is 'אל תענה לאף הודעה'), so it passed
+    // without ever having covered the one case it was added for.
+    expect(rendered).not.toContain('אתה לא עונה בכלל')
     expect(rendered).not.toContain('להודעה הראשונה אתה לא עונה בכלל')
   })
 

@@ -88,15 +88,20 @@ function turnRequest(
   recipient: Recipient | null,
 ) {
   const targetTurns = turns.filter((t) => t.role === 'target')
-  const workingState: ConversationState = {
-    ...state,
-    fatigue: fatigueScore(targetTurns),
-    rung: turns.length === 0 ? 1 : nextRung(state, rules),
-  }
   // F2: the model is told nothing about silence otherwise, and still gets
   // instructed to state the whole ask -- so it restates it into a void
   // instead of sending a short reminder.
   const lastTurnSilent = turns.at(-1)?.silent === true
+  const workingState: ConversationState = {
+    ...state,
+    fatigue: fatigueScore(targetTurns),
+    // R1: when the previous turn was silent, applySilence has already
+    // climbed the rung for the message about to be sent. Climbing again here
+    // from that already-advanced state double-counts the same silence --
+    // a persuader message that states the ask and then goes unanswered sent
+    // rungs [1, 3, 5] instead of [1, 2, 3].
+    rung: turns.length === 0 ? 1 : lastTurnSilent ? state.rung : nextRung(state, rules),
+  }
 
   return {
     workingState,

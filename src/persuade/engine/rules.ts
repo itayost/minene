@@ -75,6 +75,29 @@ function containsAny(text: string, markers: string[]): boolean {
   return markers.some((m) => t.includes(normalize(m)))
 }
 
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * `containsAny`, but a marker does not count when it is only the start of a
+ * longer, unrelated word: "בערב" (evening) is a real prefix of "בערבית" (in
+ * Arabic), and Hebrew's word-final letter forms only coincidentally protect
+ * markers that happen to end in one (a longer word can never validly carry
+ * ם/ן/ך/ף/ץ anywhere but its own end) -- not every marker does.
+ *
+ * Only the trailing side is checked. The leading side is deliberately left
+ * open: day names are stored without their "ב" prefix on purpose (see
+ * CONCRETE_TIME_MARKERS) precisely so both "יום ראשון" and "ביום ראשון"
+ * match, and a marker glued directly onto a preceding Hebrew preposition is
+ * exactly that, not a collision. Mirrors the standalone-word idea in
+ * lab-content-checks.ts's `mentionsName` (word boundaries on both sides, for
+ * a different domain: a persona name) without importing a lab module into
+ * the engine.
+ */
+function containsAnyWord(text: string, markers: string[]): boolean {
+  const t = normalize(text)
+  return markers.some((m) => new RegExp(`${escapeRegExp(normalize(m))}(?![א-ת])`).test(t))
+}
+
 /**
  * Fatigue score 0-1. Rises with non-committal markers and with replies that keep
  * getting shorter -- the pattern Eran described: 30 words, then 12, then "בסדר".
@@ -126,7 +149,7 @@ export function fatigueScore(targetTurns: Turn[]): number {
  */
 function hasConcreteTime(text: string): boolean {
   return (
-    containsAny(text, CONCRETE_TIME_MARKERS) ||
+    containsAnyWord(text, CONCRETE_TIME_MARKERS) ||
     CONCRETE_HOUR_PATTERN.test(text) ||
     CONCRETE_DIGIT_TIME_PATTERN.test(text)
   )
@@ -169,7 +192,9 @@ export function applySilence(
 ): { turn: Turn; state: ConversationState; stopped: { stop: boolean; reason: string | null } } {
   const turn: Turn = { role: 'target', text: '', silent: true, interaction: state.interaction }
   const silences = silenceCount([...turns, turn])
-  const incrementedState: ConversationState = { ...state, silences: state.silences + 1 }
+  // Same guard as nextRung, for the same reason: a state carried over from
+  // before this field existed has no `silences` key to increment.
+  const incrementedState: ConversationState = { ...state, silences: (state.silences ?? 0) + 1 }
 
   const newState: ConversationState = {
     ...incrementedState,
@@ -210,7 +235,13 @@ export function initialState(): ConversationState {
  * from before F1 for every run that never goes quiet.
  */
 export function nextRung(state: ConversationState, rules: RuleConfig = DEFAULT_RULES): Rung {
-  const target = Math.min(state.interaction + state.silences + 1, 5)
+  // R2: the route takes this state straight off the request body with no
+  // runtime validation, so a browser holding an in-flight conversation from
+  // before this field existed posts one with no `silences` key at all --
+  // not `silences: 0`, the key missing -- and the arithmetic below would
+  // otherwise turn that into NaN and carry it through every rung computed
+  // for the rest of the run.
+  const target = Math.min(state.interaction + (state.silences ?? 0) + 1, 5)
   if (!rules.enforceOneRungAtATime) return target as Rung
   const allowed = Math.min(state.rung + 1, target, 5)
   return Math.max(1, allowed) as Rung
