@@ -17,6 +17,17 @@ export interface SimulationCell {
 export interface StoredSimulation {
   id: string
   cell: { industry: string; jobRoleId: string | null }
+  /**
+   * The experiment this run belongs to, null for an ordinary sweep run.
+   *
+   * An experiment arm runs under a `RuleConfig` deliberately different from the
+   * deployed default (see `queueExperiment` in lib/experiments.ts) -- that is
+   * the whole point of an arm. The matrix and the bank read every row in this
+   * table without distinguishing the two, which pools a run against a 25-word
+   * cap into the same cell as one against the deployed default. `matrixFrom`
+   * and the lab panel both filter this out; see `isComparable`.
+   */
+  experiment: string | null
   run: Run
 }
 
@@ -28,7 +39,7 @@ export interface StoredSimulation {
  * rows that never carried a score comes back empty however many were scored.
  */
 const SIMULATION_COLUMNS =
-  'id,industry,job_role_id,need,persona_id,plan,turns,state,outcome,score,created_at'
+  'id,industry,job_role_id,need,persona_id,plan,turns,state,outcome,score,experiment,created_at'
 
 interface SimulationRow {
   id: string
@@ -39,6 +50,7 @@ interface SimulationRow {
   turns: Run['turns'] | null
   state: Run['state']
   score: Run['score'] | null
+  experiment: string | null
   created_at: string
 }
 
@@ -47,6 +59,7 @@ const toStored = (row: SimulationRow): StoredSimulation => {
   return {
     id: row.id,
     cell: { industry: row.industry, jobRoleId: row.job_role_id },
+    experiment: row.experiment ?? null,
     run: {
       id: row.id,
       createdAt: row.created_at,

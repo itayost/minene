@@ -81,3 +81,53 @@ describe('the lab, before anything has been run', () => {
     await waitFor(() => expect(sims.listSimulations).toHaveBeenCalledTimes(2))
   })
 })
+
+describe('a cell with both ordinary and experiment-arm runs', () => {
+  it('reports the headline and the bank from the ordinary runs alone', async () => {
+    // queueExperiment (lib/experiments.ts) runs an arm under a RuleConfig
+    // deliberately different from the deployed default and writes it to the
+    // same industry/job_role_id as an ordinary sweep run. Nothing before this
+    // fix told the two apart, so the headline rate and the bank beneath it
+    // silently blended a conversation that ran under (say) a 25-word cap into
+    // a number that claims to describe the deployed default.
+    sims.listSimulations.mockResolvedValue([
+      {
+        id: 'ordinary',
+        cell: { industry: 'אופנה', jobRoleId: 'r1' },
+        experiment: null,
+        run: {
+          state: { outcome: 'agreed', blockers: ['overloaded'], interaction: 2 },
+          violations: [],
+          score: { winningCategory: 'numbers', winningArgument: 'פי שלוש', grade: 80 },
+        },
+      },
+      {
+        id: 'experiment-arm',
+        cell: { industry: 'אופנה', jobRoleId: 'r1' },
+        experiment: 'message-length',
+        run: {
+          state: { outcome: 'agreed', blockers: ['no_time'], interaction: 2 },
+          violations: [],
+          score: { winningCategory: 'social_proof', winningArgument: 'כולם עושים ככה', grade: 80 },
+        },
+      },
+    ] as never)
+
+    setup()
+
+    const cell = await screen.findByRole('gridcell', {
+      name: 'אופנה, מנהלת חנות, 100 אחוז, 1 ריצות',
+    })
+    await userEvent.click(cell)
+
+    // The headline: one run, not two, and 100% agreed -- not 100% pooled with
+    // the experiment arm's refusal into some other number.
+    expect(await screen.findByText('1 ריצות · 100% שכנוע')).toBeVisible()
+
+    // The bank: the ordinary run's winning argument, never the experiment
+    // arm's -- a run against a different RuleConfig is not evidence about what
+    // wins under the deployed default.
+    expect(await screen.findByText('פי שלוש')).toBeVisible()
+    expect(screen.queryByText('כולם עושים ככה')).not.toBeInTheDocument()
+  })
+})
