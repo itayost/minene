@@ -221,6 +221,13 @@ export interface RunScore {
   notes: string
   /** How many interactions it took. Cheap to record, and the rates use it. */
   interactionsUsed: number
+  /**
+   * Whether the counterpart gave a valid response at all, in the product spec's
+   * sense: you may disagree, you may not disappear. A refusal with a reason is a
+   * valid response and a failed persuasion at the same time, which is why this
+   * is a separate field from `persuaded` rather than a grade.
+   */
+  responseValidity: 'did' | 'refused_with_reason' | 'stuck_with_plan' | 'none'
 }
 
 /** What actually happened afterwards. A partial is recorded, never rounded up. */

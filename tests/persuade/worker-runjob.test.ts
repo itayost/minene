@@ -24,6 +24,7 @@ const SCORE = {
   whatFailed: null,
   grade: 80,
   notes: 'בסדר',
+  responseValidity: 'did',
 }
 
 const JOB: JobRow = {

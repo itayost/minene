@@ -64,7 +64,7 @@ const run = (turns: Turn[], outcome = 'agreed'): Run => ({
   violations: [],
 })
 
-const score = (grade: number): RunScore => ({ grade }) as RunScore
+const score = (grade: number): RunScore => ({ grade, responseValidity: 'did' }) as RunScore
 
 const source = (over: Partial<SourceRun> = {}): SourceRun => ({
   run: run([persuader(), target('סגור')]),

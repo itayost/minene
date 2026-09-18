@@ -94,7 +94,12 @@ describe('saving a simulation', () => {
 
   it('persists the score, which is the whole reason the bank can exist', async () => {
     const scored = run({
-      score: { winningCategory: 'numbers', winningArgument: 'פי שלוש', grade: 80 },
+      score: {
+        winningCategory: 'numbers',
+        winningArgument: 'פי שלוש',
+        grade: 80,
+        responseValidity: 'did',
+      },
     } as never)
     const { store, inserted } = fake()
     await store.saveSimulation(scored, { industry: 'אופנה', jobRoleId: 'r1', need: null })
@@ -132,7 +137,12 @@ describe('reading simulations back', () => {
         plan: { id: 'p1' },
         turns: [{ role: 'persuader', text: 'שלום', interaction: 1 }],
         state: { outcome: 'agreed', blockers: ['overloaded'], interaction: 2 },
-        score: { winningCategory: 'numbers', winningArgument: 'פי שלוש', grade: 80 },
+        score: {
+          winningCategory: 'numbers',
+          winningArgument: 'פי שלוש',
+          grade: 80,
+          responseValidity: 'did',
+        },
         created_at: '2026-08-27T10:00:00Z',
       },
     ])

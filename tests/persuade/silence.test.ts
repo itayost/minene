@@ -196,7 +196,14 @@ describe('a vague yes is not a yes', () => {
 import { runSimulation } from '../../src/persuade/engine/simulation'
 import type { Run } from '../../src/persuade/engine/types'
 import { setModelOverrides } from '../../src/persuade/lib/model'
-import { jsonModel, PERSUADER_PAYLOAD, TEST_PERSONA, TEST_PLAN, textModel } from './helpers'
+import {
+  jsonModel,
+  PERSUADER_PAYLOAD,
+  recordingJsonModel,
+  TEST_PERSONA,
+  TEST_PLAN,
+  textModel,
+} from './helpers'
 
 afterEach(() => setModelOverrides({}))
 
@@ -259,5 +266,46 @@ describe('a run against someone who does not answer', () => {
     expect(run.turns.some((t) => t.silent)).toBe(false)
     expect(run.state.outcome).toBe('agreed')
     expect(run.turns).toHaveLength(2)
+  })
+})
+
+import { initialState as freshState } from '../../src/persuade/engine/rules'
+import { scoreRun } from '../../src/persuade/engine/score'
+
+const JUDGE_PAYLOAD = {
+  persuaded: 'no',
+  winningArgument: null,
+  winningCategory: null,
+  mainObjection: null,
+  whatBrokeIt: null,
+  whatFailed: 'לא הגיעה תשובה',
+  grade: 30,
+  notes: 'הנמען לא ענה',
+  responseValidity: 'none',
+}
+
+describe('response validity', () => {
+  test('comes back on the score and survives an unknown-free schema', async () => {
+    setModelOverrides({ judge: jsonModel([JUDGE_PAYLOAD]) })
+
+    const score = await scoreRun(
+      TEST_PLAN,
+      [persuaderTurn('שלום', 0), silentTurn(0)],
+      { ...freshState(), outcome: 'no_response' },
+      [],
+    )
+
+    expect(score.responseValidity).toBe('none')
+    expect(score.interactionsUsed).toBe(0)
+  })
+
+  test('the judge is told the four values and what a valid response means', async () => {
+    const { model, prompts } = recordingJsonModel([JUDGE_PAYLOAD])
+    setModelOverrides({ judge: model })
+
+    await scoreRun(TEST_PLAN, [persuaderTurn('שלום', 0), silentTurn(0)], freshState(), [])
+
+    const asked = prompts()[0] ?? ''
+    expect(asked).toContain('(לא ענה)')
   })
 })

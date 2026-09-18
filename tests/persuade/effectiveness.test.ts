@@ -35,7 +35,8 @@ const input = (
   run: {
     outcome: outcome as EffectivenessInput['run']['outcome'],
     turns: turns(3),
-    score: winning === null ? null : ({ winningCategory: winning } as RunScore),
+    score:
+      winning === null ? null : ({ winningCategory: winning, responseValidity: 'did' } as RunScore),
     world: world(reason),
     personaId,
     fatigue,
@@ -175,7 +176,7 @@ describe('whether the technique comparison crosses a model change', () => {
     run: {
       outcome: 'agreed',
       turns: turns(2),
-      score: { winningCategory: 'personal_benefit' } as RunScore,
+      score: { winningCategory: 'personal_benefit', responseValidity: 'did' } as RunScore,
       world: world('forgot'),
       personaId: 'adi',
       fatigue: 0,
