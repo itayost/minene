@@ -4,96 +4,74 @@
  *
  * They stopped being testable that way when the content moved into the
  * database: a unit test cannot reach a row, and a test that skips itself when
- * no database is configured reports green while checking nothing. So they moved
- * here, alongside `validate:brands`, which this repo already runs the same way.
+ * no database is configured reports green while checking nothing. So they run
+ * here, and the rules themselves live in src/persuade/lib/lab-content-checks.ts,
+ * where the generator uses them before it writes anything.
  *
  *   pnpm validate:lab
- *
- * Reads with the service key, so it runs from a machine with .env.local or from
- * anywhere SUPABASE_URL and SUPABASE_SECRET_KEY are set.
  */
-import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
-import { isAskPhotographable } from '../src/persuade/engine/rules'
 import type { PersuasionPlan } from '../src/persuade/engine/types'
+import { personaProblems, planProblems } from '../src/persuade/lib/lab-content-checks'
+import { env } from './lib/db'
 
-function env(): { url: string; key: string } {
-  // .env.local is not loaded for a plain tsx run, and reading it here is what
-  // makes this runnable without a wrapper.
-  try {
-    const file = readFileSync(new URL('../.env.local', import.meta.url), 'utf8')
-    for (const line of file.split('\n')) {
-      const at = line.indexOf('=')
-      if (at > 0 && !line.trimStart().startsWith('#')) {
-        const name = line.slice(0, at).trim()
-        if (!process.env[name]) process.env[name] = line.slice(at + 1).trim()
-      }
-    }
-  } catch {
-    // No file is fine when the variables are already in the environment.
-  }
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SECRET_KEY
-  if (!url || !key) {
-    throw new Error(
-      'חסרים SUPABASE_URL ו-SUPABASE_SECRET_KEY. בלעדיהם אי אפשר לקרוא את תוכן המעבדה.',
-    )
-  }
-  return { url, key }
+interface PersonaRow {
+  persona_key: string
+  name: string
+  role: string
+  situation: string
+  hidden_truth: string
+  style: string
+  agrees_when: string
 }
 
-/** Word boundaries matter: "ועדיין" contains "עדי" and is not a name. */
-const standalone = (name: string) => new RegExp(`(?<![א-ת])${name}(?![א-ת])`)
+interface PlanRow {
+  plan_key: string
+  plan: PersuasionPlan
+}
 
 async function main(): Promise<void> {
   const { url, key } = env()
   const db = createClient(url, key, { auth: { persistSession: false } })
   const problems: string[] = []
 
-  const { data: personas, error: personaError } = await db
+  const { data: personaData, error: personaError } = await db
     .from('persuasion_personas')
-    .select('persona_key,name,reliability,resistance,hidden_truth,agrees_when,industry')
+    .select('persona_key,name,role,situation,hidden_truth,style,agrees_when')
     .eq('is_active', true)
   if (personaError) throw new Error(`קריאת הדמויות נכשלה: ${personaError.message}`)
 
-  const { data: plans, error: planError } = await db
+  const { data: planData, error: planError } = await db
     .from('persuasion_lab_plans')
-    .select('plan_key,plan,industry')
+    .select('plan_key,plan')
     .eq('is_active', true)
   if (planError) throw new Error(`קריאת התוכניות נכשלה: ${planError.message}`)
 
-  if ((personas ?? []).length === 0) problems.push('אין אף דמות פעילה')
-  if ((plans ?? []).length === 0) problems.push('אין אף תוכנית פעילה')
+  const personas = (personaData ?? []) as PersonaRow[]
+  const plans = (planData ?? []) as PlanRow[]
 
-  for (const p of personas ?? []) {
-    // The follow-up phase reads reliability; a persona without it cannot be
-    // scored, and the constraint allows 1-5 rather than requiring it be set.
-    if (!p.hidden_truth?.trim()) problems.push(`${p.persona_key}: אין אמת נסתרת`)
-    if (!p.agrees_when?.trim()) problems.push(`${p.persona_key}: לא נאמר מתי היא מסכימה`)
+  if (personas.length === 0) problems.push('אין אף דמות פעילה')
+  if (plans.length === 0) problems.push('אין אף תוכנית פעילה')
+
+  for (const row of personas) {
+    const found = personaProblems({
+      name: row.name,
+      role: row.role,
+      situation: row.situation,
+      hiddenTruth: row.hidden_truth,
+      style: row.style,
+      agreesWhen: row.agrees_when,
+    })
+    for (const problem of found) problems.push(`${row.persona_key}: ${problem}`)
   }
 
-  for (const row of plans ?? []) {
-    const plan = row.plan as PersuasionPlan
-    const gate = isAskPhotographable(plan)
-    if (!gate.ok) {
-      problems.push(`${row.plan_key}: הבקשה לא ניתנת לצילום — חסר ${gate.missing.join(', ')}`)
-    }
-    const rungs = (plan.escalation ?? []).map((e) => e.rung)
-    if (JSON.stringify(rungs) !== JSON.stringify([1, 2, 3, 4, 5])) {
-      problems.push(`${row.plan_key}: סולם ההסלמה אינו חמש מדרגות (${rungs.join(',') || 'ריק'})`)
-    }
-    // A plan naming a persona makes every simulation against a different
-    // persona incoherent, and the failure is silent -- the bot simply addresses
-    // the wrong person.
-    const blob = JSON.stringify(plan)
-    for (const persona of personas ?? []) {
-      if (standalone(persona.name).test(blob)) {
-        problems.push(`${row.plan_key}: התוכנית מזכירה בשמה את הדמות "${persona.name}"`)
-      }
-    }
+  const names = personas.map((row) => row.name)
+  for (const row of plans) {
+    for (const problem of planProblems(row.plan, names))
+      problems.push(`${row.plan_key}: ${problem}`)
   }
 
-  const keys = (plans ?? []).map((p) => p.plan_key)
+  const keys = plans.map((row) => row.plan_key)
   if (new Set(keys).size !== keys.length) problems.push('יש מפתחות תוכנית כפולים')
 
   if (problems.length > 0) {
@@ -102,9 +80,7 @@ async function main(): Promise<void> {
     process.exit(1)
   }
 
-  console.log(
-    `תוכן המעבדה תקין: ${(personas ?? []).length} דמויות, ${(plans ?? []).length} תוכניות.`,
-  )
+  console.log(`תוכן המעבדה תקין: ${personas.length} דמויות, ${plans.length} תוכניות.`)
 }
 
 await main()

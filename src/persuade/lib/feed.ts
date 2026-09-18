@@ -24,6 +24,8 @@ export interface FeedInput {
   industry: string
   /** The role a persona plays, or the role a plan asks of. Null on a plan means any role. */
   jobRoleName: string | null
+  /** 'manual' for a hand-written row, 'generated' for one `lab:generate` wrote. */
+  source: 'manual' | 'generated'
 }
 
 export interface FeedPair {
@@ -51,7 +53,10 @@ const byKey = (a: FeedInput, b: FeedInput) => a.key.localeCompare(b.key)
  *
  * A bank manager asked to run a retail morning briefing measures nothing about
  * persuasion. A plan with no target role (the hand-written `briefings`) is
- * general and meets everyone in its industry.
+ * general, but only among hand-written personas: pairing it with every
+ * generated one too would mean a CEO or COO answering a plan measuring
+ * nothing for either of them, since neither role was who the plan was written
+ * for.
  */
 export function pairInputs(
   personas: readonly FeedInput[],
@@ -63,7 +68,9 @@ export function pairInputs(
       .filter(
         (persona) =>
           persona.industry === plan.industry &&
-          (plan.jobRoleName === null || persona.jobRoleName === plan.jobRoleName),
+          (plan.jobRoleName === null
+            ? persona.source === 'manual'
+            : persona.jobRoleName === plan.jobRoleName),
       )
       .map((persona) => ({
         personaKey: persona.key,
@@ -177,13 +184,14 @@ async function readInputs(
 ): Promise<FeedInput[]> {
   const { data, error } = await client
     .from(table)
-    .select(`${keyColumn},industry,job_role_name`)
+    .select(`${keyColumn},industry,job_role_name,source`)
     .eq('is_active', true)
   if (error) throw new Error(`קריאת ${table} נכשלה: ${error.message}`)
   return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
     key: String(row[keyColumn]),
     industry: String(row.industry),
     jobRoleName: (row.job_role_name as string | null | undefined) ?? null,
+    source: row.source === 'generated' ? 'generated' : 'manual',
   }))
 }
 

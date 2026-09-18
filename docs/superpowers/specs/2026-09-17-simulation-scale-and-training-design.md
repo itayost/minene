@@ -196,22 +196,54 @@ voice.
 
 ### Plans: one per need (80)
 
-For each `role_needs` row, the planner model produces a concrete task that
-someone in that role asks of a subordinate role in the same industry, as a full
-`PersuasionPlan`.
+For each `role_needs` row, the planner model produces one small, photographable
+task asked of **the role that owns the need**, which serves that need, as a full
+`PersuasionPlan`. The request is made on behalf of the role listed one above it
+in the same industry (`role_order - 1`), or on behalf of "הנהלת החברה" for the
+first role.
+
+Not "a subordinate role", as this section first said: `role_order` is a listing
+order, not a reporting tree (in healthcare the physician, nurse and front desk
+are siblings), so a subordinate cannot be derived from the data. Asking the
+owner of the need also fits the engine, whose arguments start from the
+counterpart's personal benefit.
 
 - Stored in `persuasion_lab_plans`, `plan_key = gen-<industry>-<role_slug>-<need_key>`,
-  `job_role_name` = the **target** role's label.
+  `job_role_name` = that role's label, `title` = `<need label>: <topic>` (120
+  characters at most).
+- `onBehalfOf` carries the requester's title in both `name` and `title`, never an
+  invented person's name, so no plan names anyone a persona could be called.
 - The generator reads `role_needs` and nothing else from the database. It never
   reads `rules`, `documents`, tenant knowledge or ammunition.
 
 ### Personas: two per role (32)
 
 For each `(industry, role_slug)`, two personas with distinct names and styles,
-one at `resistance = 2` and one at `resistance = 4`.
+one at `resistance = 2` and one at `resistance = 4`. Every feed job carries a
+world, and `personaInWorld` replaces resistance, situation, hidden truth and
+agreement condition from the world, so in the loop the two personas differ by
+name and voice; the resistance split only shows in runs started by hand without
+a world.
 
 - Stored in `persuasion_personas`,
-  `persona_key = gen-<industry>-<role_slug>-<1|2>`.
+  `persona_key = gen-<industry>-<role_slug>-<1|2>`, `job_role_name` and `role` =
+  the role's label.
+- A generated name must not already belong to another persona and must not
+  appear in any stored plan (`briefings` names its requester, "אושר"): a plan
+  that mentions a persona's name fails validation for every run against it.
+- Plans are generated before personas, and personas are checked against every
+  stored plan, read after the plan phase -- so this run's own plans count, not
+  just plans that already existed. A common Hebrew word as a first name (שני,
+  מתן, and the rest of `COMMON_WORD_NAMES` in `lab-content-checks.ts`) is
+  rejected the same way: it would otherwise turn up in unrelated plans'
+  prose and fail a large slice of them for a reason that has nothing to do
+  with any real persona collision.
+- Each persona key gets up to three attempts. A rejection for a name reason
+  alone -- taken by another persona, mentioned in a plan, or on the denylist
+  -- adds that name to the avoid list and asks again; any other reason, or a
+  thrown model error, rejects immediately. The denylist is never added to
+  `personaProblems`, so `validate:lab` keeps accepting existing hand-written
+  personas that happen to carry one of these names.
 
 ### Validation
 
@@ -249,15 +281,20 @@ for each active plan
 a day before pass 2.
 
 A plan whose `job_role_name` is null has no target role and pairs with every
-active persona in its industry. That is the existing manual `briefings` plan,
-so the feed has work (4 retail personas x 324 worlds) before any content is
-generated. A persona that matches no plan is counted in the refill report
+hand-written (`source = 'manual'`) persona in its industry, never a generated
+one. That is the existing manual `briefings` plan, so the feed has work (4
+retail personas x 324 worlds) before any content is generated. A generated
+persona is left for the plans written for its own role; pairing a general plan
+with, say, a generated CEO measures nothing either side wrote the plan for. A
+persona that matches no plan is counted in the refill report
 (`unpairedPersonas`) rather than dropped silently.
 
 ### Running it
 
-`pnpm lab:generate [--industry=retail] [--force]`. Idempotent by key: existing
-keys are skipped unless `--force`. About 112 planner calls, once.
+`pnpm lab:generate [--industry retail] [--force]`. Idempotent by key: existing
+keys are skipped unless `--force`. About 112 planner calls, once. A model error
+or a validation failure rejects that one item and the run continues; the script
+exits non-zero when anything was rejected.
 
 ### Tests
 

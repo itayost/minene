@@ -90,8 +90,17 @@ that produced it.
 - **The feed** (`src/persuade/lib/feed.ts`, table `public.simulation_feed`)
   walks active (persona, plan) pairs times world cells and commits each chunk
   with a compare-and-set, so overlapping ticks cannot queue the same cells. A
-  plan with a null `job_role_name` pairs with every persona in its industry.
+  plan with a null `job_role_name` pairs with every hand-written
+  (`source = 'manual'`) persona in its industry, never a generated one.
   Changing the active personas or plans restarts the walk.
+- **Generated content** comes from `pnpm lab:generate [--industry=retail]
+  [--force]`, which writes two personas per role and one plan per need from
+  eran-task's `role_needs` (`src/persuade/lib/generate-lab-content.ts`). Every
+  item passes the same checks as `pnpm validate:lab` before it is written, and
+  is stored with `source = 'generated'` and `generated_at`, so a bad batch is
+  switched off with one update. A plan targets the role that owns the need and
+  is made on behalf of the role listed above it, never a named person. Adding or
+  changing active content restarts the feed's walk.
 - Queue a one-off experiment with `queueExperiment` in
   `src/persuade/lib/experiments.ts`. It refuses an experiment whose arms differ
   in more than one setting, because that is an expensive way to learn nothing.
