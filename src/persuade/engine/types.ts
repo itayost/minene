@@ -47,6 +47,8 @@ export type Outcome =
   | 'escalate_to_manager'
   | 'stopped_fatigue'
   | 'deferred'
+  /** Nobody ever answered. Different from a deferral, which was answered and dodged. */
+  | 'no_response'
 
 /** The ask must be "photographable": you could film whether it happened. */
 export interface Ask {
@@ -136,6 +138,14 @@ export interface ConversationState {
 export interface Turn {
   role: 'persuader' | 'target'
   text: string
+  /**
+   * Set when the counterpart did not answer this message at all.
+   *
+   * `text` stays empty rather than holding a stand-in like "(לא ענה)": a turn is
+   * replayed into the model's prompt and exported as training data, and a
+   * sentence nobody said would be taught as one they did.
+   */
+  silent?: true
   interaction: number
   rung?: Rung
   blocker?: BlockerId

@@ -3,6 +3,12 @@
  */
 import { describe, expect, test } from 'vitest'
 import {
+  historyForModel,
+  historyForTarget,
+  SILENT_TURN_MARKER,
+} from '../../src/persuade/engine/prompts'
+import type { Turn } from '../../src/persuade/engine/types'
+import {
   buildWorld,
   describeWorld,
   isWorldState,
@@ -54,5 +60,37 @@ describe('the responsiveness axis', () => {
     expect([0, 1, 2].map((i) => staysSilent(slow, i))).toEqual([true, false, false])
     expect([0, 1, 2].map((i) => staysSilent(silent, i))).toEqual([true, true, true])
     expect(staysSilent(null, 0)).toBe(false)
+  })
+})
+
+const persuaderTurn = (text: string, interaction: number): Turn => ({
+  role: 'persuader',
+  text,
+  interaction,
+})
+const silentTurn = (interaction: number): Turn => ({
+  role: 'target',
+  text: '',
+  silent: true,
+  interaction,
+})
+
+describe('a turn nobody answered', () => {
+  test('reaches the persuader as an explicit no-reply, never as empty text', () => {
+    const history = historyForModel([persuaderTurn('שלום', 0), silentTurn(0)])
+
+    expect(history).toEqual([
+      { role: 'assistant', content: 'שלום' },
+      { role: 'user', content: SILENT_TURN_MARKER },
+    ])
+    // An empty user message is rejected by some providers and teaches nothing.
+    expect(history.every((m) => m.content.length > 0)).toBe(true)
+  })
+
+  test("is dropped from the counterpart's own history", () => {
+    // The counterpart did not speak, so there is nothing for it to see itself say.
+    expect(historyForTarget([persuaderTurn('שלום', 0), silentTurn(0)])).toEqual([
+      { role: 'user', content: 'שלום' },
+    ])
   })
 })

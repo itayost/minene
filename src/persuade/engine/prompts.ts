@@ -220,17 +220,22 @@ ${situation}
 מבקשים ממך: ${plan.ask.oneLiner}`
 }
 
+/** What the persuader sees where a reply should have been. */
+export const SILENT_TURN_MARKER = '[לא ענה]'
+
 export function historyForModel(turns: Turn[]): { role: 'user' | 'assistant'; content: string }[] {
   return turns.map((t) => ({
     role: t.role === 'persuader' ? ('assistant' as const) : ('user' as const),
-    content: t.text,
+    content: t.silent ? SILENT_TURN_MARKER : t.text,
   }))
 }
 
-/** The counterpart sees the mirror image of the history. */
+/** The counterpart sees the mirror image of the history, minus its own silences. */
 export function historyForTarget(turns: Turn[]): { role: 'user' | 'assistant'; content: string }[] {
-  return turns.map((t) => ({
-    role: t.role === 'target' ? ('assistant' as const) : ('user' as const),
-    content: t.text,
-  }))
+  return turns
+    .filter((t) => !t.silent)
+    .map((t) => ({
+      role: t.role === 'target' ? ('assistant' as const) : ('user' as const),
+      content: t.text,
+    }))
 }

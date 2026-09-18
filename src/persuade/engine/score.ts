@@ -61,7 +61,7 @@ export async function scoreRun(
   violations: RuleViolation[],
 ): Promise<RunScore> {
   const transcript = turns
-    .map((t) => `${t.role === 'persuader' ? 'משכנע' : 'נמען'}: ${t.text}`)
+    .map((t) => `${t.role === 'persuader' ? 'משכנע' : 'נמען'}: ${t.silent ? '(לא ענה)' : t.text}`)
     .join('\n')
 
   const violationList = violations.length
