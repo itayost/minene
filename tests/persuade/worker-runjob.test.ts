@@ -83,4 +83,54 @@ describe('runJob', () => {
       world: null,
     })
   })
+
+  // F7: `no_response` reaching a database whose check constraint predates
+  // eran-task's migration looks, from `simulation_jobs.error`, exactly like
+  // any other storage failure -- after the job already paid for up to eleven
+  // model calls. The wrapped message has to name the missing migration.
+  test('names the missing migration when the outcome check constraint rejects the insert', async () => {
+    setModelOverrides({ ...scriptedAgreement(), judge: jsonModel([SCORE]) })
+
+    const client = {
+      from: () => ({
+        insert: () => ({
+          select: () => ({
+            single: async () => ({
+              data: null,
+              error: {
+                code: '23514',
+                message:
+                  'new row for relation "simulations" violates check constraint "simulations_outcome_check" on column "outcome"',
+              },
+            }),
+          }),
+        }),
+      }),
+    } as unknown as SupabaseClient
+
+    await expect(runJob(client, JOB)).rejects.toThrow(/20260918120000_no_response_outcome/)
+  })
+
+  test('a check-constraint error unrelated to outcome is not mistaken for the missing migration', async () => {
+    setModelOverrides({ ...scriptedAgreement(), judge: jsonModel([SCORE]) })
+
+    const client = {
+      from: () => ({
+        insert: () => ({
+          select: () => ({
+            single: async () => ({
+              data: null,
+              error: {
+                code: '23514',
+                message: 'violates check constraint "simulations_industry_check"',
+              },
+            }),
+          }),
+        }),
+      }),
+    } as unknown as SupabaseClient
+
+    await expect(runJob(client, JOB)).rejects.toThrow('שמירת הסימולציה נכשלה')
+    await expect(runJob(client, JOB)).rejects.not.toThrow(/20260918120000_no_response_outcome/)
+  })
 })

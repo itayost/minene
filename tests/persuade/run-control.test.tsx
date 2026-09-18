@@ -132,6 +132,29 @@ describe('starting a simulation', () => {
     await waitFor(() => expect(onFinished).toHaveBeenCalled())
   })
 
+  it('renders a silent turn as the no-reply marker, not an empty bubble', async () => {
+    // F7: text is deliberately '' on a silent turn (see Turn.silent), so
+    // rendering it plain looked identical to a still-loading message. The
+    // marker is what the persuader itself was told for this turn.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        ndjson([
+          { type: 'turn', turn: { role: 'persuader', text: 'רותי, בקשה אחת.', interaction: 1 } },
+          { type: 'turn', turn: { role: 'target', text: '', silent: true, interaction: 1 } },
+          { type: 'done', run: { id: 'sim-1' } },
+          { type: 'saved', id: 'sim-1' },
+        ]),
+      ),
+    )
+
+    const { user } = setup()
+    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
+
+    expect(await screen.findByText('[לא ענה]')).toBeVisible()
+  })
+
   it('reassembles a line split across two chunks', async () => {
     const [turn, done, saved] = lines(
       { type: 'turn', turn: { role: 'persuader', text: 'רותי, בקשה אחת.', interaction: 1 } },

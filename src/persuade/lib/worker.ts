@@ -274,6 +274,27 @@ export async function runJob(client: SupabaseClient, job: JobRow): Promise<strin
     .select('id')
     .single()
 
-  if (error) throw new Error(`שמירת הסימולציה נכשלה: ${error.message}`)
+  if (error) {
+    // By the time this insert runs, the job has already paid for up to
+    // eleven model calls. A bare Postgres check-constraint message reads like
+    // any other storage failure -- naming the missing migration here is the
+    // difference between reading `simulation_jobs.error` and fixing it in a
+    // minute, versus re-diagnosing a generic insert failure from scratch.
+    if (isMissingOutcomeMigration(error)) {
+      throw new Error(
+        `שמירת הסימולציה נכשלה: אילוץ הבדיקה על העמודה outcome לא מכיל את הערך שהריצה הפיקה. ` +
+          `כנראה שהמיגרציה 20260918120000_no_response_outcome (eran-task) עדיין לא הורצה על מסד הנתונים הזה. ` +
+          `(${error.message})`,
+      )
+    }
+    throw new Error(`שמירת הסימולציה נכשלה: ${error.message}`)
+  }
   return (data as { id: string }).id
+}
+
+/** A Postgres check_violation (23514) whose message names the `outcome` column. */
+function isMissingOutcomeMigration(error: { code?: string; message?: string }): boolean {
+  return (
+    error.code === '23514' && typeof error.message === 'string' && error.message.includes('outcome')
+  )
 }

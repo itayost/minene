@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { Role } from '../brain/types'
 import { useApiErrorHandler } from '../brain/use-api-error'
+import { SILENT_TURN_MARKER } from './engine/prompts'
 import { DEFAULT_RULES } from './engine/rules'
 import type { PersuasionPlan, TargetPersona, Turn } from './engine/types'
 import { streamSimulation } from './simulate-api'
@@ -179,7 +180,13 @@ export function RunControl({ onFinished, personas, plans, roles }: RunControlPro
               key={`${turn.interaction}-${index}`}
             >
               <span className="run-control__who">{ROLE_LABEL[turn.role]}</span>
-              <span>{turn.text}</span>
+              {/* A silent turn's `text` is deliberately empty (see Turn.silent
+                  in engine/types.ts): rendering it plain would show an empty
+                  bubble nobody sent, indistinguishable from a still-loading
+                  one. The marker is what the persuader itself reads for this
+                  turn (SILENT_TURN_MARKER), so the transcript on screen shows
+                  the same thing the model was told. */}
+              <span>{turn.silent ? SILENT_TURN_MARKER : turn.text}</span>
             </li>
           ))}
         </ol>

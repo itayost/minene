@@ -55,6 +55,22 @@ describe('the persuader cannot see the world', () => {
     expect(rendered).not.toContain('נשארו לך')
   })
 
+  it('never renders the responsiveness text either', () => {
+    // F7: the responsiveness axis is as much a fact about the world as the
+    // hidden truth and the win condition above, and RESPONSIVENESS_TEXT.silent
+    // in particular would hand the persuader the answer key -- "he does not
+    // answer at all" -- for a property it is supposed to discover from actual
+    // silence, not read off a prompt.
+    const rendered = persuaderSystemPrompt(TEST_PLAN, initialState(), true, DEFAULT_RULES, {
+      name: 'עדי',
+      role: 'מנהלת חנות',
+    })
+
+    expect(rendered).not.toContain('אתה עונה להודעות שמגיעות אליך')
+    expect(rendered).not.toContain('אל תענה בכלל')
+    expect(rendered).not.toContain('להודעה הראשונה אתה לא עונה בכלל')
+  })
+
   it('gives the simulated employee all of it', () => {
     const rendered = targetSystemPrompt(TEST_PERSONA, TEST_PLAN, world)
 
