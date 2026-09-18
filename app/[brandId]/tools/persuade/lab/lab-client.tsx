@@ -10,7 +10,7 @@ import type { PersuasionPlan } from '../../../../../src/persuade/engine/types'
 import { BLOCKER_LABELS, CATEGORY_LABELS } from '../../../../../src/persuade/labels'
 import type { StoredSimulation } from '../../../../../src/persuade/lib/simulations'
 import { Matrix, type MatrixCell } from '../../../../../src/persuade/Matrix'
-import { matrixFrom } from '../../../../../src/persuade/matrix-data'
+import { matrixFrom, runsInCell } from '../../../../../src/persuade/matrix-data'
 import { type PersonaOption, RunControl } from '../../../../../src/persuade/RunControl'
 import { createSimulationsApi } from '../../../../../src/persuade/simulations-api'
 
@@ -69,13 +69,8 @@ export function LabClient({ personas, plans }: LabClientProps) {
   // The bank and the blockers are queries over the selected cell's runs, never
   // a stored list -- so they cannot disagree with the evidence behind them.
   const inCell = useMemo(
-    () =>
-      selected
-        ? simulations.filter(
-            (s) => s.cell.industry === selected.industry && s.cell.jobRoleId === selected.jobRoleId,
-          )
-        : [],
-    [selected, simulations],
+    () => (selected ? runsInCell(simulations, selected, roles) : []),
+    [roles, selected, simulations],
   )
   const bank = useMemo(() => buildBank(inCell.map((s) => s.run)), [inCell])
   const blockers = useMemo(() => blockersIn(inCell.map((s) => s.run)), [inCell])

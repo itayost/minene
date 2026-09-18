@@ -81,3 +81,33 @@ describe('the lab, before anything has been run', () => {
     await waitFor(() => expect(sims.listSimulations).toHaveBeenCalledTimes(2))
   })
 })
+
+describe('the cell whose runs outlived their role', () => {
+  it('reads the bank from every run the cell counted, not just the ones with no role id', async () => {
+    // job_role_id is written against the catalogue as it stood when the run was
+    // queued, and roles are hard-deleted -- so matrix-data.ts collects a run
+    // whose role id no longer resolves into the UNASSIGNED column alongside the
+    // runs that never had one. The panel under that column has to select the
+    // same way. Selecting on `jobRoleId === null` alone puts two populations on
+    // one screen: a headline saying 100% over one run, and a bank built from
+    // zero that reports nothing here was ever scored.
+    sims.listSimulations.mockResolvedValue([
+      {
+        id: 's1',
+        cell: { industry: 'אופנה', jobRoleId: 'deleted-role' },
+        run: {
+          state: { outcome: 'agreed', blockers: ['overloaded'] },
+          score: { winningCategory: 'social_proof', winningArgument: 'כולם כבר עושים את זה' },
+          violations: [],
+        },
+      },
+    ])
+    const user = setup()
+
+    await user.click(
+      await screen.findByRole('gridcell', { name: 'אופנה, ללא תפקיד, 100 אחוז, 1 ריצות' }),
+    )
+
+    expect(await screen.findByText('ניצח 1×')).toBeVisible()
+  })
+})
