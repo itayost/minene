@@ -1,11 +1,13 @@
 import {
   COMMITMENT_MARKERS,
+  CONCRETE_TIME_MARKERS,
   FATIGUE_MARKERS,
   MAX_ARGUMENTS_PER_TURN,
   MAX_INTERACTIONS,
   MAX_WORDS_PER_MESSAGE,
   MAX_WORDS_PER_SENTENCE,
   REFUSAL_MARKERS,
+  VAGUE_COMMITMENT_MARKERS,
 } from './knowledge'
 import type { ConversationState, Outcome, PersuasionPlan, RuleViolation, Rung, Turn } from './types'
 
@@ -30,6 +32,10 @@ export interface RuleConfig {
   enforceAskBeforeQuestions: boolean
   /** Climb the ladder one rung at a time instead of jumping. */
   enforceOneRungAtATime: boolean
+  /** Unanswered messages before the conversation is over. */
+  maxSilences: number
+  /** An unanswered message climbs one rung: reminder, personal approach, manager. */
+  enforceSilenceLadder: boolean
 }
 
 export const DEFAULT_RULES: RuleConfig = {
@@ -41,6 +47,8 @@ export const DEFAULT_RULES: RuleConfig = {
   enforceIdentity: true,
   enforceAskBeforeQuestions: true,
   enforceOneRungAtATime: true,
+  maxSilences: 3,
+  enforceSilenceLadder: true,
 }
 
 const SENTENCE_SPLIT = /(?<=[.!?׃…]|\n)\s+/
@@ -73,7 +81,8 @@ function containsAny(text: string, markers: string[]): boolean {
  * greeting is someone busy, not someone worn down by being persuaded.
  */
 export function fatigueScore(targetTurns: Turn[]): number {
-  const underPersuasion = targetTurns.filter((t) => t.interaction >= 1)
+  const answered = targetTurns.filter((t) => !t.silent)
+  const underPersuasion = answered.filter((t) => t.interaction >= 1)
   if (underPersuasion.length === 0) return 0
   const recent = underPersuasion.slice(-3)
   let score = 0
@@ -107,8 +116,41 @@ export function fatigueScore(targetTurns: Turn[]): number {
 /** Read the counterpart's reply for an explicit decision. Silence is not a yes. */
 export function detectOutcome(targetText: string): Outcome {
   if (containsAny(targetText, REFUSAL_MARKERS)) return 'refused'
-  if (containsAny(targetText, COMMITMENT_MARKERS)) return 'agreed'
+  if (containsAny(targetText, COMMITMENT_MARKERS)) {
+    // A yes with a vague time and no concrete start is the spec's "כן כן, מחר".
+    const vague = containsAny(targetText, VAGUE_COMMITMENT_MARKERS)
+    const concrete = containsAny(targetText, CONCRETE_TIME_MARKERS)
+    return vague && !concrete ? 'deferred' : 'agreed'
+  }
   return 'open'
+}
+
+export const silenceCount = (turns: readonly Turn[]): number =>
+  turns.filter((t) => t.role === 'target' && t.silent).length
+
+/**
+ * The counterpart said nothing. The engine still has to act.
+ *
+ * Climbing exactly one rung per unanswered message is the product spec's ladder:
+ * a reminder, then a personal approach, then the manager. The run ends at
+ * `maxSilences` because a fourth message to someone who has answered none of
+ * three is not persuasion, it is noise.
+ */
+export function applySilence(
+  turns: Turn[],
+  state: ConversationState,
+  rules: RuleConfig = DEFAULT_RULES,
+): { turn: Turn; state: ConversationState; stopped: { stop: boolean; reason: string | null } } {
+  const turn: Turn = { role: 'target', text: '', silent: true, interaction: state.interaction }
+  const silences = silenceCount([...turns, turn])
+
+  const newState: ConversationState = {
+    ...state,
+    rung: rules.enforceSilenceLadder ? nextRung(state, rules) : state.rung,
+    outcome: silences >= rules.maxSilences ? 'no_response' : state.outcome,
+  }
+
+  return { turn, state: newState, stopped: shouldStop(newState, rules) }
 }
 
 export function initialState(): ConversationState {
@@ -147,6 +189,8 @@ export function shouldStop(
   if (state.outcome === 'agreed') return { stop: true, reason: 'הושגה הסכמה מפורשת' }
   if (state.outcome === 'refused')
     return { stop: true, reason: 'סירוב מפורש. עוברים לחלופה או להעברה למנהל' }
+  if (state.outcome === 'no_response')
+    return { stop: true, reason: 'הנמען לא ענה. עוברים להסלמה ניהולית' }
   if (state.interaction >= rules.maxInteractions)
     return { stop: true, reason: `עברנו ${rules.maxInteractions} אינטראקציות בלי החלטה` }
   // Fatigue measures replies decaying under persuasion. Before the ask is on the

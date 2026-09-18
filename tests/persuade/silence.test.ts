@@ -94,3 +94,82 @@ describe('a turn nobody answered', () => {
     ])
   })
 })
+
+import {
+  applySilence,
+  DEFAULT_RULES,
+  detectOutcome,
+  fatigueScore,
+  initialState,
+  silenceCount,
+} from '../../src/persuade/engine/rules'
+import type { ConversationState } from '../../src/persuade/engine/types'
+
+describe('the ladder answers silence', () => {
+  test('silence is not fatigue', () => {
+    const tired = [
+      { role: 'target' as const, text: 'בסדר', interaction: 1 },
+      { role: 'target' as const, text: 'נראה', interaction: 2 },
+    ]
+    expect(fatigueScore(tired)).toBeGreaterThan(0)
+    expect(fatigueScore([silentTurn(1), silentTurn(2)])).toBe(0)
+    expect(silenceCount([...tired, silentTurn(3)])).toBe(1)
+  })
+
+  test('each unanswered message climbs exactly one rung', () => {
+    let state: ConversationState = { ...initialState(), interaction: 1, rung: 1 }
+    const turns: Turn[] = []
+
+    const first = applySilence(turns, state)
+    expect(first.turn).toEqual({ role: 'target', text: '', silent: true, interaction: 1 })
+    expect(first.state.rung).toBe(2)
+    expect(first.stopped.stop).toBe(false)
+
+    state = { ...first.state, interaction: 2 } as ConversationState
+    const second = applySilence([first.turn], state)
+    expect(second.state.rung).toBe(3)
+    expect(second.stopped.stop).toBe(false)
+  })
+
+  test('three unanswered messages end the run as no_response, two do not', () => {
+    const state = { ...initialState(), interaction: 3, rung: 3 as const }
+    const twoSilences = [silentTurn(1), silentTurn(2)]
+
+    const third = applySilence(twoSilences, state)
+
+    expect(third.state.outcome).toBe('no_response')
+    expect(third.stopped.stop).toBe(true)
+    expect(third.stopped.reason).toContain('לא ענה')
+
+    const second = applySilence([silentTurn(1)], { ...state, interaction: 2 })
+    expect(second.state.outcome).toBe('open')
+    expect(second.stopped.stop).toBe(false)
+  })
+
+  test('the ladder can be switched off, and then silence only counts', () => {
+    const rules = { ...DEFAULT_RULES, enforceSilenceLadder: false }
+    const state = { ...initialState(), interaction: 1, rung: 1 as const }
+
+    const result = applySilence([], state, rules)
+
+    expect(result.state.rung).toBe(1)
+    expect(result.turn.silent).toBe(true)
+  })
+})
+
+describe('a vague yes is not a yes', () => {
+  test('a commitment with a vague time defers', () => {
+    expect(detectOutcome('כן כן, מחר')).toBe('deferred')
+    expect(detectOutcome('סגור, אשתדל בהמשך')).toBe('deferred')
+  })
+
+  test('a commitment with a real start still agrees', () => {
+    expect(detectOutcome('סגור, אני עושה את זה מחר בבוקר בתשע')).toBe('agreed')
+    expect(detectOutcome('סגור, אני עושה את זה')).toBe('agreed')
+  })
+
+  test('a refusal is still a refusal and an open reply is still open', () => {
+    expect(detectOutcome('לא מסכים, זה לא עובד')).toBe('refused')
+    expect(detectOutcome('כמה זמן זה לוקח?')).toBe('open')
+  })
+})

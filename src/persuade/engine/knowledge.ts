@@ -225,6 +225,7 @@ export const COMMITMENT_MARKERS = [
   'מתחילים',
   'בוא ננסה',
   'מוכן לנסות',
+  'כן כן',
 ]
 
 export const REFUSAL_MARKERS = [
@@ -235,6 +236,41 @@ export const REFUSAL_MARKERS = [
   'לא אעשה',
   'לא הולך לעשות',
   'זה לא התפקיד שלי',
+]
+
+/**
+ * A yes with nothing behind it.
+ *
+ * "כן כן, מחר" is the product spec's own example of the failure this engine
+ * exists to prevent: agreement that never became execution. A commitment marker
+ * next to one of these, with no concrete start, is a deferral.
+ */
+export const VAGUE_COMMITMENT_MARKERS = [
+  'כן כן',
+  'מחר',
+  'אשתדל',
+  'בקרוב',
+  'נראה מה יהיה',
+  'אחר כך',
+  'בהמשך',
+  'נסתדר',
+]
+
+/** A time you could put in a calendar. A vague yes next to one of these is a real yes. */
+export const CONCRETE_TIME_MARKERS = [
+  'בשעה',
+  'בבוקר',
+  'בערב',
+  'לפני הפתיחה',
+  'אחרי הסגירה',
+  'ביום ראשון',
+  'ביום שני',
+  'ביום שלישי',
+  'ביום רביעי',
+  'ביום חמישי',
+  'בתשע',
+  'בעשר',
+  'בשמונה',
 ]
 
 export const MAX_INTERACTIONS = 4
