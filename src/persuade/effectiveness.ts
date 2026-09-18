@@ -29,6 +29,15 @@ export interface EffectivenessRun {
   fatigue: number
   /** The model id per role that produced the run. Null on rows predating it. */
   models?: Record<string, string> | null
+  /**
+   * The experiment key this run belongs to, if any (see experiments.ts).
+   *
+   * An experiment arm runs under a RuleConfig deliberately different from the
+   * deployed default -- a shorter word cap, a lower fatigue threshold -- so a
+   * run carrying this is not evidence about the technique under normal
+   * conditions, it is evidence about the arm. Null on an ordinary run.
+   */
+  experiment?: string | null
 }
 
 export interface Slice {
@@ -193,6 +202,14 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
   >()
 
   for (const { run, offered } of inputs) {
+    // An experiment arm's run says nothing about the deployed default -- see
+    // the caveat on EffectivenessRun.experiment. Skipped entirely rather than
+    // folded into `runs` or `offeredCount`: unlike an unscored agreed run
+    // (which is genuinely uninformative but still real evidence of exhaustion
+    // under the deployed config), this run's own RuleConfig may differ on the
+    // very settings offeredCount and negativeReactionPct are measuring.
+    if (run.experiment) continue
+
     const { attempted, won } = categoriesInPlay(run, offered)
     const informative = isInformative(run)
 
@@ -286,6 +303,18 @@ export function distinctModelFingerprints(inputs: readonly EffectivenessInput[])
 /** Runs carrying no model fingerprint at all -- an unknown, reported as one. */
 export function unrecordedModels(inputs: readonly EffectivenessInput[]): number {
   return inputs.filter((i) => !i.run.models).length
+}
+
+/**
+ * Runs `buildEffectiveness` excluded because they belong to an experiment arm.
+ *
+ * The exclusion itself is silent by design -- an experiment run must not leak
+ * into a technique's numbers -- but the count exists so the caller can say a
+ * number was left out, the same way the world-split and model-fingerprint
+ * counts above are surfaced rather than acted on quietly.
+ */
+export function experimentRuns(inputs: readonly EffectivenessInput[]): number {
+  return inputs.filter((i) => i.run.experiment).length
 }
 
 /**

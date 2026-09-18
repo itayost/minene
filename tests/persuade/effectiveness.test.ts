@@ -6,6 +6,7 @@ import {
   buildEffectiveness,
   distinctModelFingerprints,
   type EffectivenessInput,
+  experimentRuns,
   formatTechnique,
   unrecordedModels,
 } from '../../src/persuade/effectiveness'
@@ -210,6 +211,51 @@ describe('whether the technique comparison crosses a model change', () => {
 
     expect(distinctModelFingerprints(inputs)).toBe(1)
     expect(unrecordedModels(inputs)).toBe(2)
+  })
+})
+
+describe('whether the technique comparison crosses an experiment arm', () => {
+  // An experiment (see experiments.ts's queueExperiment) runs its arms under a
+  // RuleConfig that is deliberately NOT the deployed default -- that is the
+  // whole point of an arm. A win rate built from those runs measures the arm's
+  // setting as much as the category, exactly the failure shape
+  // distinctModelFingerprints already guards against for the model axis.
+  const withExperiment = (experiment: string | null): EffectivenessInput => ({
+    run: {
+      outcome: 'agreed',
+      turns: turns(2),
+      score: { winningCategory: 'personal_benefit' } as RunScore,
+      world: world('forgot'),
+      personaId: 'adi',
+      fatigue: 0,
+      experiment,
+    },
+    offered: ['personal_benefit'],
+  })
+
+  test('a run from an experiment arm does not join the technique win rate', () => {
+    const reports = buildEffectiveness([
+      withExperiment(null),
+      withExperiment(null),
+      // Ran under message-length's 25-word arm, not the deployed default.
+      withExperiment('message-length'),
+    ])
+
+    const personal = reports.find((r) => r.category === 'personal_benefit')!
+    // Only the two ordinary runs should count. Pooling the third in would
+    // report 3 runs / 3 wins as evidence about the deployed default, when a
+    // third of that evidence ran under a different word limit entirely.
+    expect(personal.runs).toBe(2)
+    expect(personal.wins).toBe(2)
+  })
+
+  test('experimentRuns counts how many were excluded, so it is never silent', () => {
+    const count = experimentRuns([
+      withExperiment(null),
+      withExperiment('message-length'),
+      withExperiment('message-length'),
+    ])
+    expect(count).toBe(2)
   })
 })
 
