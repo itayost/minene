@@ -113,9 +113,17 @@ passed through. `tests/persuade/world-isolation.test.ts` asserts the signature
 and the rendered text, because a leak there makes every number the lab produces
 a measurement of a bot reading an answer key.
 
-- `worldCells()` enumerates 162 distinct worlds. `planSweep` walks them in order
+- `worldCells()` enumerates 972 distinct worlds. `planSweep` walks them in order
   and resumes with `after`, so coverage is a fact rather than a hope about a
   random seed.
+- **Silence is a world, not an error.** `responsiveness` decides whether the
+  simulated person answers (`answers`), ignores the opening message (`slow`) or
+  never answers (`silent`). A silent turn calls no model, is stored as
+  `{ silent: true, text: '' }` and reaches the persuader as `[לא ענה]`. Each
+  unanswered message climbs one rung (reminder, personal approach, manager) and
+  `maxSilences` of them end the run as `no_response`. A world written before the
+  axis existed has no `responsiveness` and means `answers`, which is what keeps
+  the jobs queued before the change runnable.
 - `pnpm report:techniques` reads what each technique is doing, sliced by persona
   and by the reason. Note the denominator: a technique's `runs` counts runs
   where the plan **offered** it, not where it was used — fair between techniques
