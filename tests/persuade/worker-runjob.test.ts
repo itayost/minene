@@ -74,6 +74,8 @@ describe('runJob', () => {
       persuader: { input: 10, output: 10 },
       target: { input: 10, output: 10 },
       judge: { input: 10, output: 10 },
+      // A simulation never calls the planner; generation is what spends there.
+      planner: { input: 0, output: 0 },
     })
     expect(captured.pass).toBe(3)
     expect(captured).toMatchObject({

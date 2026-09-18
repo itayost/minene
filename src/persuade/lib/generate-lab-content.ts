@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { NoObjectGeneratedError } from 'ai'
 import type { PersuasionPlan, TargetPersona } from '../engine/types'
+import { createUsageMeter, type TokenCount, withUsageMeter } from '../engine/usage'
 import {
   COMMON_WORD_NAMES,
   mentionsName,
@@ -54,7 +55,22 @@ export interface GenerateReport {
   written: string[]
   skipped: string[]
   rejected: Rejection[]
+  /**
+   * What the run cost in planner tokens.
+   *
+   * Generation is the largest single spend this project makes -- 181 plans and
+   * personas emptied a balance without leaving a trace -- and nothing recorded
+   * it, because token counting was wired into the simulation worker and not
+   * here. Reported rather than stored: a run is a one-off a person watches.
+   */
+  usage: TokenCount
 }
+
+/**
+ * What one phase produced. The usage total belongs to the run as a whole, so
+ * only generateLabContent reports it.
+ */
+type PhaseReport = Omit<GenerateReport, 'usage'>
 
 export interface GeneratorDeps {
   generatePlan: (need: RoleNeed, requester: string) => Promise<PersuasionPlan>
@@ -294,7 +310,7 @@ async function generatePersonas(
   roles: readonly RoleRef[],
   options: GenerateOptions,
   deps: GeneratorDeps,
-): Promise<GenerateReport> {
+): Promise<PhaseReport> {
   // Read after the plan phase, so this run's own plans are checked too: a
   // persona named after something this run's plan just said must be caught,
   // not just a name from a plan that already existed.
@@ -326,7 +342,7 @@ async function generatePlans(
   needs: readonly RoleNeed[],
   options: GenerateOptions,
   deps: GeneratorDeps,
-): Promise<GenerateReport> {
+): Promise<PhaseReport> {
   // Plans run before personas exist for this run, so only personas that
   // already existed before this run are checked here. That is deliberate: a
   // plan cannot see a name its own run has not generated yet, and personas
@@ -399,12 +415,19 @@ export async function generateLabContent(
 
   // Plans first: a persona named after something a plan says -- this run's
   // plans included -- is checked against the plans, not the other way round.
-  const plans = await generatePlans(client, needs, options, deps)
-  const personas = await generatePersonas(client, rolesOf(needs), options, deps)
+  // One meter for the whole run: every generator call happens inside this
+  // scope, so neither phase has to thread a counter through itself.
+  const meter = createUsageMeter()
+  const { plans, personas } = await withUsageMeter(meter, async () => {
+    const generatedPlans = await generatePlans(client, needs, options, deps)
+    const generatedPersonas = await generatePersonas(client, rolesOf(needs), options, deps)
+    return { plans: generatedPlans, personas: generatedPersonas }
+  })
 
   return {
     written: [...plans.written, ...personas.written],
     skipped: [...plans.skipped, ...personas.skipped],
     rejected: [...plans.rejected, ...personas.rejected],
+    usage: meter.totals().planner,
   }
 }

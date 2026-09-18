@@ -2,6 +2,7 @@
  * @vitest-environment node
  */
 import { afterEach, describe, expect, test } from 'vitest'
+import { createUsageMeter, withUsageMeter } from '../../src/persuade/engine/usage'
 import {
   COMPANY_MANAGEMENT,
   generatePersona,
@@ -181,5 +182,25 @@ describe('generatePersona', () => {
     await generatePersona(need(), 1, ['אושר'])
 
     expect(prompts()[0]).toContain('אושר')
+  })
+})
+
+describe('what generation costs', () => {
+  test('a plan call records its tokens under the planner role', async () => {
+    // Generation is the most expensive thing this project does, and it used to
+    // spend without leaving a trace: the meter was wired into the simulation
+    // worker only.
+    // Replayed in order: the plan call, then the persona call.
+    setModelOverrides({ planner: jsonModel([PLAN_PAYLOAD, PERSONA_PAYLOAD]) })
+    const meter = createUsageMeter()
+
+    await withUsageMeter(meter, async () => {
+      await generatePlan(need(), 'מנהל אזור')
+      await generatePersona(need(), 1, [])
+    })
+
+    // The scripted model reports 10 in and 10 out per call; two calls.
+    expect(meter.totals().planner).toEqual({ input: 20, output: 20 })
+    expect(meter.totals().persuader).toEqual({ input: 0, output: 0 })
   })
 })

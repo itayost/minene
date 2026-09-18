@@ -13,7 +13,12 @@ import { AsyncLocalStorage } from 'node:async_hooks'
  * Outside a scope, recording is a no-op, so the chat route pays nothing.
  */
 
-export type UsageRole = 'persuader' | 'target' | 'judge'
+/**
+ * `planner` covers stage 0 and the lab content generator: both call the planner
+ * model, and generating 181 plans and personas is the single largest spend this
+ * project has made. It was invisible until this role existed.
+ */
+export type UsageRole = 'persuader' | 'target' | 'judge' | 'planner'
 
 export interface TokenCount {
   input: number
@@ -36,7 +41,7 @@ export interface UsageMeter {
 const zero = (): TokenCount => ({ input: 0, output: 0 })
 
 export function createUsageMeter(): UsageMeter {
-  let totals: UsageTotals = { persuader: zero(), target: zero(), judge: zero() }
+  let totals: UsageTotals = { persuader: zero(), target: zero(), judge: zero(), planner: zero() }
 
   return {
     record(role, usage) {

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { RUNG_LABELS } from '../engine/knowledge'
 import { normalizeEscalation, planSchema } from '../engine/plan-schema'
 import type { Argument, PersuasionPlan, TargetPersona } from '../engine/types'
+import { recordUsage } from '../engine/usage'
 import { callOptions, model } from './model'
 
 /**
@@ -86,13 +87,14 @@ ${ladder()}`,
 
 export async function generatePlan(need: RoleNeed, requester: string): Promise<PersuasionPlan> {
   const { system, prompt } = planPrompt(need, requester)
-  const { object } = await generateObject({
+  const { object, usage } = await generateObject({
     model: model('planner'),
     schema: planSchema,
     system,
     prompt,
     ...callOptions('planner'),
   })
+  recordUsage('planner', usage)
 
   return {
     ...object,
@@ -143,13 +145,14 @@ export async function generatePersona(
   avoidNames: readonly string[],
 ): Promise<TargetPersona> {
   const { system, prompt } = personaPrompt(role, index, avoidNames)
-  const { object } = await generateObject({
+  const { object, usage } = await generateObject({
     model: model('planner'),
     schema: personaSchema,
     system,
     prompt,
     ...callOptions('planner'),
   })
+  recordUsage('planner', usage)
 
   return {
     id: personaKeyFor(role, index),
