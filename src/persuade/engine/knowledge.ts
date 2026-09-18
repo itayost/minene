@@ -244,10 +244,12 @@ export const REFUSAL_MARKERS = [
  * "כן כן, מחר" is the product spec's own example of the failure this engine
  * exists to prevent: agreement that never became execution. A commitment marker
  * next to one of these, with no concrete start, is a deferral.
+ *
+ * A named day like "מחר" is a real anchor and makes a commitment concrete.
+ * Only a yes with no anchor is a deferral.
  */
 export const VAGUE_COMMITMENT_MARKERS = [
   'כן כן',
-  'מחר',
   'אשתדל',
   'בקרוב',
   'נראה מה יהיה',

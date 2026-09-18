@@ -168,6 +168,12 @@ describe('a vague yes is not a yes', () => {
     expect(detectOutcome('סגור, אני עושה את זה')).toBe('agreed')
   })
 
+  test('a named day is an anchor, not a vague yes', () => {
+    // "מחר" names a specific day, so it anchors the commitment, making it real.
+    // Only "כן כן" (yes yes) without an anchor is a deferral.
+    expect(detectOutcome('סגור, אני עושה את זה מחר')).toBe('agreed')
+  })
+
   test('a refusal is still a refusal and an open reply is still open', () => {
     expect(detectOutcome('לא מסכים, זה לא עובד')).toBe('refused')
     expect(detectOutcome('כמה זמן זה לוקח?')).toBe('open')

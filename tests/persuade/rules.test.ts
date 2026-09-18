@@ -64,7 +64,7 @@ describe('fatigue detection', () => {
 
 describe('outcome detection', () => {
   test('explicit commitment reads as agreed', () => {
-    expect(detectOutcome('סגור, אני עושה את זה מחר')).toBe('deferred')
+    expect(detectOutcome('סגור, אני עושה את זה מחר')).toBe('agreed')
   })
 
   test('explicit refusal reads as refused', () => {
