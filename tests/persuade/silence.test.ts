@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  */
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test } from 'vitest'
 import {
   historyForModel,
   historyForTarget,
@@ -177,5 +177,74 @@ describe('a vague yes is not a yes', () => {
   test('a refusal is still a refusal and an open reply is still open', () => {
     expect(detectOutcome('לא מסכים, זה לא עובד')).toBe('refused')
     expect(detectOutcome('כמה זמן זה לוקח?')).toBe('open')
+  })
+})
+
+import { runSimulation } from '../../src/persuade/engine/simulation'
+import type { Run } from '../../src/persuade/engine/types'
+import { setModelOverrides } from '../../src/persuade/lib/model'
+import { jsonModel, PERSUADER_PAYLOAD, TEST_PERSONA, TEST_PLAN, textModel } from './helpers'
+
+afterEach(() => setModelOverrides({}))
+
+async function collect(world: WorldState | null): Promise<Run> {
+  let run: Run | null = null
+  for await (const event of runSimulation({ plan: TEST_PLAN, persona: TEST_PERSONA, world })) {
+    if (event.type === 'done') run = event.run
+  }
+  if (!run) throw new Error('no run')
+  return run
+}
+
+describe('a run against someone who does not answer', () => {
+  test('never calls the counterpart, and ends as no_response', async () => {
+    let targetCalls = 0
+    const counting = textModel(['לא אמור להיקרא'])
+    setModelOverrides({
+      persuader: jsonModel([PERSUADER_PAYLOAD]),
+      target: new Proxy(counting, {
+        get(model, key, receiver) {
+          if (key === 'doGenerate') targetCalls += 1
+          return Reflect.get(model, key, receiver)
+        },
+      }),
+    })
+
+    const run = await collect(buildWorld({ ...cell(), responsiveness: 'silent' }))
+
+    expect(targetCalls).toBe(0)
+    expect(run.state.outcome).toBe('no_response')
+    expect(run.turns.filter((t) => t.silent)).toHaveLength(3)
+    expect(run.turns.filter((t) => t.role === 'persuader')).toHaveLength(3)
+    // The ladder climbed rather than standing still. Exactly one rung per
+    // silence is asserted as a unit in the applySilence test above; here the
+    // interaction counter also bounds the rung, so pinning a number would test
+    // that interaction instead of this behaviour.
+    expect(run.state.rung).toBeGreaterThanOrEqual(2)
+  })
+
+  test('a slow world is ignored once and then answers', async () => {
+    setModelOverrides({
+      persuader: jsonModel([PERSUADER_PAYLOAD]),
+      target: textModel(['סגור, אני עושה את זה']),
+    })
+
+    const run = await collect(buildWorld({ ...cell(), responsiveness: 'slow' }))
+
+    expect(run.turns.filter((t) => t.silent)).toHaveLength(1)
+    expect(run.state.outcome).toBe('agreed')
+  })
+
+  test('a world that answers behaves exactly as before', async () => {
+    setModelOverrides({
+      persuader: jsonModel([PERSUADER_PAYLOAD]),
+      target: textModel(['סגור, אני עושה את זה']),
+    })
+
+    const run = await collect(buildWorld({ ...cell(), responsiveness: 'answers' }))
+
+    expect(run.turns.some((t) => t.silent)).toBe(false)
+    expect(run.state.outcome).toBe('agreed')
+    expect(run.turns).toHaveLength(2)
   })
 })

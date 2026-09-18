@@ -135,6 +135,10 @@ export const silenceCount = (turns: readonly Turn[]): number =>
  * a reminder, then a personal approach, then the manager. The run ends at
  * `maxSilences` because a fourth message to someone who has answered none of
  * three is not persuasion, it is noise.
+ *
+ * Relies on the caller advancing `state.interaction` between silences (a
+ * persuader turn runs before each one in `runSimulation`), since `nextRung` is
+ * also capped by the interaction counter.
  */
 export function applySilence(
   turns: Turn[],
