@@ -16,6 +16,7 @@ const state = (overrides: Partial<ConversationState> = {}): ConversationState =>
   identityStated: true,
   startTimeSet: true,
   followUpAnnounced: true,
+  silences: 0,
   ...overrides,
 })
 

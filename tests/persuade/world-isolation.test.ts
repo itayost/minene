@@ -55,6 +55,26 @@ describe('the persuader cannot see the world', () => {
     expect(rendered).not.toContain('נשארו לך')
   })
 
+  it('never renders the responsiveness text either', () => {
+    // F7: the responsiveness axis is as much a fact about the world as the
+    // hidden truth and the win condition above, and RESPONSIVENESS_TEXT.silent
+    // in particular would hand the persuader the answer key -- "he does not
+    // answer at all" -- for a property it is supposed to discover from actual
+    // silence, not read off a prompt.
+    const rendered = persuaderSystemPrompt(TEST_PLAN, initialState(), true, DEFAULT_RULES, {
+      name: 'עדי',
+      role: 'מנהלת חנות',
+    })
+
+    expect(rendered).not.toContain('אתה עונה להודעות שמגיעות אליך')
+    // R5: the silent text is 'אתה לא עונה בכלל. אל תענה לאף הודעה...' -- the
+    // old assertion checked for 'אל תענה בכלל', a string that appears nowhere
+    // in it (the actual second sentence is 'אל תענה לאף הודעה'), so it passed
+    // without ever having covered the one case it was added for.
+    expect(rendered).not.toContain('אתה לא עונה בכלל')
+    expect(rendered).not.toContain('להודעה הראשונה אתה לא עונה בכלל')
+  })
+
   it('gives the simulated employee all of it', () => {
     const rendered = targetSystemPrompt(TEST_PERSONA, TEST_PLAN, world)
 
@@ -63,6 +83,7 @@ describe('the persuader cannot see the world', () => {
     // The conditions are a checklist, so agreement is earned against a written
     // standard rather than decided by mood.
     expect(rendered).toContain('מישהו הכיר בעומס שלך לפני שביקש')
+    expect(rendered).toContain('אתה עונה להודעות שמגיעות אליך.')
   })
 
   it('still works with no world, the way a hand-started run does', () => {
@@ -88,9 +109,9 @@ describe('the persuader cannot see the world', () => {
 describe('the space of worlds', () => {
   it('enumerates every combination, so coverage is a fact rather than a hope', () => {
     // 3 motivations x 3 workloads x 6 reasons x 3 pressure responses x 2
-    // dispositions.
-    expect(worldCells()).toHaveLength(324)
-    expect(new Set(worldCells().map((c) => JSON.stringify(c))).size).toBe(324)
+    // dispositions x 3 responsiveness.
+    expect(worldCells()).toHaveLength(972)
+    expect(new Set(worldCells().map((c) => JSON.stringify(c))).size).toBe(972)
   })
 
   it('lets disposition change what it would take, not just what is printed', () => {

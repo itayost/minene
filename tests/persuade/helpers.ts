@@ -268,6 +268,7 @@ export function makeRun(id: string, overrides: Partial<Run> = {}): Run {
       identityStated: true,
       startTimeSet: true,
       followUpAnnounced: true,
+      silences: 0,
       signals: {
         motivatedBy: [],
         energy: 'unknown',

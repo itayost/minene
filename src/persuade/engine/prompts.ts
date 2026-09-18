@@ -130,18 +130,42 @@ export function persuaderSystemPrompt(
   hasSpoken: boolean,
   rules: RuleConfig = DEFAULT_RULES,
   recipient: Recipient | null = null,
+  /**
+   * F2: whether the message right before this one went unanswered.
+   *
+   * Defaulted so every existing caller (dataset.ts, every earlier test) keeps
+   * producing the exact prompt it always did -- this parameter changes
+   * nothing unless the caller opts in.
+   */
+  lastTurnSilent = false,
 ): string {
-  const opening = !hasSpoken
-    ? `זו ההודעה הראשונה. המבנה שלה קבוע ואסור לסטות ממנו:
+  // A silent last turn replaces the normal opening guidance rather than
+  // stacking on top of it: "now state the ask in full" and "send a short
+  // reminder instead of the whole ask" cannot both be the instruction for the
+  // same message.
+  const opening = lastTurnSilent
+    ? ''
+    : !hasSpoken
+      ? `זו ההודעה הראשונה. המבנה שלה קבוע ואסור לסטות ממנו:
 1. שלום קצר + הצגת השליחות (בשם מי אתה פונה).
 2. שאלה קצרה אחת מה שלומו.
 זהו. אל תשפוך את הבקשה יחד עם "מה נשמע". המתן לתשובה.
 ההודעה הזאת לא נספרת כאינטראקציית שכנוע.`
-    : !state.askStated
-      ? `עכשיו אומרים את הבקשה, במלואה ובדיוק. מיד אחריה תועלת אישית אחת חזקה.
+      : !state.askStated
+        ? `עכשיו אומרים את הבקשה, במלואה ובדיוק. מיד אחריה תועלת אישית אחת חזקה.
 ואז שאלה אחת קצרה: זה אפשרי?
 אסור לשאול שאלות חקירה לפני שהבקשה נאמרה. זו הטעות הכי נפוצה.`
-      : ''
+        : ''
+
+  // Appended directly onto `opening` with no separating blank line in the
+  // source, and empty when there is nothing to say: when `lastTurnSilent` is
+  // false this contributes zero characters, so the rendered prompt is
+  // byte-identical to the version of this function before F2.
+  const silenceNote = lastTurnSilent
+    ? `\n\nהוא לא ענה על ${SILENT_TURN_MARKER}. אל תחזור על כל הבקשה מההתחלה - שלח תזכורת קצרה.
+מדרגת ההסלמה של ההודעה הזאת: ${state.rung} (${RUNG_LABELS[state.rung]}).
+סמן blocker כ-no_reply.`
+    : ''
 
   return `אתה מנוע שכנוע. אתה מדבר עברית פשוטה עם מנהל או עובד, ומטרתך שהוא באמת יעשה משהו.
 
@@ -158,7 +182,7 @@ ${formatPlan(plan, Math.min(state.rung + 1, 5))}
 
 ${formatState(state, rules)}
 
-${opening}
+${opening}${silenceNote}
 
 בכל תור: קודם אבחן מה עוצר אותו עכשיו, אחר כך בחר כלי אחד או שניים, ורק אז כתוב.
 אם הוא כבר הסכים - תפסיק לשכנע. תסגור מתי מתחילים.
@@ -220,17 +244,48 @@ ${situation}
 מבקשים ממך: ${plan.ask.oneLiner}`
 }
 
+/** What the persuader sees where a reply should have been. */
+export const SILENT_TURN_MARKER = '[לא ענה]'
+
 export function historyForModel(turns: Turn[]): { role: 'user' | 'assistant'; content: string }[] {
   return turns.map((t) => ({
     role: t.role === 'persuader' ? ('assistant' as const) : ('user' as const),
-    content: t.text,
+    content: t.silent ? SILENT_TURN_MARKER : t.text,
   }))
 }
 
-/** The counterpart sees the mirror image of the history. */
+/** The counterpart sees the mirror image of the history, minus its own silences. */
 export function historyForTarget(turns: Turn[]): { role: 'user' | 'assistant'; content: string }[] {
-  return turns.map((t) => ({
-    role: t.role === 'target' ? ('assistant' as const) : ('user' as const),
-    content: t.text,
-  }))
+  const messages = turns
+    .filter((t) => !t.silent)
+    .map((t) => ({
+      role: t.role === 'target' ? ('assistant' as const) : ('user' as const),
+      content: t.text,
+    }))
+  return mergeConsecutiveSameRole(messages)
+}
+
+/**
+ * Merge consecutive same-role messages into one, joined by newline.
+ *
+ * `historyForTarget` drops silent turns, so in a `slow` world the counterpart's
+ * next call would otherwise see two persuader messages in a row as two
+ * consecutive `user` messages -- a shape Anthropic's API rejects outright.
+ */
+function mergeConsecutiveSameRole(
+  messages: { role: 'user' | 'assistant'; content: string }[],
+): { role: 'user' | 'assistant'; content: string }[] {
+  const merged: { role: 'user' | 'assistant'; content: string }[] = []
+  for (const message of messages) {
+    const last = merged.at(-1)
+    if (last && last.role === message.role) {
+      merged[merged.length - 1] = {
+        role: last.role,
+        content: `${last.content}\n${message.content}`,
+      }
+    } else {
+      merged.push(message)
+    }
+  }
+  return merged
 }

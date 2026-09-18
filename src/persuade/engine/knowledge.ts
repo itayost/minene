@@ -141,6 +141,13 @@ export const BLOCKERS: BlockerSpec[] = [
     useTools: ['שכנוע להתמדה', 'חזרה ללמה התחלת', 'להקטין ולא לנתק רצף'],
     avoid: 'לא להגיד "אין דבר כזה אין כוח". להיות אמפתי וחד.',
   },
+  {
+    id: 'no_reply',
+    label: 'לא ענה בכלל',
+    signals: ['שום תגובה להודעה הקודמת'],
+    useTools: ['תזכורת קצרה', 'הסלמה לפי הסולם'],
+    avoid: 'לא לחזור על כל הבקשה מההתחלה. זו תזכורת, לא נאום חדש.',
+  },
 ]
 
 export const BLOCKER_LOOKUP: Record<string, BlockerSpec> = Object.fromEntries(
@@ -225,6 +232,7 @@ export const COMMITMENT_MARKERS = [
   'מתחילים',
   'בוא ננסה',
   'מוכן לנסות',
+  'כן כן',
 ]
 
 export const REFUSAL_MARKERS = [
@@ -236,6 +244,83 @@ export const REFUSAL_MARKERS = [
   'לא הולך לעשות',
   'זה לא התפקיד שלי',
 ]
+
+/**
+ * A yes with nothing behind it.
+ *
+ * "כן כן, מחר" is the product spec's own example of the failure this engine
+ * exists to prevent: agreement that never became execution. A commitment marker
+ * next to one of these, with no concrete start, is a deferral.
+ *
+ * A named day like "מחר" is a real anchor and makes a commitment concrete.
+ * Only a yes with no anchor is a deferral.
+ */
+export const VAGUE_COMMITMENT_MARKERS = [
+  'כן כן',
+  'אשתדל',
+  'בקרוב',
+  'נראה מה יהיה',
+  'אחר כך',
+  'בהמשך',
+  'נסתדר',
+]
+
+/**
+ * A time you could put in a calendar. A vague yes next to one of these is a
+ * real yes.
+ *
+ * Day names have no "ב" prefix, on purpose: `containsAny` is substring-based
+ * (see rules.ts), and "יום ראשון" is already a substring of "ביום ראשון" --
+ * writing the prefixed form only matched the prefixed form, and missed
+ * "אשתדל יום ראשון" with no preposition in front of it. All seven days are
+ * here now; Friday and Saturday were missing before.
+ *
+ * "בשעה" is deliberately NOT in this list. It is the idiom "בשעה טובה" (good
+ * luck) as often as it is a real time, so it is checked separately in
+ * rules.ts, and only counts when a digit or a spelled-out hour follows it.
+ */
+export const CONCRETE_TIME_MARKERS = [
+  'בבוקר',
+  'בערב',
+  'לפני הפתיחה',
+  'אחרי הסגירה',
+  'יום ראשון',
+  'יום שני',
+  'יום שלישי',
+  'יום רביעי',
+  'יום חמישי',
+  'יום שישי',
+  'יום שבת',
+  'היום',
+  'מחרתיים',
+  'בתשע',
+  'בעשר',
+  'בשמונה',
+]
+
+/**
+ * "בשעה" only anchors a commitment when a digit or a spelled-out hour follows
+ * it -- "בשעה 9" or "בשעה תשע", never the idiom "בשעה טובה" (good luck), which
+ * was being read as a real time and turning a vague "כן כן" into an agreement.
+ */
+export const CONCRETE_HOUR_PATTERN = /בשעה\s*(\d|אחת|שתיים|שתים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר)/
+
+/**
+ * A time you could put in a calendar without spelling out a word for it:
+ * "ב-9", "ב 9", "ב9", "9:30". The "ב" form is deliberately anchored to a
+ * leading "ב" rather than a bare `\d`, so a number that is not a time ("יש
+ * לי 3 ילדים") does not read as a schedule, and accepts a space as well as a
+ * hyphen before the digit -- "ב-9" and "ב 9" name the same nine o'clock and
+ * only the hyphenated spelling used to match.
+ *
+ * The negative lookahead excludes a quantity, not a time: "ב-2 שבועות" ("in
+ * two weeks") and "ב2 השבועות הקרובים" ("in the next two weeks", with the
+ * definite article on the unit word) share the "ב + digit" shape with a real
+ * clock time but name a vague duration, exactly the "כן כן, אשתדל" failure
+ * this engine exists to catch, not a start you could put in a calendar.
+ */
+export const CONCRETE_DIGIT_TIME_PATTERN =
+  /ב[-\s]?\d{1,2}(:\d{2})?(?!\s*ה?(?:שבועות|שבוע|חודשים|חודש|ימים|דקות|שעות))|\d{1,2}:\d{2}/
 
 export const MAX_INTERACTIONS = 4
 

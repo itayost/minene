@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { DEFAULT_RULES, initialState, type RuleConfig } from './rules'
+import { applySilence, DEFAULT_RULES, initialState, type RuleConfig } from './rules'
 import { targetReply } from './target'
 import { applyTargetReply, persuaderTurn } from './turn'
 import type {
@@ -10,7 +10,7 @@ import type {
   TargetPersona,
   Turn,
 } from './types'
-import type { WorldState } from './world'
+import { staysSilent, type WorldState } from './world'
 
 /**
  * A conversation between two parties: the persuader, which works by the rules, and
@@ -59,8 +59,11 @@ export async function* runSimulation(input: SimulationInput): AsyncGenerator<Sim
       break
     }
 
-    const reply = await targetReply(persona, plan, turns, world)
-    const t = applyTargetReply(reply, turns, state, rules)
+    // `i` counts persuader messages, so index 0 is the opening one: a `slow`
+    // world ignores exactly that and answers from the next.
+    const t = staysSilent(world, i)
+      ? applySilence(turns, state, rules)
+      : applyTargetReply(await targetReply(persona, plan, turns, world), turns, state, rules)
     turns.push(t.turn)
     state = t.state
     yield { type: 'turn', turn: t.turn, state }

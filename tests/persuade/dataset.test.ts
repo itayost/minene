@@ -2,6 +2,7 @@
  * @vitest-environment node
  */
 import { describe, expect, test } from 'vitest'
+import { SILENT_TURN_MARKER } from '../../src/persuade/engine/prompts'
 import { DEFAULT_RULES } from '../../src/persuade/engine/rules'
 import type { Run, RunScore, Turn } from '../../src/persuade/engine/types'
 import { buildDataset, type SourceRun, sourceRunsFromRows } from '../../src/persuade/lib/dataset'
@@ -60,10 +61,13 @@ const run = (turns: Turn[], outcome = 'agreed'): Run => ({
     identityStated: true,
     startTimeSet: true,
     followUpAnnounced: true,
+    silences: 0,
   },
   violations: [],
 })
 
+// responseValidity is optional on RunScore (F5): this fixture used to carry
+// it purely to satisfy the type, and no test here asserts on its value.
 const score = (grade: number): RunScore => ({ grade }) as RunScore
 
 const source = (over: Partial<SourceRun> = {}): SourceRun => ({
@@ -160,6 +164,33 @@ describe('the prompt each example replays', () => {
 
     const second = examples[1]!.messages
     expect(second.some((m) => m.role === 'user' && m.content === 'אין לי זמן')).toBe(true)
+  })
+
+  test('an example that follows a silence carries the F2 reminder guidance; the one before it does not', () => {
+    // The engine (turn.ts's turnRequest) decides this from whether the turn
+    // right before the current one was silent. Replaying without it would
+    // export a system prompt that never mentions the silence next to an
+    // answer the persuader model actually wrote under that guidance -- this
+    // file's own opening comment's failure mode: a prompt that does not
+    // match the answer teaches the model to answer a question it was never
+    // asked. This only bites `slow` runs that end `agreed`, which is exactly
+    // the data the default filter keeps.
+    const silentReply: Turn = { role: 'target', text: '', silent: true, interaction: 0 }
+    const first = persuader({ interaction: 0, rung: 1 })
+    const second = persuader({ interaction: 1, rung: 2 })
+    const { examples } = buildDataset([
+      source({ run: run([first, silentReply, second, target('סגור')]) }),
+    ])
+
+    expect(examples).toHaveLength(2)
+    // Asserted on the guidance text itself (the SILENT_TURN_MARKER and the
+    // "short reminder" instruction), not on `no_reply` -- that blocker id is
+    // in every prompt's blocker table regardless, so it would not distinguish
+    // the two examples.
+    expect(examples[0]!.messages[0]!.content).not.toContain(SILENT_TURN_MARKER)
+    expect(examples[0]!.messages[0]!.content).not.toContain('שלח תזכורת קצרה')
+    expect(examples[1]!.messages[0]!.content).toContain(SILENT_TURN_MARKER)
+    expect(examples[1]!.messages[0]!.content).toContain('שלח תזכורת קצרה')
   })
 })
 

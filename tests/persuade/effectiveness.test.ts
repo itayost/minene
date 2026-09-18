@@ -35,6 +35,8 @@ const input = (
   run: {
     outcome: outcome as EffectivenessInput['run']['outcome'],
     turns: turns(3),
+    // responseValidity is optional on RunScore (F5): stored rows never have
+    // it, so a fixture standing in for one should not either.
     score: winning === null ? null : ({ winningCategory: winning } as RunScore),
     world: world(reason),
     personaId,

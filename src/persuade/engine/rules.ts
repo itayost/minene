@@ -1,11 +1,15 @@
 import {
   COMMITMENT_MARKERS,
+  CONCRETE_DIGIT_TIME_PATTERN,
+  CONCRETE_HOUR_PATTERN,
+  CONCRETE_TIME_MARKERS,
   FATIGUE_MARKERS,
   MAX_ARGUMENTS_PER_TURN,
   MAX_INTERACTIONS,
   MAX_WORDS_PER_MESSAGE,
   MAX_WORDS_PER_SENTENCE,
   REFUSAL_MARKERS,
+  VAGUE_COMMITMENT_MARKERS,
 } from './knowledge'
 import type { ConversationState, Outcome, PersuasionPlan, RuleViolation, Rung, Turn } from './types'
 
@@ -30,6 +34,10 @@ export interface RuleConfig {
   enforceAskBeforeQuestions: boolean
   /** Climb the ladder one rung at a time instead of jumping. */
   enforceOneRungAtATime: boolean
+  /** Unanswered messages before the conversation is over. */
+  maxSilences: number
+  /** An unanswered message climbs one rung: reminder, personal approach, manager. */
+  enforceSilenceLadder: boolean
 }
 
 export const DEFAULT_RULES: RuleConfig = {
@@ -41,6 +49,8 @@ export const DEFAULT_RULES: RuleConfig = {
   enforceIdentity: true,
   enforceAskBeforeQuestions: true,
   enforceOneRungAtATime: true,
+  maxSilences: 3,
+  enforceSilenceLadder: true,
 }
 
 const SENTENCE_SPLIT = /(?<=[.!?׃…]|\n)\s+/
@@ -65,6 +75,29 @@ function containsAny(text: string, markers: string[]): boolean {
   return markers.some((m) => t.includes(normalize(m)))
 }
 
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * `containsAny`, but a marker does not count when it is only the start of a
+ * longer, unrelated word: "בערב" (evening) is a real prefix of "בערבית" (in
+ * Arabic), and Hebrew's word-final letter forms only coincidentally protect
+ * markers that happen to end in one (a longer word can never validly carry
+ * ם/ן/ך/ף/ץ anywhere but its own end) -- not every marker does.
+ *
+ * Only the trailing side is checked. The leading side is deliberately left
+ * open: day names are stored without their "ב" prefix on purpose (see
+ * CONCRETE_TIME_MARKERS) precisely so both "יום ראשון" and "ביום ראשון"
+ * match, and a marker glued directly onto a preceding Hebrew preposition is
+ * exactly that, not a collision. Mirrors the standalone-word idea in
+ * lab-content-checks.ts's `mentionsName` (word boundaries on both sides, for
+ * a different domain: a persona name) without importing a lab module into
+ * the engine.
+ */
+function containsAnyWord(text: string, markers: string[]): boolean {
+  const t = normalize(text)
+  return markers.some((m) => new RegExp(`${escapeRegExp(normalize(m))}(?![א-ת])`).test(t))
+}
+
 /**
  * Fatigue score 0-1. Rises with non-committal markers and with replies that keep
  * getting shorter -- the pattern Eran described: 30 words, then 12, then "בסדר".
@@ -73,7 +106,8 @@ function containsAny(text: string, markers: string[]): boolean {
  * greeting is someone busy, not someone worn down by being persuaded.
  */
 export function fatigueScore(targetTurns: Turn[]): number {
-  const underPersuasion = targetTurns.filter((t) => t.interaction >= 1)
+  const answered = targetTurns.filter((t) => !t.silent)
+  const underPersuasion = answered.filter((t) => t.interaction >= 1)
   if (underPersuasion.length === 0) return 0
   const recent = underPersuasion.slice(-3)
   let score = 0
@@ -104,11 +138,71 @@ export function fatigueScore(targetTurns: Turn[]): number {
   return Math.min(Number(score.toFixed(2)), 1)
 }
 
+/**
+ * Whether the text names an actual time, not just a word that sometimes does.
+ *
+ * `CONCRETE_TIME_MARKERS` covers the fixed phrases (named days, "today",
+ * "before opening"). The two patterns cover what a fixed list cannot: a digit
+ * time ("ב-9", "9:30"), and "בשעה" specifically, which is concrete in "בשעה 9"
+ * and the idiom "בשעה טובה" (good luck) the rest of the time -- so it only
+ * counts when a digit or a spelled-out hour actually follows it.
+ */
+function hasConcreteTime(text: string): boolean {
+  return (
+    containsAnyWord(text, CONCRETE_TIME_MARKERS) ||
+    CONCRETE_HOUR_PATTERN.test(text) ||
+    CONCRETE_DIGIT_TIME_PATTERN.test(text)
+  )
+}
+
 /** Read the counterpart's reply for an explicit decision. Silence is not a yes. */
 export function detectOutcome(targetText: string): Outcome {
   if (containsAny(targetText, REFUSAL_MARKERS)) return 'refused'
-  if (containsAny(targetText, COMMITMENT_MARKERS)) return 'agreed'
+  if (containsAny(targetText, COMMITMENT_MARKERS)) {
+    // A yes with a vague time and no concrete start is the spec's "כן כן, מחר".
+    const vague = containsAny(targetText, VAGUE_COMMITMENT_MARKERS)
+    const concrete = hasConcreteTime(targetText)
+    return vague && !concrete ? 'deferred' : 'agreed'
+  }
   return 'open'
+}
+
+export const silenceCount = (turns: readonly Turn[]): number =>
+  turns.filter((t) => t.role === 'target' && t.silent).length
+
+/**
+ * The counterpart said nothing. The engine still has to act.
+ *
+ * Climbing exactly one rung per unanswered message is the product spec's ladder:
+ * a reminder, then a personal approach, then the manager. The run ends at
+ * `maxSilences` because a fourth message to someone who has answered none of
+ * three is not persuasion, it is noise.
+ *
+ * Escalation is computed from the state as it will be AFTER this silence, not
+ * before: `state.silences` is what earns the climb, so `nextRung` has to read
+ * it already incremented. Computing from the pre-increment state was F1's bug
+ * -- the ladder never climbed on the first silence, because at that point
+ * nothing had told `nextRung` a silence had happened at all, and the opener
+ * that came before it is deliberately not an interaction either.
+ */
+export function applySilence(
+  turns: Turn[],
+  state: ConversationState,
+  rules: RuleConfig = DEFAULT_RULES,
+): { turn: Turn; state: ConversationState; stopped: { stop: boolean; reason: string | null } } {
+  const turn: Turn = { role: 'target', text: '', silent: true, interaction: state.interaction }
+  const silences = silenceCount([...turns, turn])
+  // Same guard as nextRung, for the same reason: a state carried over from
+  // before this field existed has no `silences` key to increment.
+  const incrementedState: ConversationState = { ...state, silences: (state.silences ?? 0) + 1 }
+
+  const newState: ConversationState = {
+    ...incrementedState,
+    rung: rules.enforceSilenceLadder ? nextRung(incrementedState, rules) : state.rung,
+    outcome: silences >= rules.maxSilences ? 'no_response' : state.outcome,
+  }
+
+  return { turn, state: newState, stopped: shouldStop(newState, rules) }
 }
 
 export function initialState(): ConversationState {
@@ -128,13 +222,27 @@ export function initialState(): ConversationState {
     identityStated: false,
     startTimeSet: false,
     followUpAnnounced: false,
+    silences: 0,
   }
 }
 
-/** Climb one rung at a time, never jump. Rung is capped by the interaction number. */
+/**
+ * Climb one rung at a time, never jump. Rung is capped by the interaction
+ * number plus the number of silences: a silence is a reason to escalate
+ * exactly like a live interaction is, which is the whole point of the ladder
+ * the product spec describes for being ignored (reminder, personal approach,
+ * manager). A run with no silence has `silences: 0`, so this is unchanged
+ * from before F1 for every run that never goes quiet.
+ */
 export function nextRung(state: ConversationState, rules: RuleConfig = DEFAULT_RULES): Rung {
-  if (!rules.enforceOneRungAtATime) return Math.min(state.interaction + 1, 5) as Rung
-  const target = Math.min(state.interaction + 1, 5)
+  // R2: the route takes this state straight off the request body with no
+  // runtime validation, so a browser holding an in-flight conversation from
+  // before this field existed posts one with no `silences` key at all --
+  // not `silences: 0`, the key missing -- and the arithmetic below would
+  // otherwise turn that into NaN and carry it through every rung computed
+  // for the rest of the run.
+  const target = Math.min(state.interaction + (state.silences ?? 0) + 1, 5)
+  if (!rules.enforceOneRungAtATime) return target as Rung
   const allowed = Math.min(state.rung + 1, target, 5)
   return Math.max(1, allowed) as Rung
 }
@@ -147,6 +255,8 @@ export function shouldStop(
   if (state.outcome === 'agreed') return { stop: true, reason: 'הושגה הסכמה מפורשת' }
   if (state.outcome === 'refused')
     return { stop: true, reason: 'סירוב מפורש. עוברים לחלופה או להעברה למנהל' }
+  if (state.outcome === 'no_response')
+    return { stop: true, reason: 'הנמען לא ענה. עוברים להסלמה ניהולית' }
   if (state.interaction >= rules.maxInteractions)
     return { stop: true, reason: `עברנו ${rules.maxInteractions} אינטראקציות בלי החלטה` }
   // Fatigue measures replies decaying under persuasion. Before the ask is on the

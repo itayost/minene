@@ -51,6 +51,16 @@ export type PressureResponse = 'digs_in' | 'complies_resentfully' | 'withdraws'
 export type Disposition = 'rational' | 'emotional'
 
 /**
+ * Whether the person answers at all.
+ *
+ * The product spec's response law says a topic that matters demands a
+ * response, and its ladder for silence is a reminder, a personal approach, then
+ * the manager. None of that could ever be exercised while every simulated
+ * counterpart always replied.
+ */
+export type Responsiveness = 'answers' | 'slow' | 'silent'
+
+/**
  * What it would actually take, as conditions rather than prose.
  *
  * Prose lets the simulator decide by feel, which is how two identical runs end
@@ -72,6 +82,13 @@ export interface WorldState {
   reason: Reason
   pressureResponse: PressureResponse
   disposition: Disposition
+  /**
+   * Optional, and absent means `answers`.
+   *
+   * Every world queued or stored before this axis existed has no such field,
+   * and isWorldState refusing them would fail every job already in the queue.
+   */
+  responsiveness?: Responsiveness
   /** Minutes left in the shift. Time pressure is a real lever and a real excuse. */
   minutesLeft: number
   /** The specific fact only this person knows, phrased from the reason. */
@@ -92,6 +109,7 @@ const REASONS: Reason[] = [
 ]
 const PRESSURE: PressureResponse[] = ['digs_in', 'complies_resentfully', 'withdraws']
 const DISPOSITIONS: Disposition[] = ['rational', 'emotional']
+const RESPONSIVENESS: Responsiveness[] = ['answers', 'slow', 'silent']
 
 /**
  * What each reason actually takes, which is the whole point of the reason
@@ -139,6 +157,13 @@ export interface WorldCell {
   reason: Reason
   pressureResponse: PressureResponse
   disposition: Disposition
+  /**
+   * Optional, and absent means `answers`.
+   *
+   * Every world queued or stored before this axis existed has no such field,
+   * and isWorldState refusing them would fail every job already in the queue.
+   */
+  responsiveness?: Responsiveness
 }
 
 /**
@@ -172,7 +197,7 @@ export function applyDisposition(
 /**
  * Every distinct world, enumerated.
  *
- * 3 x 3 x 6 x 3 x 2 = 324. Enumerated rather than sampled so coverage is a fact
+ * 3 x 3 x 6 x 3 x 2 x 3 = 972. Enumerated rather than sampled so coverage is a fact
  * about the queue rather than a hope about a random seed: you can say which
  * cells have been run and which have not.
  */
@@ -183,7 +208,16 @@ export function worldCells(): WorldCell[] {
       for (const reason of REASONS) {
         for (const pressureResponse of PRESSURE) {
           for (const disposition of DISPOSITIONS) {
-            cells.push({ motivation, workload, reason, pressureResponse, disposition })
+            for (const responsiveness of RESPONSIVENESS) {
+              cells.push({
+                motivation,
+                workload,
+                reason,
+                pressureResponse,
+                disposition,
+                responsiveness,
+              })
+            }
           }
         }
       }
@@ -228,6 +262,12 @@ const DISPOSITION_TEXT: Record<Disposition, string> = {
   emotional: 'אתה משתכנע כשמישהו מבין אותך. מספרים לבד לא מזיזים לך.',
 }
 
+const RESPONSIVENESS_TEXT: Record<Responsiveness, string> = {
+  answers: 'אתה עונה להודעות שמגיעות אליך.',
+  slow: 'להודעה הראשונה אתה לא עונה בכלל. אתה עסוק ולא פנוי. מההודעה השנייה אתה עונה כרגיל.',
+  silent: 'אתה לא עונה בכלל. אל תענה לאף הודעה, גם לא אחרי תזכורת או פנייה אישית.',
+}
+
 const CONDITION_TEXT: Record<AgreeCondition, string> = {
   acknowledged_the_load: 'מישהו הכיר בעומס שלך לפני שביקש',
   personal_benefit_named: 'הסבירו לך מה יוצא לך מזה, אישית',
@@ -252,6 +292,7 @@ ${WORKLOAD_TEXT[world.workload]}
 נשארו לך ${world.minutesLeft} דקות עד סוף המשמרת.
 ${PRESSURE_TEXT[world.pressureResponse]}
 ${DISPOSITION_TEXT[world.disposition]}
+${RESPONSIVENESS_TEXT[responsivenessOf(world)]}
 
 ## האמת שרק אתה יודע
 ${world.hiddenTruth}
@@ -298,9 +339,29 @@ export function isWorldState(value: unknown): value is WorldState {
     REASONS.includes(w.reason as Reason) &&
     PRESSURE.includes(w.pressureResponse as PressureResponse) &&
     DISPOSITIONS.includes(w.disposition as Disposition) &&
+    (w.responsiveness === undefined ||
+      RESPONSIVENESS.includes(w.responsiveness as Responsiveness)) &&
     typeof w.minutesLeft === 'number' &&
     typeof w.hiddenTruth === 'string' &&
     Array.isArray(w.agreesWhen) &&
     w.agreesWhen.every((c) => c in CONDITION_TEXT)
   )
+}
+
+/** Absent means the person answers: that is what every world written before this axis meant. */
+export const responsivenessOf = (world: WorldState | null): Responsiveness =>
+  world?.responsiveness ?? 'answers'
+
+/**
+ * Whether the counterpart stays quiet after the persuader's message at this index.
+ *
+ * Index 0 is the opening message, so `slow` ignores exactly one and then behaves
+ * normally: being busy once is the common case, and a person who never answers
+ * is a different cell.
+ */
+export function staysSilent(world: WorldState | null, persuaderTurnIndex: number): boolean {
+  const responsiveness = responsivenessOf(world)
+  if (responsiveness === 'silent') return true
+  if (responsiveness === 'slow') return persuaderTurnIndex === 0
+  return false
 }

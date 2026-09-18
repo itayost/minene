@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { persuaderSystemPrompt } from '../../src/persuade/engine/prompts'
-import { initialState } from '../../src/persuade/engine/rules'
+import { persuaderSystemPrompt, SILENT_TURN_MARKER } from '../../src/persuade/engine/prompts'
+import { DEFAULT_RULES, initialState } from '../../src/persuade/engine/rules'
 import { TEST_PLAN } from './helpers'
 
 describe('the persuader prompt', () => {
@@ -39,5 +39,38 @@ describe('who the persuader is writing to', () => {
     })
     expect(p).toContain('יוסי, עובד מכירות ותיק')
     expect(p).toContain('התאם את הניסוח לתפקיד ולמגדר')
+  })
+})
+
+describe('F2: when the last turn went unanswered', () => {
+  test('tells the persuader to send a reminder, names the marker, the rung and the blocker', () => {
+    const state = { ...initialState(), rung: 2 as const }
+    const p = persuaderSystemPrompt(TEST_PLAN, state, true, DEFAULT_RULES, null, true)
+
+    expect(p).toContain(SILENT_TURN_MARKER)
+    expect(p).toContain('no_reply')
+    // A reminder, not a restatement of the whole ask.
+    expect(p).toContain('תזכורת')
+    // Names the rung this message is on.
+    expect(p).toContain('2')
+  })
+
+  test('is byte-identical to a prompt with no silence flag at all', () => {
+    // Guards against the silence block leaking into every prompt: a run with
+    // no silence must render exactly as it did before F2.
+    const withFlagFalse = persuaderSystemPrompt(
+      TEST_PLAN,
+      initialState(),
+      true,
+      DEFAULT_RULES,
+      null,
+      false,
+    )
+    const withNoFlag = persuaderSystemPrompt(TEST_PLAN, initialState(), true, DEFAULT_RULES, null)
+
+    expect(withFlagFalse).toBe(withNoFlag)
+    // no_reply is always in the blocker table (every blocker is), so the
+    // guard is the marker and the exact-equality check above, not its absence.
+    expect(withFlagFalse).not.toContain(SILENT_TURN_MARKER)
   })
 })

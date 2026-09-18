@@ -35,6 +35,11 @@ export type BlockerId =
   | 'wants_autonomy'
   | 'skeptical'
   | 'wants_to_quit'
+  /** He did not reply at all. Distinct from every other blocker, which reads
+   * a diagnosis out of something he wrote -- there is nothing to read here,
+   * and forcing one of the other eighteen values onto silence would put a
+   * fabricated diagnosis into training data. */
+  | 'no_reply'
   | 'none'
 
 /** Escalation rungs. Always start at 1. Climb one rung at a time, never jump. */
@@ -47,6 +52,8 @@ export type Outcome =
   | 'escalate_to_manager'
   | 'stopped_fatigue'
   | 'deferred'
+  /** Nobody ever answered. Different from a deferral, which was answered and dodged. */
+  | 'no_response'
 
 /** The ask must be "photographable": you could film whether it happened. */
 export interface Ask {
@@ -131,11 +138,29 @@ export interface ConversationState {
   startTimeSet: boolean
   /** The persuader said the result would be checked. */
   followUpAnnounced: boolean
+  /**
+   * Unanswered messages so far, this run.
+   *
+   * Lives in the state (not just counted off the turns array) because
+   * `nextRung` reads it: a silence is a reason to escalate exactly like a
+   * live interaction is, and the ladder needs to know how many have happened
+   * even before the run's turns are available to recount them. Stored in the
+   * state jsonb, so no migration.
+   */
+  silences: number
 }
 
 export interface Turn {
   role: 'persuader' | 'target'
   text: string
+  /**
+   * Set when the counterpart did not answer this message at all.
+   *
+   * `text` stays empty rather than holding a stand-in like "(לא ענה)": a turn is
+   * replayed into the model's prompt and exported as training data, and a
+   * sentence nobody said would be taught as one they did.
+   */
+  silent?: true
   interaction: number
   rung?: Rung
   blocker?: BlockerId
@@ -211,6 +236,18 @@ export interface RunScore {
   notes: string
   /** How many interactions it took. Cheap to record, and the rates use it. */
   interactionsUsed: number
+  /**
+   * Whether the counterpart gave a valid response at all, in the product spec's
+   * sense: you may disagree, you may not disappear. A refusal with a reason is a
+   * valid response and a failed persuasion at the same time, which is why this
+   * is a separate field from `persuaded` rather than a grade.
+   *
+   * Optional here though `scoreSchema` requires it: every new run always
+   * produces it, but every row scored before this field existed does not
+   * carry it, and a required field on the type a reader uses is a claim about
+   * stored data that is not true. F5.
+   */
+  responseValidity?: 'did' | 'refused_with_reason' | 'stuck_with_plan' | 'none'
 }
 
 /** What actually happened afterwards. A partial is recorded, never rounded up. */

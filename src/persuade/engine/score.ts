@@ -52,6 +52,9 @@ const scoreSchema = z.object({
     .max(100)
     .describe('ציון כולל לשיחה בסולם 0 עד 100, כאשר 100 מצוין. לא בסולם 0-10.'),
   notes: z.string().describe('שתיים עד שלוש שורות. עברית פשוטה.'),
+  responseValidity: z
+    .enum(['did', 'refused_with_reason', 'stuck_with_plan', 'none'])
+    .describe('האם הנמען נתן תשובה תקינה בכלל'),
 })
 
 export async function scoreRun(
@@ -61,7 +64,7 @@ export async function scoreRun(
   violations: RuleViolation[],
 ): Promise<RunScore> {
   const transcript = turns
-    .map((t) => `${t.role === 'persuader' ? 'משכנע' : 'נמען'}: ${t.text}`)
+    .map((t) => `${t.role === 'persuader' ? 'משכנע' : 'נמען'}: ${t.silent ? '(לא ענה)' : t.text}`)
     .join('\n')
 
   const violationList = violations.length
@@ -93,7 +96,14 @@ export async function scoreRun(
 - תועלת אישית חזקה שנאמרה מוקדם.
 - זיהוי נכון של החסם האמיתי ולא של מה שנאמר.
 - מעבר מהיר ממה ל"איך" ברגע שההתנגדות נשברה.
-- סגירה בהחלטה ברורה ובמעקב.`,
+- סגירה בהחלטה ברורה ובמעקב.
+
+יש ארבעה ערכים אפשריים. שלושת הראשונים הם תשובה תקינה:
+- did: התחייב לפעולה ולזמן.
+- refused_with_reason: אמר לא ואמר למה.
+- stuck_with_plan: אמר מה תקוע והציע מועד או דרך אחרת.
+none הוא ההיעדר של תשובה תקינה: שתיקה, או "כן כן" בלי זמן.
+סירוב מנומק הוא תשובה תקינה גם אם השכנוע נכשל. אל תדרג אותו none.`,
     prompt: `הבקשה שהיה צריך להשיג:
 ${plan.ask.oneLiner}
 
