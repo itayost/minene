@@ -93,6 +93,19 @@ describe('a turn nobody answered', () => {
       { role: 'user', content: 'שלום' },
     ])
   })
+
+  test('two persuader messages straddling a silence merge into one user message', () => {
+    // historyForTarget drops the silent turn, which would otherwise leave two
+    // consecutive `user` messages -- a shape some providers (Anthropic) reject
+    // outright. Both texts must survive in the single merged message.
+    const history = historyForTarget([
+      persuaderTurn('שלום', 0),
+      silentTurn(0),
+      persuaderTurn('תזכורת קטנה', 1),
+    ])
+
+    expect(history).toEqual([{ role: 'user', content: 'שלום\nתזכורת קטנה' }])
+  })
 })
 
 import {

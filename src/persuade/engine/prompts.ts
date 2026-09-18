@@ -232,10 +232,36 @@ export function historyForModel(turns: Turn[]): { role: 'user' | 'assistant'; co
 
 /** The counterpart sees the mirror image of the history, minus its own silences. */
 export function historyForTarget(turns: Turn[]): { role: 'user' | 'assistant'; content: string }[] {
-  return turns
+  const messages = turns
     .filter((t) => !t.silent)
     .map((t) => ({
       role: t.role === 'target' ? ('assistant' as const) : ('user' as const),
       content: t.text,
     }))
+  return mergeConsecutiveSameRole(messages)
+}
+
+/**
+ * Merge consecutive same-role messages into one, joined by newline.
+ *
+ * `historyForTarget` drops silent turns, so in a `slow` world the counterpart's
+ * next call would otherwise see two persuader messages in a row as two
+ * consecutive `user` messages -- a shape Anthropic's API rejects outright.
+ */
+function mergeConsecutiveSameRole(
+  messages: { role: 'user' | 'assistant'; content: string }[],
+): { role: 'user' | 'assistant'; content: string }[] {
+  const merged: { role: 'user' | 'assistant'; content: string }[] = []
+  for (const message of messages) {
+    const last = merged.at(-1)
+    if (last && last.role === message.role) {
+      merged[merged.length - 1] = {
+        role: last.role,
+        content: `${last.content}\n${message.content}`,
+      }
+    } else {
+      merged.push(message)
+    }
+  }
+  return merged
 }
