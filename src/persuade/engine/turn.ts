@@ -33,6 +33,7 @@ const BLOCKER_IDS = [
   'wants_autonomy',
   'skeptical',
   'wants_to_quit',
+  'no_reply',
   'none',
 ] as const
 
@@ -92,6 +93,10 @@ function turnRequest(
     fatigue: fatigueScore(targetTurns),
     rung: turns.length === 0 ? 1 : nextRung(state, rules),
   }
+  // F2: the model is told nothing about silence otherwise, and still gets
+  // instructed to state the whole ask -- so it restates it into a void
+  // instead of sending a short reminder.
+  const lastTurnSilent = turns.at(-1)?.silent === true
 
   return {
     workingState,
@@ -104,6 +109,7 @@ function turnRequest(
         turns.some((t) => t.role === 'persuader'),
         rules,
         recipient,
+        lastTurnSilent,
       ),
       messages:
         turns.length === 0

@@ -35,6 +35,11 @@ export type BlockerId =
   | 'wants_autonomy'
   | 'skeptical'
   | 'wants_to_quit'
+  /** He did not reply at all. Distinct from every other blocker, which reads
+   * a diagnosis out of something he wrote -- there is nothing to read here,
+   * and forcing one of the other eighteen values onto silence would put a
+   * fabricated diagnosis into training data. */
+  | 'no_reply'
   | 'none'
 
 /** Escalation rungs. Always start at 1. Climb one rung at a time, never jump. */
@@ -133,6 +138,16 @@ export interface ConversationState {
   startTimeSet: boolean
   /** The persuader said the result would be checked. */
   followUpAnnounced: boolean
+  /**
+   * Unanswered messages so far, this run.
+   *
+   * Lives in the state (not just counted off the turns array) because
+   * `nextRung` reads it: a silence is a reason to escalate exactly like a
+   * live interaction is, and the ladder needs to know how many have happened
+   * even before the run's turns are available to recount them. Stored in the
+   * state jsonb, so no migration.
+   */
+  silences: number
 }
 
 export interface Turn {
@@ -226,8 +241,13 @@ export interface RunScore {
    * sense: you may disagree, you may not disappear. A refusal with a reason is a
    * valid response and a failed persuasion at the same time, which is why this
    * is a separate field from `persuaded` rather than a grade.
+   *
+   * Optional here though `scoreSchema` requires it: every new run always
+   * produces it, but every row scored before this field existed does not
+   * carry it, and a required field on the type a reader uses is a claim about
+   * stored data that is not true. F5.
    */
-  responseValidity: 'did' | 'refused_with_reason' | 'stuck_with_plan' | 'none'
+  responseValidity?: 'did' | 'refused_with_reason' | 'stuck_with_plan' | 'none'
 }
 
 /** What actually happened afterwards. A partial is recorded, never rounded up. */

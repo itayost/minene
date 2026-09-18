@@ -41,5 +41,6 @@ export const BLOCKER_LABELS: Record<BlockerId, string> = {
   wants_autonomy: 'רוצה אוטונומיה',
   skeptical: 'סקפטית',
   wants_to_quit: 'רוצה לעזוב',
+  no_reply: 'לא ענתה',
   none: 'ללא חסם',
 }
