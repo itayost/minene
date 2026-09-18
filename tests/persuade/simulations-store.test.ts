@@ -127,6 +127,58 @@ describe('reading simulations back', () => {
     expect(selectedColumns()).toContain('score')
   })
 
+  it('selects the experiment column, or an arm run cannot be told apart from an ordinary one', async () => {
+    // matrixFrom and the lab panel both filter on StoredSimulation.experiment
+    // to keep an experiment arm's runs (a different RuleConfig, see
+    // lib/experiments.ts) out of the ordinary matrix cells and bank. That only
+    // works if this query actually reads the column.
+    const { store, selectedColumns } = fake()
+    await store.listSimulations()
+
+    expect(selectedColumns()).toContain('experiment')
+  })
+
+  it('carries the experiment tag through to the rebuilt run', async () => {
+    const { store } = fake([
+      {
+        id: 'sim-1',
+        industry: 'אופנה',
+        job_role_id: 'r1',
+        persona_id: 'rona',
+        plan: { id: 'p1' },
+        turns: [],
+        state: { outcome: 'refused', blockers: [], interaction: 1 },
+        score: null,
+        experiment: 'message-length',
+        created_at: '2026-08-27T10:00:00Z',
+      },
+    ])
+
+    const [first] = await store.listSimulations()
+
+    expect(first?.experiment).toBe('message-length')
+  })
+
+  it('reports no experiment for a row that predates the column, rather than losing the run', async () => {
+    const { store } = fake([
+      {
+        id: 'sim-1',
+        industry: 'אופנה',
+        job_role_id: 'r1',
+        persona_id: 'rona',
+        plan: { id: 'p1' },
+        turns: [],
+        state: { outcome: 'agreed', blockers: [], interaction: 1 },
+        score: null,
+        created_at: '2026-08-27T10:00:00Z',
+      },
+    ])
+
+    const [first] = await store.listSimulations()
+
+    expect(first?.experiment).toBeNull()
+  })
+
   it('rebuilds a run the bank and the rates can use', async () => {
     const { store } = fake([
       {

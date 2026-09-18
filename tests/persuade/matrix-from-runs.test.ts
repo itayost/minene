@@ -2,9 +2,15 @@ import { describe, expect, it } from 'vitest'
 import type { StoredSimulation } from '../../src/persuade/lib/simulations'
 import { matrixFrom } from '../../src/persuade/matrix-data'
 
-const sim = (industry: string, jobRoleId: string, outcome: string): StoredSimulation => ({
+const sim = (
+  industry: string,
+  jobRoleId: string,
+  outcome: string,
+  experiment: string | null = null,
+): StoredSimulation => ({
   id: `s-${Math.random()}`,
   cell: { industry, jobRoleId },
+  experiment,
   run: { state: { outcome, blockers: [], interaction: 3 }, violations: [] } as never,
 })
 
@@ -60,6 +66,7 @@ describe('runs that carry no role', () => {
     ({
       id: `${industry}-${jobRoleId}-${outcome}-${Math.random()}`,
       cell: { industry, jobRoleId },
+      experiment: null,
       run: { state: { outcome } },
     }) as never
 
@@ -102,5 +109,47 @@ describe('runs that carry no role', () => {
     )
 
     expect(cells.reduce((n, c) => n + c.runs, 0)).toBe(1)
+  })
+})
+
+describe('runs from an experiment arm', () => {
+  it('are left out of the cell they would otherwise share with ordinary runs', () => {
+    // queueExperiment (lib/experiments.ts) runs an arm under a RuleConfig
+    // deliberately different from the deployed default -- e.g. messageLength-
+    // Experiment caps replies at 25 or 45 words instead of the default. Those
+    // jobs carry the same industry/job_role_id as an ordinary sweep run against
+    // the same cell (see planExperiment), so without this exclusion a cell's
+    // persuasion rate silently blends conversations that ran under two
+    // different configs into one number that claims to describe the deployed
+    // default alone.
+    const cells = matrixFrom(
+      [
+        sim('אופנה', 'r1', 'agreed'),
+        sim('אופנה', 'r1', 'agreed'),
+        sim('אופנה', 'r1', 'refused', 'message-length'),
+        sim('אופנה', 'r1', 'refused', 'message-length'),
+        sim('אופנה', 'r1', 'refused', 'message-length'),
+      ],
+      roles,
+    )
+
+    // Pooled with the experiment runs this cell would read 2 of 5 agreed
+    // (40%). Excluding them, it is 2 of 2 -- the true rate under the deployed
+    // default, the only thing this screen claims to measure.
+    const cell = cells.find((c) => c.industry === 'אופנה' && c.jobRoleId === 'r1')
+    expect(cell).toMatchObject({ runs: 2, persuasionRate: 100 })
+  })
+
+  it('leaves a cell at "no runs" rather than crediting it with an experiment arm alone', () => {
+    // A second role with an ordinary run keeps the 'אופנה' industry row on the
+    // grid, so r1's cell is reachable to assert on: no comparable run landed
+    // there, so it must read as unrun, not as one run at some rate.
+    const cells = matrixFrom(
+      [sim('אופנה', 'r1', 'agreed', 'message-length'), sim('אופנה', 'r2', 'agreed')],
+      roles,
+    )
+
+    const cell = cells.find((c) => c.industry === 'אופנה' && c.jobRoleId === 'r1')
+    expect(cell).toMatchObject({ runs: 0, persuasionRate: null })
   })
 })

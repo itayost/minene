@@ -2,6 +2,24 @@ import type { StoredSimulation } from './lib/simulations'
 import type { MatrixCell } from './Matrix'
 
 /**
+ * Whether a run belongs to the population the matrix and the bank report on.
+ *
+ * `queueExperiment` (lib/experiments.ts) runs an arm under a `RuleConfig`
+ * deliberately different from the deployed default -- a shorter word cap, a
+ * different fatigue threshold -- and that run lands in `public.simulations`
+ * with the same `industry`/`job_role_id` as an ordinary sweep run against the
+ * same cell. Nothing upstream of this file tells the two apart, so without this
+ * check an experiment arm's runs silently pool into the cell's persuasion rate
+ * and the bank's winning arguments as if they ran under the deployed default --
+ * the same "pooling populations that are not comparable" failure
+ * `distinctModelFingerprints` already guards technique effectiveness against,
+ * just on the axis of `RuleConfig` rather than the model. Both `matrixFrom` and
+ * the lab panel's own cell selection (`lab-client.tsx`) use this, so the
+ * headline rate and the bank beneath it cannot disagree about which runs count.
+ */
+export const isComparable = (s: StoredSimulation): boolean => s.experiment === null
+
+/**
  * Turns runs into the grid.
  *
  * The rows come from the data and the columns from the role catalogue, which is
@@ -11,9 +29,10 @@ import type { MatrixCell } from './Matrix'
  * "here is a question nobody has asked yet".
  */
 export function matrixFrom(
-  simulations: readonly StoredSimulation[],
+  allSimulations: readonly StoredSimulation[],
   roles: readonly { id: string; name: string }[],
 ): MatrixCell[] {
+  const simulations = allSimulations.filter(isComparable)
   const industries = [...new Set(simulations.map((s) => s.cell.industry))].sort()
   const knownRoleIds = new Set(roles.map((r) => r.id))
 

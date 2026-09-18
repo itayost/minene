@@ -10,7 +10,7 @@ import type { PersuasionPlan } from '../../../../../src/persuade/engine/types'
 import { BLOCKER_LABELS, CATEGORY_LABELS } from '../../../../../src/persuade/labels'
 import type { StoredSimulation } from '../../../../../src/persuade/lib/simulations'
 import { Matrix, type MatrixCell } from '../../../../../src/persuade/Matrix'
-import { matrixFrom } from '../../../../../src/persuade/matrix-data'
+import { isComparable, matrixFrom } from '../../../../../src/persuade/matrix-data'
 import { type PersonaOption, RunControl } from '../../../../../src/persuade/RunControl'
 import { createSimulationsApi } from '../../../../../src/persuade/simulations-api'
 
@@ -72,7 +72,10 @@ export function LabClient({ personas, plans }: LabClientProps) {
     () =>
       selected
         ? simulations.filter(
-            (s) => s.cell.industry === selected.industry && s.cell.jobRoleId === selected.jobRoleId,
+            (s) =>
+              isComparable(s) &&
+              s.cell.industry === selected.industry &&
+              s.cell.jobRoleId === selected.jobRoleId,
           )
         : [],
     [selected, simulations],
