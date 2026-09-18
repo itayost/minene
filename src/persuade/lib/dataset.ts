@@ -194,6 +194,15 @@ export function examplesFromRun(
             before.some((t) => t.role === 'persuader'),
             config,
             persona,
+            // Mirrors turn.ts's turnRequest exactly: the engine decided
+            // whether this move was written under the F2 reminder guidance by
+            // reading the same thing -- whether the turn right before it was
+            // silent. Omitting this would export a system prompt without the
+            // guidance next to an answer the model produced with it, which is
+            // this function's own opening comment's failure mode: a prompt
+            // that does not match the answer teaches the model to answer a
+            // question it was never asked.
+            before.at(-1)?.silent === true,
           ),
         },
         ...(before.length === 0
