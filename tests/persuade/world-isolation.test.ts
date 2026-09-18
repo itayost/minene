@@ -63,6 +63,7 @@ describe('the persuader cannot see the world', () => {
     // The conditions are a checklist, so agreement is earned against a written
     // standard rather than decided by mood.
     expect(rendered).toContain('מישהו הכיר בעומס שלך לפני שביקש')
+    expect(rendered).toContain('אתה עונה להודעות שמגיעות אליך.')
   })
 
   it('still works with no world, the way a hand-started run does', () => {
@@ -88,9 +89,9 @@ describe('the persuader cannot see the world', () => {
 describe('the space of worlds', () => {
   it('enumerates every combination, so coverage is a fact rather than a hope', () => {
     // 3 motivations x 3 workloads x 6 reasons x 3 pressure responses x 2
-    // dispositions.
-    expect(worldCells()).toHaveLength(324)
-    expect(new Set(worldCells().map((c) => JSON.stringify(c))).size).toBe(324)
+    // dispositions x 3 responsiveness.
+    expect(worldCells()).toHaveLength(972)
+    expect(new Set(worldCells().map((c) => JSON.stringify(c))).size).toBe(972)
   })
 
   it('lets disposition change what it would take, not just what is printed', () => {
