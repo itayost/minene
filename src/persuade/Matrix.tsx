@@ -17,6 +17,14 @@ export type MatrixCell = {
    * finding while the first is an absence.
    */
   persuasionRate: number | null
+  /**
+   * True once the cell holds runs from two different RECORDED persuader
+   * models. A cell that mixes model generations reports one rate for what is
+   * actually two -- see `distinctModelFingerprints` in `matrix-data.ts`.
+   * Optional so a cell built without the check (a test fixture, mainly) reads
+   * as unflagged rather than as a type error.
+   */
+  modelsMixed?: boolean
 }
 
 /**
@@ -80,7 +88,8 @@ export function Matrix({
                     // reader moving cell to cell, so the cell says where it is.
                     aria-label={
                       measured
-                        ? `${cell.industry}, ${cell.jobRoleName}, ${cell.persuasionRate} אחוז, ${cell.runs} ריצות`
+                        ? `${cell.industry}, ${cell.jobRoleName}, ${cell.persuasionRate} אחוז, ${cell.runs} ריצות` +
+                          (cell.modelsMixed ? ', ריצות מיותר ממודל שכנוע אחד' : '')
                         : `${cell.industry}, ${cell.jobRoleName}, אין ריצות`
                     }
                     aria-selected={selected ? cellKey(selected) === cellKey(cell) : undefined}
@@ -96,6 +105,7 @@ export function Matrix({
                   >
                     <b>{measured ? `${cell.persuasionRate}%` : '—'}</b>
                     <span>{measured ? `${cell.runs} ריצות` : 'אין ריצות'}</span>
+                    {cell.modelsMixed ? <span className="cell__note">מודלים מעורבים</span> : null}
                   </td>
                 )
               })}
