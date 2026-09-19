@@ -2,10 +2,16 @@ import { describe, expect, it } from 'vitest'
 import type { StoredSimulation } from '../../src/persuade/lib/simulations'
 import { matrixFrom } from '../../src/persuade/matrix-data'
 
-const sim = (industry: string, jobRoleId: string, outcome: string): StoredSimulation => ({
+const sim = (
+  industry: string,
+  jobRoleId: string,
+  outcome: string,
+  models: Record<string, string> | null = null,
+): StoredSimulation => ({
   id: `s-${Math.random()}`,
   cell: { industry, jobRoleId },
   run: { state: { outcome, blockers: [], interaction: 3 }, violations: [] } as never,
+  models,
 })
 
 const roles = [
@@ -52,6 +58,47 @@ describe('turning runs into a matrix', () => {
     // The rows come from the data. Inventing sectors nobody has touched would
     // fill the screen with hatching that says nothing.
     expect(new Set(cells.map((c) => c.industry))).toEqual(new Set(['אופנה']))
+  })
+})
+
+describe('a cell that spans a persuader-model swap', () => {
+  const gpt4o = { persuader: 'gpt-4o-mini', target: 'gpt-4o-mini', judge: 'gpt-4o-mini' }
+  const gpt5 = { persuader: 'gpt-5', target: 'gpt-4o-mini', judge: 'gpt-4o-mini' }
+
+  it('flags a cell whose runs carry two different recorded fingerprints', () => {
+    const cells = matrixFrom(
+      [sim('אופנה', 'r1', 'agreed', gpt4o), sim('אופנה', 'r1', 'refused', gpt5)],
+      roles,
+    )
+
+    const cell = cells.find((c) => c.industry === 'אופנה' && c.jobRoleId === 'r1')
+    // 50% persuasion here is a blend of two model generations, not one
+    // measurement of the industry-role pair -- the reader has no way to see
+    // that from the rate alone.
+    expect(cell).toMatchObject({ runs: 2, persuasionRate: 50, modelsMixed: true })
+  })
+
+  it('does not flag a cell whose runs share one fingerprint', () => {
+    const cells = matrixFrom(
+      [sim('אופנה', 'r1', 'agreed', gpt4o), sim('אופנה', 'r1', 'refused', gpt4o)],
+      roles,
+    )
+
+    const cell = cells.find((c) => c.industry === 'אופנה' && c.jobRoleId === 'r1')
+    expect(cell?.modelsMixed).toBe(false)
+  })
+
+  it('does not flag a cell where the model was simply never recorded', () => {
+    // A run predating the `models` column is an unknown, not a second model --
+    // counting it as one would flag every cell that spans the day the column
+    // was added, on no evidence of an actual swap.
+    const cells = matrixFrom(
+      [sim('אופנה', 'r1', 'agreed', gpt4o), sim('אופנה', 'r1', 'refused', null)],
+      roles,
+    )
+
+    const cell = cells.find((c) => c.industry === 'אופנה' && c.jobRoleId === 'r1')
+    expect(cell?.modelsMixed).toBe(false)
   })
 })
 

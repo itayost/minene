@@ -127,6 +127,17 @@ describe('reading simulations back', () => {
     expect(selectedColumns()).toContain('score')
   })
 
+  it('selects the models, or the matrix and the bank can never see a model swap', async () => {
+    // report:techniques and readiness() already refuse to call a comparison
+    // clean when it spans a persuader-model change. The matrix and the bank
+    // read this same table and had no way to ask the same question, because
+    // this store never selected the column their answer depends on.
+    const { store, selectedColumns } = fake()
+    await store.listSimulations()
+
+    expect(selectedColumns()).toContain('models')
+  })
+
   it('rebuilds a run the bank and the rates can use', async () => {
     const { store } = fake([
       {
@@ -143,6 +154,7 @@ describe('reading simulations back', () => {
           grade: 80,
           responseValidity: 'did',
         },
+        models: { persuader: 'gpt-5', target: 'gpt-4o-mini', judge: 'gpt-4o-mini' },
         created_at: '2026-08-27T10:00:00Z',
       },
     ])
@@ -152,6 +164,31 @@ describe('reading simulations back', () => {
     expect(first?.run.state.outcome).toBe('agreed')
     expect(first?.run.score?.winningCategory).toBe('numbers')
     expect(first?.cell).toEqual({ industry: 'אופנה', jobRoleId: 'r1' })
+    expect(first?.models).toEqual({
+      persuader: 'gpt-5',
+      target: 'gpt-4o-mini',
+      judge: 'gpt-4o-mini',
+    })
+  })
+
+  it('reads a row predating the column as an unrecorded model, not a missing one', async () => {
+    const { store } = fake([
+      {
+        id: 'sim-1',
+        industry: 'אופנה',
+        job_role_id: 'r1',
+        persona_id: 'rona',
+        plan: { id: 'p1' },
+        turns: [],
+        state: { outcome: 'agreed', blockers: [], interaction: 1 },
+        score: null,
+        created_at: '2026-08-27T10:00:00Z',
+      },
+    ])
+
+    const [first] = await store.listSimulations()
+
+    expect(first?.models).toBeNull()
   })
 
   it('returns every simulation, not just the newest page of them', async () => {

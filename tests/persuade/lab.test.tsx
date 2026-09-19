@@ -81,3 +81,43 @@ describe('the lab, before anything has been run', () => {
     await waitFor(() => expect(sims.listSimulations).toHaveBeenCalledTimes(2))
   })
 })
+
+describe('a cell that spans a persuader-model swap', () => {
+  it('warns that the rate may reflect the swap, not the industry or role', async () => {
+    sims.listSimulations.mockResolvedValue([
+      {
+        id: 's1',
+        cell: { industry: 'אופנה', jobRoleId: 'r1' },
+        run: { state: { outcome: 'agreed' }, violations: [] },
+        models: { persuader: 'gpt-4o-mini', target: 'gpt-4o-mini', judge: 'gpt-4o-mini' },
+      },
+      {
+        id: 's2',
+        cell: { industry: 'אופנה', jobRoleId: 'r1' },
+        run: { state: { outcome: 'refused' }, violations: [] },
+        models: { persuader: 'gpt-5', target: 'gpt-4o-mini', judge: 'gpt-4o-mini' },
+      },
+    ])
+    const user = setup()
+
+    await user.click(await screen.findByRole('gridcell', { name: /אופנה/ }))
+
+    expect(await screen.findByText(/יותר ממודל שכנוע אחד/)).toBeVisible()
+  })
+
+  it('says nothing when a cell’s runs share one model', async () => {
+    sims.listSimulations.mockResolvedValue([
+      {
+        id: 's1',
+        cell: { industry: 'אופנה', jobRoleId: 'r1' },
+        run: { state: { outcome: 'agreed' }, violations: [] },
+        models: { persuader: 'gpt-4o-mini', target: 'gpt-4o-mini', judge: 'gpt-4o-mini' },
+      },
+    ])
+    const user = setup()
+
+    await user.click(await screen.findByRole('gridcell', { name: /אופנה/ }))
+
+    expect(screen.queryByText(/יותר ממודל שכנוע אחד/)).not.toBeInTheDocument()
+  })
+})

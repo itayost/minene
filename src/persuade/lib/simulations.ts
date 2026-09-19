@@ -18,6 +18,18 @@ export interface StoredSimulation {
   id: string
   cell: { industry: string; jobRoleId: string | null }
   run: Run
+  /**
+   * The model id per role that produced this run. Null on rows predating the
+   * column, and on the writer that still omits it -- see `saveSimulation`.
+   *
+   * Carried on the stored row rather than on `Run` itself: the matrix and the
+   * bank pool runs the same uncontrolled way `effectiveness.ts` pools them into
+   * a technique's win rate, and a persuader-model swap mid-history would blend
+   * two model generations into one cell or one bank entry with nothing on
+   * screen to say so -- the same failure `distinctModelFingerprints` already
+   * guards `report:techniques` against, just never extended to this reader.
+   */
+  models: Record<string, string> | null
 }
 
 /**
@@ -28,7 +40,7 @@ export interface StoredSimulation {
  * rows that never carried a score comes back empty however many were scored.
  */
 const SIMULATION_COLUMNS =
-  'id,industry,job_role_id,need,persona_id,plan,turns,state,outcome,score,created_at'
+  'id,industry,job_role_id,need,persona_id,plan,turns,state,outcome,score,models,created_at'
 
 interface SimulationRow {
   id: string
@@ -39,6 +51,7 @@ interface SimulationRow {
   turns: Run['turns'] | null
   state: Run['state']
   score: Run['score'] | null
+  models: Record<string, string> | null
   created_at: string
 }
 
@@ -47,6 +60,7 @@ const toStored = (row: SimulationRow): StoredSimulation => {
   return {
     id: row.id,
     cell: { industry: row.industry, jobRoleId: row.job_role_id },
+    models: row.models ?? null,
     run: {
       id: row.id,
       createdAt: row.created_at,

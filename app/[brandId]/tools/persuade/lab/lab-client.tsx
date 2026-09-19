@@ -141,6 +141,18 @@ export function LabClient({ personas, plans }: LabClientProps) {
                 : `${selected.runs} ריצות · ${selected.persuasionRate}% שכנוע`}
             </p>
 
+            {selected.modelsMixed ? (
+              // The rate above pools every run in the cell regardless of which
+              // persuader model produced it. A swap mid-history blends two
+              // model generations into one number with nothing else on screen
+              // to say so -- the same caveat report:techniques already prints
+              // for a technique's win rate, just missing here until now.
+              <p className="knowledge-message">
+                שים לב: הריצות בתא הזה רצו על יותר ממודל שכנוע אחד — השיעור עלול לשקף החלפת מודל ולא
+                את הענף או התפקיד.
+              </p>
+            ) : null}
+
             {bank.length ? (
               <ul className="bank">
                 {bank.map((entry) => (

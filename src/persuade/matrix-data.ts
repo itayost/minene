@@ -2,6 +2,22 @@ import type { StoredSimulation } from './lib/simulations'
 import type { MatrixCell } from './Matrix'
 
 /**
+ * How many distinct RECORDED persuader-model fingerprints a set of runs
+ * carries.
+ *
+ * Mirrors `distinctModelFingerprints` in `effectiveness.ts` exactly, and for
+ * the same reason: the matrix pools runs into a persuasion rate the same
+ * uncontrolled way a technique report pools them into a win rate, so a
+ * persuader-model swap mid-history would blend two model generations into one
+ * cell with nothing on screen to say so. A row with nothing recorded is an
+ * unknown, not a second model -- counting it would flag every cell that spans
+ * the day `models` started being recorded, forever.
+ */
+function distinctModelFingerprints(simulations: readonly StoredSimulation[]): number {
+  return new Set(simulations.filter((s) => s.models).map((s) => JSON.stringify(s.models))).size
+}
+
+/**
  * Turns runs into the grid.
  *
  * The rows come from the data and the columns from the role catalogue, which is
@@ -32,6 +48,10 @@ export function matrixFrom(
       // Null, never 0, when nothing has been run here. The heat scale reads
       // null as "no fill at all" rather than as the palest measured value.
       persuasionRate: inCell.length === 0 ? null : Math.round((agreed / inCell.length) * 100),
+      // Confirmed rather than suspected: only fires once the cell holds two
+      // runs with DIFFERENT recorded fingerprints, never merely because some
+      // runs predate the column.
+      modelsMixed: distinctModelFingerprints(inCell) > 1,
     }
   }
 
