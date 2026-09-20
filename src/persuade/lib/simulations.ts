@@ -113,6 +113,19 @@ export function createSimulationsStore(client: SupabaseClient) {
      * a number was ever left out. The worker queues up to
      * `PERSUADER_DAILY_RUN_CAP` runs a day, so a fixed cap is not a distant
      * risk here, it is a matter of days.
+     *
+     * Oldest first, with `id` as a tiebreaker -- the same ordering
+     * `scripts/lib/db.ts`'s `readAll` uses, and for the same reason. This
+     * table has a live writer (the worker ticks every ten minutes while this
+     * function is mid-read). A newest-first page shifts every unread row down
+     * one place each time a new row lands in front of it: the row at the
+     * trailing edge of the page just fetched reappears at the leading edge of
+     * the next one, counted twice, while the row that actually landed is the
+     * one this read never reaches at all -- it sorts ahead of a cursor that
+     * has already moved past it. Oldest-first does not have that problem: a
+     * new row sorts after everything not yet read, never before it. `id`
+     * breaks ties between rows sharing a `created_at`, which two runs saved
+     * by the same worker tick can.
      */
     async listSimulations(pageSize = 1000): Promise<StoredSimulation[]> {
       const rows: SimulationRow[] = []
@@ -125,7 +138,8 @@ export function createSimulationsStore(client: SupabaseClient) {
         const { data, error } = await client
           .from('simulations')
           .select(SIMULATION_COLUMNS)
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
           .range(from, from + pageSize - 1)
 
         if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
