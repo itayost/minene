@@ -75,6 +75,7 @@ const source = (over: Partial<SourceRun> = {}): SourceRun => ({
   score: score(90),
   rules: DEFAULT_RULES,
   persona: { name: 'עדי', role: 'מנהלת חנות' },
+  experiment: null,
   ...over,
 })
 
@@ -92,6 +93,20 @@ describe('what gets into the training set', () => {
     // The full structured answer, because that is what production asks for.
     expect(JSON.parse(assistant!.content).statesAsk).toBe(true)
     expect(JSON.parse(assistant!.content).signals).toBeDefined()
+  })
+
+  test('a run from an experiment arm is dropped whole, even agreed and well-graded', () => {
+    // queueExperiment (lib/experiments.ts) runs an arm under a RuleConfig
+    // deliberately different from the deployed default -- messageLengthExperiment's
+    // 'short-25' arm caps replies at 25 words where DEFAULT_RULES allows more.
+    // A training example built from that run teaches the production model the
+    // arm's constraint as if it were the deployed default's own behaviour, the
+    // same "pooling populations that are not comparable" failure
+    // buildEffectiveness and matrixFrom already guard their own numbers against.
+    const { examples, rejected } = buildDataset([source({ experiment: 'message-length' })])
+
+    expect(examples).toHaveLength(0)
+    expect(rejected['experiment-arm']).toBe(1)
   })
 
   test('a run that did not end in a yes is dropped whole', () => {
@@ -204,6 +219,7 @@ describe('resolving the recipient the persuader actually saw', () => {
     state: run([]).state,
     score: score(90),
     rules: DEFAULT_RULES,
+    experiment: null,
   })
 
   test('carries the persona through to the replayed prompt', () => {
