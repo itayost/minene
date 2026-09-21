@@ -115,6 +115,18 @@ export function propose(
       caveats.push(`${report.negativeReactionPct}% מהשיחות הסתיימו בעייפות`)
     }
 
+    // The same guard experiment-results.ts's readiness() applies to an A/B
+    // comparison, and report:techniques applies to its own terminal output --
+    // just never carried through to here before, because TechniqueReport had
+    // nowhere to keep the count. Two persuader models pooled into one
+    // category's win rate means the rate is partly a property of which model
+    // wrote the winning message, not only of the technique.
+    if (report.distinctModels > 1) {
+      caveats.push(
+        'הריצות רצו על יותר מצירוף מודל שכנוע אחד — המשקל עלול לשקף החלפת מודל ולא את הטכניקה',
+      )
+    }
+
     return {
       industry: options.industry ?? 'retail',
       jobRoleName: options.jobRoleName ?? null,

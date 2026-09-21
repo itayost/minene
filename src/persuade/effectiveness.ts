@@ -101,6 +101,23 @@ export interface TechniqueReport {
   offPlanWins: number
   byReason: Slice[]
   byPersona: Slice[]
+  /**
+   * How many distinct persuader-model fingerprints back this category's own
+   * evidence -- the same signal `distinctModelFingerprints` computes over a
+   * whole report, scoped here to one category so it survives past
+   * `buildEffectiveness`.
+   *
+   * `distinctModelFingerprints` is called once, over the raw inputs, by
+   * whichever script builds the report -- `propose()` (lib/technique-weights.ts)
+   * never sees those inputs, only the `TechniqueReport[]` this function
+   * returns. Without a field to carry the count, a model swap that
+   * `report:techniques` already warns a terminal reader about reaches
+   * `propose()`, the function that actually turns evidence into a promotable
+   * weight, with no trace at all. Runs with no model recorded are not
+   * counted, for the same reason `distinctModelFingerprints` excludes them:
+   * an unrecorded run is an unknown, not a second model.
+   */
+  distinctModels: number
 }
 
 const pct = (part: number, whole: number): number | null =>
@@ -189,6 +206,8 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       negative: number
       reasons: { key: Reason | null; won: boolean }[]
       personas: { key: string | null; won: boolean }[]
+      /** Fingerprints of the runs that offered this category. See TechniqueReport.distinctModels. */
+      models: Set<string>
     }
   >()
 
@@ -206,6 +225,7 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
         negative: 0,
         reasons: [],
         personas: [],
+        models: new Set<string>(),
       }
       const isWin = won === category
       // An uninformative run (agreed, never scored) sits out the win/loss
@@ -242,6 +262,7 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       at.offeredCount += 1
       if (informative && isWin && !offered.includes(category)) at.offPlan += 1
       if (run.outcome === 'stopped_fatigue' || run.fatigue >= 0.7) at.negative += 1
+      if (run.models) at.models.add(JSON.stringify(run.models))
       byCategory.set(category, at)
     }
   }
@@ -257,6 +278,7 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       offPlanWins: v.offPlan,
       byReason: sliceBy(v.reasons),
       byPersona: sliceBy(v.personas),
+      distinctModels: v.models.size,
     }))
     .sort((a, b) => (b.winPct ?? -1) - (a.winPct ?? -1))
 }
