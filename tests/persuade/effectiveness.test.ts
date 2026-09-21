@@ -261,6 +261,26 @@ describe('the rendered report', () => {
   })
 })
 
+describe('a counterpart who never answered at all', () => {
+  test('a no_response run does not count as a loss for the technique it never heard', () => {
+    // `responsiveness: 'silent'` (engine/world.ts) forces every target turn
+    // silent from message 0 -- targetReply is never even called, so no
+    // argument was heard, let alone rejected. The run ends in 'no_response'
+    // purely because of that world axis, not because personal_benefit failed
+    // to land. Crediting it as an ordinary loss pools a third of the world
+    // space (every 'silent' cell) into every offered technique's win rate for
+    // a reason that has nothing to do with the technique.
+    const reports = buildEffectiveness([
+      input('agreed', 'personal_benefit', 'no_value', 'adi', ['personal_benefit']),
+      input('no_response', null, 'no_value', 'adi', ['personal_benefit']),
+    ])
+
+    const personal = reports.find((r) => r.category === 'personal_benefit')!
+    expect(personal.runs).toBe(1)
+    expect(personal.winPct).toBe(100)
+  })
+})
+
 describe('a win the plan never offered', () => {
   test('is credited to the category that earned it, not dropped', () => {
     // The scorer picks from the whole category list, not from this plan's
