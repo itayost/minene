@@ -268,3 +268,39 @@
   font-weight: 700;
   color: var(--muted);
 }
+
+.counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: baseline;
+  margin-block: 1rem;
+}
+
+.counters__figure {
+  display: flex;
+  flex-direction: column;
+}
+
+.counters__figure b {
+  font-size: 1.75rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.counters__figure span {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.counters__state {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+  opacity: 0.75;
+  margin: 0;
+}
+
+.counters__refresh {
+  padding-block: 0.25rem;
+  padding-inline: 0.75rem;
+}
