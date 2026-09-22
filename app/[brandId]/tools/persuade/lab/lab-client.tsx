@@ -142,6 +142,7 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
         if (live) setPlan(found)
       })
       .catch((failure) => {
+        if (!live) return
         if (handleError(failure)) setError('לא הצלחנו לטעון את התוכנית')
       })
     return () => {
@@ -253,7 +254,7 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
           </section>
         ) : null}
 
-        {need ? (
+        {industry && role && need ? (
           <section aria-label="שכנועים לצורך">
             {plan === null ? (
               // A need with no generated plan is a real state, not an error:

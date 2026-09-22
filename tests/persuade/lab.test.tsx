@@ -41,6 +41,14 @@ vi.mock('../../src/persuade/lab-plans-api', async (o) => ({
   ...(await o<Record<string, unknown>>()),
   createLabPlansApi: () => labPlans,
 }))
+// A spy, not the real hook, so the stale-response test can assert directly on
+// whether it was ever called rather than inferring that from text on a screen
+// that no longer exists once the component has unmounted.
+const handleError = vi.hoisted(() => vi.fn(() => 'לא הצלחנו להשלים את הבקשה'))
+vi.mock('../../src/brain/use-api-error', async (o) => ({
+  ...(await o<Record<string, unknown>>()),
+  useApiErrorHandler: () => handleError,
+}))
 
 const { LabClient } = await import('../../app/[brandId]/tools/persuade/lab/lab-client')
 
@@ -213,6 +221,43 @@ describe('drilling down', () => {
     setup()
 
     expect(await screen.findByText(/אין עדיין תוכנית/)).toBeInTheDocument()
+  })
+
+  it('renders no persuasions section for a hand-edited URL naming only a need', async () => {
+    // Only reachable by editing the URL directly -- the screen's own controls
+    // never produce this. Without industry and role, `gen-<industry>-<role>-<need>`
+    // cannot be built, so a plan lookup is not merely unnecessary here: it would
+    // be a guess, and rendering "אין עדיין תוכנית" would assert something never
+    // checked rather than something found to be true.
+    search = new URLSearchParams('need=profitability')
+    setup()
+
+    await screen.findByText('קמעונאות')
+    expect(labPlans.getPlan).not.toHaveBeenCalled()
+    expect(screen.queryByLabelText('שכנועים לצורך')).not.toBeInTheDocument()
+  })
+
+  it('does not surface a plan-fetch failure that settles after the effect has cleaned up', async () => {
+    // Cleanup runs identically on unmount and on a need change -- both set
+    // `live = false` before an in-flight request can settle. Unmounting is the
+    // reliable way to make that race happen in a test without depending on the
+    // mocked router actually changing the URL, which it does not (see the top
+    // of this file).
+    search = new URLSearchParams('industry=retail&role=ceo&need=profitability')
+    let rejectPlan: (error: unknown) => void = () => {}
+    labPlans.getPlan.mockReturnValue(
+      new Promise((_, reject) => {
+        rejectPlan = reject
+      }),
+    )
+    const { unmount } = render(<LabClient dailyCap={1000} personas={PERSONAS} plans={PLANS} />)
+    await waitFor(() => expect(labPlans.getPlan).toHaveBeenCalledTimes(1))
+
+    unmount()
+    rejectPlan(new Error('boom'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(handleError).not.toHaveBeenCalled()
   })
 })
 
