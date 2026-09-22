@@ -18,6 +18,10 @@ export function createSimulationsApi(client: Parameters<typeof createSimulations
   const store = createSimulationsStore(client)
   return {
     listSimulations: (): Promise<StoredSimulation[]> => store.listSimulations(),
+    listSimulationSummaries: (): Promise<StoredSimulation[]> => store.listSimulationSummaries(),
+    countSimulations: (): Promise<number> => store.countSimulations(),
+    countSimulationsSince: (iso: string): Promise<number> => store.countSimulationsSince(iso),
+    countAttemptsSince: (iso: string): Promise<number> => store.countAttemptsSince(iso),
   }
 }
 

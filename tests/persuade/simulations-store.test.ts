@@ -7,8 +7,15 @@ type Row = Record<string, unknown>
 function fake(rows: Row[] = []) {
   const inserted: Row[] = []
   let selected = ''
+  let table = ''
+  // Which column and value a count reader filtered on, or null when it did not
+  // filter at all. Recording this (and the table above) is what lets a test
+  // tell `simulations` from `simulation_jobs`, and `created_at` from
+  // `claimed_at` -- a fake that only returns the row count cannot.
+  let gteCall: { column: string; value: unknown } | null = null
   const client = {
-    from: () => {
+    from: (tableName: string) => {
+      table = tableName
       const q = {
         insert: (values: Row) => {
           inserted.push(values)
@@ -35,12 +42,23 @@ function fake(rows: Row[] = []) {
             }),
           }
         },
-        then: (resolve: (v: unknown) => unknown) => resolve({ data: rows, error: null }),
+        gte: (column: string, value: unknown) => {
+          gteCall = { column, value }
+          return q
+        },
+        then: (resolve: (v: unknown) => unknown) =>
+          resolve({ data: rows, error: null, count: rows.length }),
       }
       return q
     },
   } as never
-  return { store: createSimulationsStore(client), inserted, selectedColumns: () => selected }
+  return {
+    store: createSimulationsStore(client),
+    inserted,
+    selectedColumns: () => selected,
+    selectedTable: () => table,
+    gteCall: () => gteCall,
+  }
 }
 
 const run = (over: Partial<Run> = {}) =>
@@ -177,5 +195,90 @@ describe('reading simulations back', () => {
     const all = await store.listSimulations()
 
     expect(all).toHaveLength(total)
+  })
+})
+
+describe('reading without the conversations', () => {
+  it('does not ask for turns', () => {
+    const { store, selectedColumns } = fake([])
+    void store.listSimulationSummaries()
+
+    // turns is the heaviest column by far and nothing on the lab screen reads
+    // it. Selecting it anyway is the difference between a few megabytes and a
+    // few hundred once the loop is running at its cap.
+    expect(selectedColumns()).not.toContain('turns')
+    expect(selectedColumns()).toContain('score')
+    expect(selectedColumns()).toContain('state')
+  })
+
+  it('still produces a usable run for the bank and the rate', async () => {
+    const { store } = fake([
+      {
+        id: 'sim-1',
+        industry: 'retail',
+        job_role_id: null,
+        need: 'profitability',
+        persona_id: 'rona',
+        plan: { id: 'gen-retail-ceo-profitability' },
+        state: { outcome: 'agreed', blockers: ['overloaded'], interaction: 3 },
+        score: { winningCategory: 'numbers', winningArgument: 'המספרים', persuaded: 'yes' },
+        created_at: '2026-09-22T10:00:00Z',
+      },
+    ])
+
+    const rows = await store.listSimulationSummaries()
+
+    expect(rows[0]?.run.state.outcome).toBe('agreed')
+    expect(rows[0]?.run.score?.winningCategory).toBe('numbers')
+    // A row read without turns has no violations to derive, and says so as an
+    // empty list rather than as undefined.
+    expect(rows[0]?.run.turns).toEqual([])
+    expect(rows[0]?.run.violations).toEqual([])
+  })
+})
+
+describe('counting without reading', () => {
+  // Each of these asserts the table and the filter column, not just the
+  // returned number. A fake that only checked the count would still pass if
+  // a reader were pointed at the wrong table or the wrong column -- which is
+  // exactly the bug that would silently restore the lie the two separate
+  // counters (runs added vs. attempts spent) exist to prevent.
+
+  it('counts every simulation, with no since filter', async () => {
+    const rows: Row[] = Array.from({ length: 7 }, (_, i) => ({ id: `sim-${i}` }))
+    const { store, selectedTable, gteCall } = fake(rows)
+
+    const count = await store.countSimulations()
+
+    expect(count).toBe(7)
+    expect(selectedTable()).toBe('simulations')
+    expect(gteCall()).toBeNull()
+  })
+
+  it('counts simulations created since the given time, from the simulations table', async () => {
+    const rows: Row[] = Array.from({ length: 3 }, (_, i) => ({ id: `sim-${i}` }))
+    const { store, selectedTable, gteCall } = fake(rows)
+
+    const count = await store.countSimulationsSince('2026-09-22T00:00:00Z')
+
+    expect(count).toBe(3)
+    expect(selectedTable()).toBe('simulations')
+    expect(gteCall()).toEqual({ column: 'created_at', value: '2026-09-22T00:00:00Z' })
+  })
+
+  it('counts attempts claimed since the given time, from simulation_jobs rather than simulations', async () => {
+    const rows: Row[] = Array.from({ length: 5 }, (_, i) => ({ id: `job-${i}` }))
+    const { store, selectedTable, gteCall } = fake(rows)
+
+    const count = await store.countAttemptsSince('2026-09-22T00:00:00Z')
+
+    // simulation_jobs, not simulations, and claimed_at, not created_at: this is
+    // what the daily cap counts (worker.ts's attemptsToday), because a failed
+    // job has already spent its model calls. Pointing this at the wrong table
+    // or column would understate the spend without failing loudly anywhere
+    // else -- these two assertions are the only thing that would catch it.
+    expect(count).toBe(5)
+    expect(selectedTable()).toBe('simulation_jobs')
+    expect(gteCall()).toEqual({ column: 'claimed_at', value: '2026-09-22T00:00:00Z' })
   })
 })

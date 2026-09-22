@@ -30,13 +30,26 @@ export interface StoredSimulation {
 const SIMULATION_COLUMNS =
   'id,industry,job_role_id,need,persona_id,plan,turns,state,outcome,score,created_at'
 
+/**
+ * Every column the screen needs and not one more.
+ *
+ * `turns` is the whole conversation. The lab screen reads state.outcome for the
+ * rate, state.blockers for the blocker list and score for the bank, and never
+ * the turns themselves -- so paging them in is hundreds of megabytes spent to
+ * compute a percentage once the loop runs at its cap.
+ */
+const SUMMARY_COLUMNS =
+  'id,industry,job_role_id,need,persona_id,plan,state,outcome,score,created_at'
+
 interface SimulationRow {
   id: string
   industry: string
   job_role_id: string | null
   persona_id: string | null
   plan: Run['plan']
-  turns: Run['turns'] | null
+  // Absent rather than null on a summary row: SUMMARY_COLUMNS never selects
+  // it, and toStored's `row.turns ?? []` treats "absent" the same as "null".
+  turns?: Run['turns'] | null
   state: Run['state']
   score: Run['score'] | null
   created_at: string
@@ -135,6 +148,63 @@ export function createSimulationsStore(client: SupabaseClient) {
         from += page.length
       }
       return rows.map(toStored)
+    },
+
+    /**
+     * The same rows as listSimulations, without the conversations. Paged the
+     * same way and for the same reason: a `.limit(n)` here is a silent ceiling
+     * that shows cells as unrun.
+     */
+    async listSimulationSummaries(pageSize = 1000): Promise<StoredSimulation[]> {
+      const rows: SimulationRow[] = []
+      for (let from = 0; ; ) {
+        const { data, error } = await client
+          .from('simulations')
+          .select(SUMMARY_COLUMNS)
+          .order('created_at', { ascending: false })
+          .range(from, from + pageSize - 1)
+
+        if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
+        const page = (data ?? []) as SimulationRow[]
+        if (page.length === 0) break
+        rows.push(...page)
+        from += page.length
+      }
+      // toStored reads row.turns, which a summary row does not have. It already
+      // falls back to [], so violations comes back empty rather than undefined.
+      return rows.map(toStored)
+    },
+
+    async countSimulations(): Promise<number> {
+      const { count, error } = await client
+        .from('simulations')
+        .select('id', { count: 'exact', head: true })
+      if (error) throw new Error(`ספירת הסימולציות נכשלה: ${error.message}`)
+      return count ?? 0
+    },
+
+    async countSimulationsSince(iso: string): Promise<number> {
+      const { count, error } = await client
+        .from('simulations')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', iso)
+      if (error) throw new Error(`ספירת הסימולציות של היום נכשלה: ${error.message}`)
+      return count ?? 0
+    },
+
+    /**
+     * What the daily cap actually bounds. worker.ts counts jobs claimed since
+     * UTC midnight, any status, because a failed job has already spent its
+     * model calls. Showing runs-added against that cap would understate the
+     * spend every time a job fails, and 249 of 413 have.
+     */
+    async countAttemptsSince(iso: string): Promise<number> {
+      const { count, error } = await client
+        .from('simulation_jobs')
+        .select('id', { count: 'exact', head: true })
+        .gte('claimed_at', iso)
+      if (error) throw new Error(`ספירת הניסיונות של היום נכשלה: ${error.message}`)
+      return count ?? 0
     },
   }
 }
