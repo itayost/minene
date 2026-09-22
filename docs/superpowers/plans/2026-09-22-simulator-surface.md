@@ -1001,6 +1001,8 @@ Replaces `matrix-data.ts`. The rows become every industry in the taxonomy and th
 - Delete: `tests/persuade/matrix-from-runs.test.ts`
 - Modify: `src/persuade/Matrix.tsx` (MatrixCell carries `roleSlug`, not `jobRoleId`)
 - Modify: `tests/persuade/matrix.test.tsx` (the prop rename)
+- Modify: `app/[brandId]/tools/persuade/lab/lab-client.tsx` (minimal rewire, so the tree still compiles)
+- Modify: `tests/persuade/lab.test.tsx` (add the taxonomy mock the rewire needs)
 - Test: `tests/persuade/coverage.test.ts`
 
 **Interfaces:**
@@ -1382,18 +1384,109 @@ git rm src/persuade/matrix-data.ts tests/persuade/matrix-from-runs.test.ts
 
 The behaviour those tests protected is not lost. "An unrun cell has a null rate" is now the second test in `coverage.test.ts`; "no run vanishes" is the third. The "runs that carry no role get their own column" behaviour is deliberately gone, replaced by `unplaced`: a run places by its plan key now, and `job_role_id` is no longer consulted at all.
 
-- [ ] **Step 7: Run everything**
+- [ ] **Step 7: Keep the tree compiling**
 
-```bash
-pnpm vitest run tests/persuade
+Deleting `matrix-data.ts` breaks `lab-client.tsx`, which imports `matrixFrom`. Task 9 rewrites that file completely, but the branch must typecheck at the end of every task, so rewire it minimally now.
+
+In `app/[brandId]/tools/persuade/lab/lab-client.tsx`:
+
+- Replace the `matrixFrom` import with:
+
+```ts
+import { cellIndex } from '../../../../../src/persuade/cell'
+import { coverageOf, gridFrom, placeAll } from '../../../../../src/persuade/coverage'
+import { type NeedRow, taxonomyFrom } from '../../../../../src/persuade/taxonomy'
+import { createTaxonomyApi } from '../../../../../src/persuade/taxonomy-api'
 ```
 
-Expected: PASS except `lab-client.tsx`, which still imports `matrixFrom`. Task 9 rewrites it. If `pnpm tsc --noEmit` fails on `lab-client.tsx` alone, that is expected at this point; do not patch it here.
+- Add the taxonomy api beside the others and a `needRows` state:
 
-- [ ] **Step 8: Commit**
+```ts
+  const taxonomyApi = useMemo(() => createTaxonomyApi(createBrowserSupabase() as never), [])
+  const [needRows, setNeedRows] = useState<NeedRow[]>([])
+```
+
+- In `load`, read it alongside the rest and set it:
+
+```ts
+      const [runs, needs, catalogue] = await Promise.all([
+        simulationsApi.listSimulations(),
+        taxonomyApi.listRoleNeeds(),
+        rolesApi.listRoles(),
+      ])
+      setSimulations(runs)
+      setNeedRows(needs)
+      setRoles(catalogue)
+```
+
+  Add `taxonomyApi` to `load`'s dependency array.
+
+- Replace the `cells` memo:
+
+```ts
+  const taxonomy = useMemo(() => taxonomyFrom(needRows), [needRows])
+  const index = useMemo(() => cellIndex(needRows), [needRows])
+  const placed = useMemo(() => placeAll(index, simulations), [index, simulations])
+  const cells = useMemo(() => gridFrom(taxonomy, placed), [taxonomy, placed])
+```
+
+- Replace the `inCell` memo, which filtered on `jobRoleId`, with a lookup through the placement:
+
+```ts
+  const inCell = useMemo(
+    () =>
+      selected
+        ? runsForRole(
+            placed,
+            selected.industry,
+            selected.roleSlug,
+            taxonomy
+              .find((entry) => entry.industry === selected.industry)
+              ?.roles.find((entry) => entry.roleSlug === selected.roleSlug)?.needs ?? [],
+          )
+        : [],
+    [placed, selected, taxonomy],
+  )
+```
+
+  Add `runsForRole` to the `coverage` import, and change `buildBank(inCell.map((s) => s.run))` and `blockersIn(inCell.map((s) => s.run))` to `buildBank(inCell)` and `blockersIn(inCell)`, since `runsForRole` already returns `Run[]`.
+
+- In the selected-cell section, replace `selected.jobRoleName` with `selected.roleLabel` and `selected.industry` with `selected.industryLabel` in both the `aria-label` and the heading. Replace the `coverageOf` values there too: the `selected.runs` / `selected.persuasionRate` fields still exist on `MatrixCell`, so that line needs no change.
+
+Keep `listSimulations` here. Task 9 switches it to `listSimulationSummaries` as part of its rewrite; switching it now would mean editing `lab.test.tsx` twice.
+
+- [ ] **Step 8: Add the taxonomy mock to the existing screen test**
+
+`tests/persuade/lab.test.tsx` renders `LabClient`, which now reads `role_needs`. Add beside its existing mocks:
+
+```tsx
+const taxonomy = vi.hoisted(() => ({ listRoleNeeds: vi.fn() }))
+vi.mock('../../src/persuade/taxonomy-api', async (o) => ({
+  ...(await o<Record<string, unknown>>()),
+  createTaxonomyApi: () => taxonomy,
+}))
+```
+
+and in `beforeEach`:
+
+```tsx
+  taxonomy.listRoleNeeds.mockResolvedValue([])
+```
+
+An empty taxonomy is the right default for those two tests: neither is about the grid, and both already assert against an empty matrix.
+
+- [ ] **Step 9: Run everything**
 
 ```bash
-git add -A src/persuade tests/persuade
+pnpm ci
+```
+
+Expected: PASS. Biome, `tsc --noEmit` and the full vitest suite. The branch typechecks at the end of every task; if it does not, this step is not finished.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add -A src/persuade tests/persuade app
 git commit -m "feat: draw the grid from the taxonomy instead of from the runs"
 ```
 
@@ -2012,7 +2105,7 @@ The last task: the drill-down, the selection in the URL, the link from the brain
 **Files:**
 - Modify: `app/[brandId]/tools/persuade/lab/lab-client.tsx` (full rewrite, code below)
 - Modify: `app/[brandId]/tools/persuade/lab/page.tsx`
-- Modify: `app/[brandId]/tools/brain/page.tsx`
+- Modify: `app/[brandId]/tools/brain/book-client.tsx`
 - Modify: `tests/persuade/lab.test.tsx` (extend; it already exists and already tests this component)
 - Modify: `tests/persuade/tenant-boundary.test.ts`
 - Modify: `src/persuade/persuade.css`
@@ -2640,7 +2733,14 @@ Append to `src/persuade/persuade.css`. Logical properties only; no new colours, 
 
 - [ ] **Step 7: Link it from the brain**
 
-In `app/[brandId]/tools/brain/page.tsx`, add a link to `../persuade/lab` labelled `מעבדת השכנוע`, gated to owners exactly the way that page already gates owner-only content. Match the surrounding markup; do not introduce a new card or nav pattern for one link. This is what satisfies the brief's "בתוך המוח" without a second screen.
+In `app/[brandId]/tools/brain/book-client.tsx`, inside the existing
+`knowledge-owner-tools` div (around line 217, beside the `הזנה` link), add:
+
+```tsx
+              <Link href={`/${brandId}/tools/persuade/lab`}>מעבדת השכנוע</Link>
+```
+
+That div is already rendered only when `isOwner`, and `Link` and `brandId` are already in scope there. Do not add a new card, nav pattern or gate for one link. `page.tsx` is deliberately not the place: it has no markup and no role gate, it hands `role` down to this component, and every owner-only control already lives here. This is what satisfies the brief's "בתוך המוח" without a second screen.
 
 - [ ] **Step 8: Extend the tenant boundary test**
 
