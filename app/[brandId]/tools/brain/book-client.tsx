@@ -219,6 +219,7 @@ export function BookClient({ brandId, role }: { brandId: string; role: 'owner' |
                   hunt, the approval queue and the documents list. The deleted
                   hub used to be that route. */}
               <Link href={`/${brandId}/tools/brain/ingest`}>הזנה</Link>
+              <Link href={`/${brandId}/tools/persuade/lab`}>מעבדת השכנוע</Link>
               <button onClick={() => setIsSearchOpen((open) => !open)} type="button">
                 חיפוש וסינון
               </button>
