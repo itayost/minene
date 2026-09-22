@@ -14,6 +14,7 @@ interface FakeState {
   pending: number
   personas: Row[]
   plans: Row[]
+  roleNeeds: Row[]
   feed: { next_index: number; pass: number; inputs_version: string | null } | null
   commitResult: boolean
 }
@@ -25,6 +26,15 @@ function fakeClient(state: FakeState) {
     from(table: string) {
       return {
         select() {
+          // role_needs is read with no .eq(): `readNeedsByPlanKey` awaits the
+          // select directly. Answering it only on the .eq() branch below would
+          // make awaiting this object resolve to itself rather than to
+          // { data, error } -- destructuring that silently yields undefined
+          // for both, nothing throws, and every job would carry need: null
+          // without a single test noticing.
+          if (table === 'role_needs') {
+            return Promise.resolve({ data: state.roleNeeds, error: null })
+          }
           return {
             eq() {
               if (table === 'simulation_jobs')
@@ -70,6 +80,7 @@ describe('refillFeed', () => {
       pending: 50,
       personas: PERSONAS,
       plans: PLANS,
+      roleNeeds: [],
       feed: { next_index: 0, pass: 0, inputs_version: null },
       commitResult: true,
     })
@@ -82,6 +93,7 @@ describe('refillFeed', () => {
       pending: 0,
       personas: PERSONAS,
       plans: PLANS,
+      roleNeeds: [],
       feed: { next_index: 0, pass: 0, inputs_version: null },
       commitResult: true,
     })
@@ -117,6 +129,7 @@ describe('refillFeed', () => {
       pending: 3,
       personas: PERSONAS,
       plans: PLANS,
+      roleNeeds: [],
       feed: { next_index: 10, pass: 2, inputs_version: version },
       commitResult: true,
     })
@@ -138,6 +151,7 @@ describe('refillFeed', () => {
       pending: 0,
       personas: PERSONAS,
       plans: PLANS,
+      roleNeeds: [],
       feed: { next_index: 99, pass: 3, inputs_version: 'old' },
       commitResult: true,
     })
@@ -158,6 +172,7 @@ describe('refillFeed', () => {
       pending: 0,
       personas: PERSONAS,
       plans: PLANS,
+      roleNeeds: [],
       feed: { next_index: 0, pass: 0, inputs_version: null },
       commitResult: false,
     })
@@ -169,6 +184,7 @@ describe('refillFeed', () => {
       pending: 0,
       personas: [PERSONAS[2] as Row],
       plans: PLANS,
+      roleNeeds: [],
       feed: { next_index: 0, pass: 0, inputs_version: null },
       commitResult: true,
     })
@@ -185,9 +201,67 @@ describe('refillFeed', () => {
       pending: 0,
       personas: PERSONAS,
       plans: PLANS,
+      roleNeeds: [],
       feed: null,
       commitResult: true,
     })
     await expect(refillFeed(client, SETTINGS)).rejects.toThrow('simulation_feed')
+  })
+
+  test('a committed job carries the taxonomy’s need key', async () => {
+    // Guards the wiring, not just the pure function: readNeedsByPlanKey has to
+    // actually resolve role_needs and jobsForChunk has to actually receive it,
+    // or this would pass with need: null on every job and nobody would know.
+    const personas = [
+      { persona_key: 'sam', industry: 'retail', job_role_name: 'מנהל חנות', source: 'manual' },
+    ]
+    const plans = [
+      {
+        plan_key: 'gen-retail-store-manager-daily-targets',
+        industry: 'retail',
+        job_role_name: 'מנהל חנות',
+        source: 'generated',
+      },
+    ]
+    const roleNeeds = [
+      { industry: 'retail', role_slug: 'store-manager', need_key: 'daily-targets' },
+    ]
+    const { client, commits } = fakeClient({
+      pending: 0,
+      personas,
+      plans,
+      roleNeeds,
+      feed: { next_index: 0, pass: 0, inputs_version: null },
+      commitResult: true,
+    })
+
+    await refillFeed(client, SETTINGS)
+
+    const jobs = commits[0]?.p_jobs as { need: string | null }[]
+    expect(jobs.length).toBeGreaterThan(0)
+    expect(jobs.every((job) => job.need === 'daily-targets')).toBe(true)
+  })
+
+  test('a plan outside the taxonomy commits no need', async () => {
+    // briefings predates the taxonomy and matches no role_needs row. A
+    // populated map that simply has nothing for it must still yield null,
+    // not a guess.
+    const roleNeeds = [
+      { industry: 'retail', role_slug: 'store-manager', need_key: 'daily-targets' },
+    ]
+    const { client, commits } = fakeClient({
+      pending: 0,
+      personas: PERSONAS,
+      plans: PLANS,
+      roleNeeds,
+      feed: { next_index: 0, pass: 0, inputs_version: null },
+      commitResult: true,
+    })
+
+    await refillFeed(client, SETTINGS)
+
+    const jobs = commits[0]?.p_jobs as { need: string | null; plan_key: string }[]
+    expect(jobs.length).toBeGreaterThan(0)
+    expect(jobs.every((job) => job.plan_key === 'briefings' && job.need === null)).toBe(true)
   })
 })

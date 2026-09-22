@@ -197,6 +197,8 @@ export interface SweepSpec {
   cells?: number
   /** Resume point: how many cells earlier sweeps already covered. */
   after?: number
+  /** Plan key to need key. Absent means the jobs record no need. */
+  needByPlanKey?: ReadonlyMap<string, string>
 }
 
 const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b))
@@ -261,7 +263,10 @@ export function planSweep(spec: SweepSpec): QueuedJob[] {
           industry: spec.industry ?? 'retail',
           segment: spec.segment ?? null,
           job_role_id: spec.jobRoleId ?? null,
-          need: cell.reason,
+          // Same fix as feed.ts: the reason lives in `world`, and this column
+          // is the taxonomy's need. One path fixed and not the other would
+          // leave the column holding two meanings, which is the bug.
+          need: spec.needByPlanKey?.get(planKey) ?? null,
           rules: spec.rules ?? DEFAULT_RULES,
           world: buildWorld(cell),
         })

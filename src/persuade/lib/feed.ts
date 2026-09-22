@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { planKeyFor } from '../cell'
 import { DEFAULT_RULES } from '../engine/rules'
 import { buildWorld, type WorldCell, worldCells } from '../engine/world'
 import { goldenStride, type QueuedJob } from './experiments'
@@ -130,6 +131,13 @@ export function jobsForChunk(
   chunk: FeedChunk,
   pairs: readonly FeedPair[],
   cells: readonly WorldCell[] = worldCells(),
+  /**
+   * Plan key to need key, from the taxonomy. Optional because a caller with no
+   * taxonomy in hand should record no need rather than a wrong one: `need` held
+   * the world's reason until 2026-09-22 and the column is not going back to
+   * carrying two vocabularies.
+   */
+  needByPlanKey: ReadonlyMap<string, string> = new Map(),
 ): QueuedJob[] {
   return chunk.positions.map((position) => {
     const pair = pairs[position.pairIndex] as FeedPair
@@ -142,7 +150,9 @@ export function jobsForChunk(
       industry: pair.industry,
       segment: null,
       job_role_id: null,
-      need: cell.reason,
+      // The reason this job runs under travels in `world`, where buildWorld
+      // puts it. This column is the taxonomy's need and nothing else.
+      need: needByPlanKey.get(pair.planKey) ?? null,
       rules: DEFAULT_RULES,
       world: buildWorld(cell),
       pass: position.pass,
@@ -195,6 +205,28 @@ async function readInputs(
   }))
 }
 
+/**
+ * The taxonomy, as the one mapping from plan key to need key.
+ *
+ * Read here rather than derived from the plan key by string surgery: role slugs
+ * and need keys both contain hyphens, so the split is ambiguous. See cell.ts.
+ */
+async function readNeedsByPlanKey(client: SupabaseClient): Promise<Map<string, string>> {
+  const { data, error } = await client.from('role_needs').select('industry,role_slug,need_key')
+  if (error) throw new Error(`קריאת role_needs נכשלה: ${error.message}`)
+
+  return new Map(
+    ((data ?? []) as Record<string, unknown>[]).map((row) => [
+      planKeyFor({
+        industry: String(row.industry),
+        roleSlug: String(row.role_slug),
+        needKey: String(row.need_key),
+      }),
+      String(row.need_key),
+    ]),
+  )
+}
+
 interface FeedRow {
   next_index: number
   pass: number
@@ -226,9 +258,10 @@ export async function refillFeed(
   const pending = await countPending(client)
   if (pending >= settings.lowWater) return { status: 'enough', pending }
 
-  const [personas, plans] = await Promise.all([
+  const [personas, plans, needByPlanKey] = await Promise.all([
     readInputs(client, 'persuasion_personas', 'persona_key'),
     readInputs(client, 'persuasion_lab_plans', 'plan_key'),
+    readNeedsByPlanKey(client),
   ])
   const { pairs, unpairedPersonas } = pairInputs(personas, plans)
   if (pairs.length === 0) return { status: 'no-pairs', pending, unpairedPersonas }
@@ -242,7 +275,7 @@ export async function refillFeed(
       : { nextIndex: 0, pass: 0 }
 
   const chunk = planChunk(from, pairs.length, cells.length, settings.refillChunk)
-  const jobs = jobsForChunk(chunk, pairs, cells)
+  const jobs = jobsForChunk(chunk, pairs, cells, needByPlanKey)
 
   const { data, error } = await client.rpc('commit_simulation_feed_chunk', {
     p_expected_index: stored.next_index,
