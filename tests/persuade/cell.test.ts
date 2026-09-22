@@ -29,19 +29,29 @@ describe('placing a run on the taxonomy', () => {
     })
   })
 
-  it('does not split a hyphenated slug by guesswork', () => {
-    // Both halves contain hyphens, so any rule that splits the string has to
-    // choose between retail/area/manager-food-waste and retail/area-manager/
-    // food-waste. A map lookup never has to choose.
-    const index = cellIndex([
-      need('retail', 'area-manager', 'food-waste'),
-      need('retail', 'area', 'manager-food-waste'),
-    ])
+  it('resolves a hyphenated slug exactly, with no splitting', () => {
+    // The real content of the old test: a role slug and a need key that both
+    // contain hyphens resolve correctly, because the key is looked up whole
+    // rather than split on a separator that appears inside both halves.
+    const index = cellIndex([need('retail', 'area-manager', 'food-waste')])
 
     expect(placeRun(index, 'gen-retail-area-manager-food-waste')).toMatchObject({
       roleSlug: 'area-manager',
       needKey: 'food-waste',
     })
+  })
+
+  it('refuses to place a run whose key two cells both claim', () => {
+    // planKeyFor is not injective: role slugs and need keys both admit hyphens,
+    // so these two needs produce one identical key. Picking either is a guess,
+    // and a guessed cell is exactly what this module exists to avoid. The run
+    // goes to the unplaced bucket instead, where it stays visible.
+    const index = cellIndex([
+      need('retail', 'area-manager', 'food-waste'),
+      need('retail', 'area', 'manager-food-waste'),
+    ])
+
+    expect(placeRun(index, 'gen-retail-area-manager-food-waste')).toBeNull()
   })
 
   it('returns null for the hand-written plan rather than inventing a cell', () => {

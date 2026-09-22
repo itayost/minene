@@ -28,22 +28,27 @@ export interface RoleNeed extends RoleRef {
 export const planKeyFor = (need: { industry: string; roleSlug: string; needKey: string }): string =>
   `gen-${need.industry}-${need.roleSlug}-${need.needKey}`
 
-export type CellIndex = ReadonlyMap<string, RoleNeed>
+/** `null` under a key means two or more needs claim it -- see below. */
+export type CellIndex = ReadonlyMap<string, RoleNeed | null>
 
 /**
- * First registration wins a collided key. `planKeyFor` joins three
- * hyphen-bearing segments with hyphens, so two distinct (industry, roleSlug,
- * needKey) tuples can format to the identical string -- see cell.test.ts's
- * "does not split a hyphenated slug by guesswork". That case never happens
- * from real role_needs rows, but building left-to-right and keeping the
- * first insert makes the outcome deterministic instead of insertion-order
- * trivia, and matches the order needs are listed in.
+ * A collided key resolves to null, never to a winner. `planKeyFor` joins
+ * three hyphen-bearing segments with hyphens, so two distinct (industry,
+ * roleSlug, needKey) tuples can format to the identical string -- see
+ * cell.test.ts's "refuses to place a run whose key two cells both claim".
+ * Picking either need for that key would be a guess dressed up as a lookup,
+ * and inventing a cell is the one thing this index exists to rule out. A run
+ * whose key is ambiguous is treated exactly like one whose key is unknown:
+ * it falls to `placeRun`'s null, and stays visible in the unplaced bucket
+ * rather than being attributed to whichever need happened to register first.
+ * role_needs has no such collision today (130 rows, 130 distinct keys); this
+ * is a guard against a future one, not a repair for a present one.
  */
 export function cellIndex(needs: readonly RoleNeed[]): CellIndex {
-  const index = new Map<string, RoleNeed>()
+  const index = new Map<string, RoleNeed | null>()
   for (const need of needs) {
     const key = planKeyFor(need)
-    if (!index.has(key)) index.set(key, need)
+    index.set(key, index.has(key) ? null : need)
   }
   return index
 }
