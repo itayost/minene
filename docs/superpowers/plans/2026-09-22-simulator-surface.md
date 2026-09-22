@@ -15,7 +15,7 @@
 - Hebrew only. There is no English surface and no second locale. Every visible string, every `aria-label`, and every thrown error message is Hebrew.
 - RTL throughout. Use logical CSS properties (`margin-inline-start`, not `margin-left`).
 - Biome style: single quotes, no semicolons, 2-space indent, 100 column width. Run `pnpm lint:fix` before committing.
-- TypeScript strict. `pnpm ci` runs `biome ci . && tsc --noEmit && vitest run` and must pass before any task is considered done.
+- TypeScript strict. `pnpm run ci` runs `biome ci . && tsc --noEmit && vitest run` and must pass before any task is considered done.
 - No new npm dependencies. Nothing in this plan needs one.
 - No migrations. Every table this plan reads (`role_needs`, `persuasion_lab_plans`, `simulations`, `simulation_jobs`) already grants `select` to `authenticated`. If a task seems to need a migration, stop and raise it: migrations live in the eran-task repo, not this one.
 - The tenant boundary is absolute. Nothing added here may read `rules`, `roles`, `documents`, `profiles`, `persuasion_ammunition`, a `tenantId` or an `assignmentId`. `tests/persuade/tenant-boundary.test.ts` enforces this by reading source text, and Task 9 extends it to the new files.
@@ -526,7 +526,7 @@ and in `planSweep`, replace `need: cell.reason,` with:
 - [ ] **Step 7: Verify the whole suite**
 
 ```bash
-pnpm ci
+pnpm run ci
 ```
 
 Expected: PASS. `tests/persuade/feed-refill.test.ts` may stub the client; if it fails because `role_needs` is unexpected, add `role_needs` to its fake returning `{ data: [], error: null }` and assert that the resulting jobs carry `need: null`.
@@ -727,7 +727,7 @@ export function createSimulationsApi(client: Parameters<typeof createSimulations
 - [ ] **Step 7: Verify**
 
 ```bash
-pnpm ci
+pnpm run ci
 ```
 
 - [ ] **Step 8: Commit**
@@ -979,7 +979,7 @@ export type TaxonomyApi = ReturnType<typeof createTaxonomyApi>
 - [ ] **Step 6: Verify**
 
 ```bash
-pnpm ci
+pnpm run ci
 ```
 
 - [ ] **Step 7: Commit**
@@ -1478,7 +1478,7 @@ An empty taxonomy is the right default for those two tests: neither is about the
 - [ ] **Step 9: Run everything**
 
 ```bash
-pnpm ci
+pnpm run ci
 ```
 
 Expected: PASS. Biome, `tsc --noEmit` and the full vitest suite. The branch typechecks at the end of every task; if it does not, this step is not finished.
@@ -2774,7 +2774,7 @@ In `tests/persuade/tenant-boundary.test.ts`, inside the existing top-level `desc
 - [ ] **Step 9: Verify everything**
 
 ```bash
-pnpm ci
+pnpm run ci
 ```
 
 Expected: PASS. Biome, `tsc --noEmit` and the full vitest suite.
@@ -2801,7 +2801,7 @@ git commit -m "feat: drill from industry to the arguments that won under a need"
 After Task 9, before calling this done:
 
 ```bash
-pnpm ci
+pnpm run ci
 ```
 
 Then confirm against the live database that the screen's claims are true:
