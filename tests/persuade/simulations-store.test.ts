@@ -174,6 +174,38 @@ describe('reading without the conversations', () => {
     expect(rows[0]?.run.turns).toEqual([])
     expect(rows[0]?.run.violations).toEqual([])
   })
+
+  it('reads every page, not just the newest one', async () => {
+    // The matrix and the bank read this list and trust it is the whole table
+    // -- neither warns about a sample. A `.limit(n)` here would silently drop
+    // everything older than the newest n once the table passed that size, and
+    // at the 1,000 runs a day this screen exists to display, the table
+    // crosses one page in a single day. Silent truncation is exactly the
+    // failure this loop exists to make impossible.
+    const row = (i: number): Row => ({
+      id: `sim-${i}`,
+      industry: 'retail',
+      job_role_id: 'r1',
+      persona_id: 'rona',
+      plan: { id: 'p1' },
+      state: { outcome: 'agreed', blockers: [], interaction: 1 },
+      score: null,
+      created_at: new Date(2026, 0, 1, 0, 0, i).toISOString(),
+    })
+    const total = 7
+    const { store } = fake(Array.from({ length: total }, (_, i) => row(i)))
+
+    // A small page size, well under `total`, forces more than one full page
+    // -- pageSize=1000 against a handful of rows would return everything in
+    // one call and prove nothing about the loop that advances the window.
+    const all = await store.listSimulationSummaries(3)
+
+    expect(all).toHaveLength(total)
+    // Not just a count: a loop that kept re-reading the first page forever
+    // would also return "some" rows, just the same three over and over. Every
+    // id appearing exactly once is what shows the window actually advanced.
+    expect(new Set(all.map((s) => s.id)).size).toBe(total)
+  })
 })
 
 describe('counting without reading', () => {
