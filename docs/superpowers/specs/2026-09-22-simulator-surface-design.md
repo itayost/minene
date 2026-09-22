@@ -117,18 +117,20 @@ whole structure instead of to one axis.
 
 ### Placing a run on the three axes
 
-A parser over `plan.id`, not the columns.
+A lookup of `plan.id` against the taxonomy, not a read of the two columns.
 
 ```
-placeRun(run): { industry, roleSlug, needKey } | null
+cellIndex(roleNeeds): ReadonlyMap<string, Cell>
+placeRun(index, run): Cell | null
 ```
 
-`gen-retail-ceo-chain-visibility` yields retail, ceo, chain-visibility. The
-role slug is matched against `role_needs.role_slug` rather than split naively on
-the hyphen, because slugs themselves contain hyphens and greedy splitting would
-silently invent cells. A plan id that matches no known cell, `briefings` among
-them, returns null and is counted under an explicit "unplaced" bucket rather
-than dropped. Runs disappearing quietly from a measurement screen is a failure
+An exact map lookup, never a string split. Role slugs and need keys may both
+contain hyphens, so splitting `gen-retail-ceo-chain-visibility` on them is a
+guess that would silently invent cells. Instead the `role_needs` catalogue is
+turned into a map keyed by `planKeyFor`, the same formula `lab-generator.ts`
+writes the keys with, and lookup is exact. A plan id in no entry, `briefings`
+among them, returns null and is counted under an explicit "unplaced" bucket
+rather than dropped. Runs disappearing quietly from a measurement screen is a failure
 this repo has already had once.
 
 ### The feed writes the real need
@@ -136,6 +138,10 @@ this repo has already had once.
 `feed.ts` stops writing `cell.reason` into `need` and writes the plan's need key
 instead. Nothing is lost: the reason is already on the same row inside
 `world.reason`, which is where the rest of the code reads it from.
+
+`planSweep` in `experiments.ts:264` carries the identical line and is fixed the
+same way. Fixing one queueing path and not the other leaves the column holding
+two meanings, which is the bug itself.
 
 No backfill. The parser is the read-side source of truth either way, so a
 migration would buy consistency in a column nothing would then depend on. The
@@ -173,16 +179,44 @@ It is reused unchanged, called with the runs of one need instead of one role.
 
 ### Live
 
-Supabase Realtime on inserts into `public.simulations`. A run landing updates
-the counters and names its cell at the top of the screen.
+A poll, not Realtime. Revised 2026-09-22, while mapping the files.
 
-Realtime rather than polling because the tick is every 10 minutes and the runs
-inside one tick land in a burst. A poll interval short enough to catch the burst
-spends most of its requests on nothing.
+Realtime was the first choice and it costs more than it looked.
+`public.simulations` is not in the `supabase_realtime` publication, nothing in
+this codebase uses Realtime at all, and adding the table to the publication is a
+migration in eran-task. That is a second repo and a new runtime dependency,
+bought for a difference nobody on this screen can perceive: the worker ticks
+every ten minutes and its runs land in a burst, so a poll every fifteen seconds
+catches a burst within seconds of it starting.
 
-A subscription that fails to establish is not fatal. The screen falls back to
-the load-time read plus a manual refresh, and says which of the two it is doing.
-An instrument that silently stops updating is worse than one that admits it.
+So: a counts query and a newest-runs query on an interval while the tab is
+visible, paused when it is hidden. Both are cheap and neither pages the table.
+The behaviour the brief asks for, runs appearing as they land, is unchanged.
+Only the transport is.
+
+A failed poll is not fatal. The screen keeps the last good numbers, says the
+feed is stale and when it last succeeded, and offers a manual refresh. An
+instrument that silently stops updating is worse than one that admits it.
+
+Realtime stays available if this ever needs to be sub-second. It does not today.
+
+### The screen must not page the whole table to draw itself
+
+`listSimulations` reads every row with every column, `turns` included. That is
+correct for 168 rows and fatal at the scale this screen exists to display: at
+the 1,000 a day the cap allows, one month is 30,000 rows each carrying a whole
+conversation as jsonb, and the screen would be pulling hundreds of megabytes to
+compute a percentage.
+
+Nothing on this screen needs `turns`. `buildBank` reads `score`, `blockersIn`
+reads `state.blockers`, the rate reads `state.outcome`. So the store gains
+`listSimulationSummaries()`, selecting every column except `turns`, and the
+screen uses it. `listSimulations` stays as it is for anything that genuinely
+needs the conversations, and a single run's transcript is fetched by id if one
+is ever opened.
+
+This is a change to code the work already touches, made because the work makes
+the flaw load-bearing. It is not an unrelated refactor.
 
 ### Counters
 
@@ -191,6 +225,10 @@ Two, both measured, plus one cap:
 - Cumulative total.
 - Added today.
 - The daily cap, `PERSUADER_DAILY_RUN_CAP`, shown as capacity.
+
+Both counters come from `count: 'exact', head: true` queries, so the headline
+numbers never depend on paging the table and stay correct however large it
+gets.
 
 The brief's "700-1,000 a day" is the cap, not an achievement, and is labelled as
 capacity. Today the counter reads "0 של 1,000 היום", which is the correct thing
