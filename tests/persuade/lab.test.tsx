@@ -23,6 +23,11 @@ vi.mock('../../src/brain/roles-api', async (o) => ({
   ...(await o<Record<string, unknown>>()),
   createRolesApi: () => roles,
 }))
+const taxonomy = vi.hoisted(() => ({ listRoleNeeds: vi.fn() }))
+vi.mock('../../src/persuade/taxonomy-api', async (o) => ({
+  ...(await o<Record<string, unknown>>()),
+  createTaxonomyApi: () => taxonomy,
+}))
 
 const { LabClient } = await import('../../app/[brandId]/tools/persuade/lab/lab-client')
 
@@ -38,6 +43,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   sims.listSimulations.mockResolvedValue([])
   roles.listRoles.mockResolvedValue([{ id: 'r1', name: 'מנהלת חנות', sortOrder: 10 }])
+  taxonomy.listRoleNeeds.mockResolvedValue([])
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => ({

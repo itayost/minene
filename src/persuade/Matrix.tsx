@@ -2,14 +2,15 @@
 
 export type MatrixCell = {
   industry: string
+  /** Hebrew. The industry is a bare slug in the database with no label column. */
+  industryLabel: string
   /**
-   * Null for runs recorded against no role, or against a role id the current
-   * catalogue no longer recognises (roles are hard-deleted, so an old run can
-   * outlive the role it was queued against). Either way the run gets its own
-   * column rather than being dropped from the grid -- see matrix-data.ts.
+   * From role_needs, not from public.roles. The per-tenant catalogue was the
+   * wrong vocabulary for a sweep that is deliberately tenant-free, which is how
+   * 164 of 168 runs ended up in a column labelled "no role".
    */
-  jobRoleId: string | null
-  jobRoleName: string
+  roleSlug: string
+  roleLabel: string
   runs: number
   /**
    * Null when nothing has been run here. Never 0: "nobody has tried this cell"
@@ -37,7 +38,7 @@ function heatStep(rate: number): 1 | 2 | 3 | 4 | 5 {
   return 5
 }
 
-const cellKey = (cell: MatrixCell) => `${cell.industry}::${cell.jobRoleId}`
+const cellKey = (cell: MatrixCell) => `${cell.industry}::${cell.roleSlug}`
 
 export function Matrix({
   cells,
@@ -48,8 +49,8 @@ export function Matrix({
   selected: MatrixCell | null
   onSelect: (cell: MatrixCell) => void
 }) {
-  const industries = [...new Set(cells.map((c) => c.industry))]
-  const roles = [...new Map(cells.map((c) => [c.jobRoleId, c.jobRoleName])).entries()]
+  const industries = [...new Map(cells.map((c) => [c.industry, c.industryLabel])).entries()]
+  const roles = [...new Map(cells.map((c) => [c.roleSlug, c.roleLabel])).entries()]
   const byKey = new Map(cells.map((c) => [cellKey(c), c]))
 
   return (
@@ -58,20 +59,20 @@ export function Matrix({
         <thead>
           <tr>
             <th />
-            {roles.map(([id, name]) => (
-              <th key={id} scope="col">
-                {name}
+            {roles.map(([slug, label]) => (
+              <th key={slug} scope="col">
+                {label}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {industries.map((industry) => (
+          {industries.map(([industry, label]) => (
             <tr key={industry}>
-              <th scope="row">{industry}</th>
-              {roles.map(([id]) => {
-                const cell = byKey.get(`${industry}::${id}`)
-                if (!cell) return <td className="cell" data-heat="none" key={id} />
+              <th scope="row">{label}</th>
+              {roles.map(([slug]) => {
+                const cell = byKey.get(`${industry}::${slug}`)
+                if (!cell) return <td className="cell" data-heat="none" key={slug} />
 
                 const measured = cell.persuasionRate !== null
                 return (
@@ -80,13 +81,13 @@ export function Matrix({
                     // reader moving cell to cell, so the cell says where it is.
                     aria-label={
                       measured
-                        ? `${cell.industry}, ${cell.jobRoleName}, ${cell.persuasionRate} אחוז, ${cell.runs} ריצות`
-                        : `${cell.industry}, ${cell.jobRoleName}, אין ריצות`
+                        ? `${cell.industryLabel}, ${cell.roleLabel}, ${cell.persuasionRate} אחוז, ${cell.runs} ריצות`
+                        : `${cell.industryLabel}, ${cell.roleLabel}, אין ריצות`
                     }
                     aria-selected={selected ? cellKey(selected) === cellKey(cell) : undefined}
                     className="cell"
                     data-heat={measured ? heatStep(cell.persuasionRate as number) : 'none'}
-                    key={id}
+                    key={slug}
                     onClick={() => onSelect(cell)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') onSelect(cell)

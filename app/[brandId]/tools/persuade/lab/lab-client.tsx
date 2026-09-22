@@ -6,13 +6,16 @@ import { createRolesApi, type RolesClient } from '../../../../../src/brain/roles
 import type { Role } from '../../../../../src/brain/types'
 import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
 import { blockersIn, buildBank } from '../../../../../src/persuade/bank'
+import { cellIndex } from '../../../../../src/persuade/cell'
+import { gridFrom, placeAll, runsForRole } from '../../../../../src/persuade/coverage'
 import type { PersuasionPlan } from '../../../../../src/persuade/engine/types'
 import { BLOCKER_LABELS, CATEGORY_LABELS } from '../../../../../src/persuade/labels'
 import type { StoredSimulation } from '../../../../../src/persuade/lib/simulations'
 import { Matrix, type MatrixCell } from '../../../../../src/persuade/Matrix'
-import { matrixFrom } from '../../../../../src/persuade/matrix-data'
 import { type PersonaOption, RunControl } from '../../../../../src/persuade/RunControl'
 import { createSimulationsApi } from '../../../../../src/persuade/simulations-api'
+import { type NeedRow, taxonomyFrom } from '../../../../../src/persuade/taxonomy'
+import { createTaxonomyApi } from '../../../../../src/persuade/taxonomy-api'
 
 interface LabClientProps {
   personas: PersonaOption[]
@@ -33,52 +36,57 @@ export function LabClient({ personas, plans }: LabClientProps) {
     () => createRolesApi(createBrowserSupabase() as unknown as RolesClient),
     [],
   )
+  const taxonomyApi = useMemo(() => createTaxonomyApi(createBrowserSupabase() as never), [])
   const handleError = useApiErrorHandler()
 
   const [selected, setSelected] = useState<MatrixCell | null>(null)
   const [simulations, setSimulations] = useState<StoredSimulation[]>([])
   const [roles, setRoles] = useState<Role[]>([])
+  const [needRows, setNeedRows] = useState<NeedRow[]>([])
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
     try {
-      const [runs, catalogue] = await Promise.all([
+      const [runs, needs, catalogue] = await Promise.all([
         simulationsApi.listSimulations(),
+        taxonomyApi.listRoleNeeds(),
         rolesApi.listRoles(),
       ])
       setSimulations(runs)
+      setNeedRows(needs)
       setRoles(catalogue)
     } catch (failure) {
       if (handleError(failure)) setError('לא הצלחנו לטעון את הריצות')
     }
-  }, [handleError, rolesApi, simulationsApi])
+  }, [handleError, rolesApi, simulationsApi, taxonomyApi])
 
   useEffect(() => {
     void load()
   }, [load])
 
-  const cells = useMemo(
-    () =>
-      matrixFrom(
-        simulations,
-        roles.map((r) => ({ id: r.id, name: r.name })),
-      ),
-    [roles, simulations],
-  )
+  const taxonomy = useMemo(() => taxonomyFrom(needRows), [needRows])
+  const index = useMemo(() => cellIndex(needRows), [needRows])
+  const placed = useMemo(() => placeAll(index, simulations), [index, simulations])
+  const cells = useMemo(() => gridFrom(taxonomy, placed), [taxonomy, placed])
 
   // The bank and the blockers are queries over the selected cell's runs, never
   // a stored list -- so they cannot disagree with the evidence behind them.
   const inCell = useMemo(
     () =>
       selected
-        ? simulations.filter(
-            (s) => s.cell.industry === selected.industry && s.cell.jobRoleId === selected.jobRoleId,
+        ? runsForRole(
+            placed,
+            selected.industry,
+            selected.roleSlug,
+            taxonomy
+              .find((entry) => entry.industry === selected.industry)
+              ?.roles.find((entry) => entry.roleSlug === selected.roleSlug)?.needs ?? [],
           )
         : [],
-    [selected, simulations],
+    [placed, selected, taxonomy],
   )
-  const bank = useMemo(() => buildBank(inCell.map((s) => s.run)), [inCell])
-  const blockers = useMemo(() => blockersIn(inCell.map((s) => s.run)), [inCell])
+  const bank = useMemo(() => buildBank(inCell), [inCell])
+  const blockers = useMemo(() => blockersIn(inCell), [inCell])
 
   return (
     <div className="brain-surface">
@@ -133,8 +141,8 @@ export function LabClient({ personas, plans }: LabClientProps) {
         )}
 
         {selected ? (
-          <section aria-label={`${selected.industry} · ${selected.jobRoleName}`}>
-            <h3 className="knowledge-heading">{`${selected.industry} · ${selected.jobRoleName}`}</h3>
+          <section aria-label={`${selected.industryLabel} · ${selected.roleLabel}`}>
+            <h3 className="knowledge-heading">{`${selected.industryLabel} · ${selected.roleLabel}`}</h3>
             <p className="knowledge-message">
               {selected.persuasionRate === null
                 ? 'אין ריצות בתא הזה, ולכן אין מה למדוד בו עדיין.'

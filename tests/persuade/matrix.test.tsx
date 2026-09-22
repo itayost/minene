@@ -4,8 +4,9 @@ import { Matrix, type MatrixCell } from '../../src/persuade/Matrix'
 
 const cell = (over: Partial<MatrixCell> = {}): MatrixCell => ({
   industry: 'אופנה',
-  jobRoleId: 'r1',
-  jobRoleName: 'מנהלת חנות',
+  industryLabel: 'אופנה',
+  roleSlug: 'r1',
+  roleLabel: 'מנהלת חנות',
   runs: 42,
   persuasionRate: 81,
   ...over,
@@ -53,8 +54,8 @@ describe('the matrix', () => {
     render(
       <Matrix
         cells={[
-          cell({ jobRoleId: 'a', persuasionRate: 24 }),
-          cell({ jobRoleId: 'b', persuasionRate: 81 }),
+          cell({ roleSlug: 'a', persuasionRate: 24 }),
+          cell({ roleSlug: 'b', persuasionRate: 81 }),
         ]}
         onSelect={vi.fn()}
         selected={null}
@@ -82,7 +83,7 @@ describe('the matrix', () => {
     await userEvent.setup().click(screen.getByRole('gridcell'))
 
     expect(onSelect).toHaveBeenCalledWith(
-      expect.objectContaining({ industry: 'אופנה', jobRoleId: 'r1' }),
+      expect.objectContaining({ industry: 'אופנה', roleSlug: 'r1' }),
     )
   })
 })
