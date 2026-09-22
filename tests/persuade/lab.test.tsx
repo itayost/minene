@@ -227,6 +227,38 @@ describe('drilling down', () => {
     expect(await screen.findByText(/אין עדיין תוכנית/)).toBeInTheDocument()
   })
 
+  it('does not claim a need has no plan while the plan is still being read', async () => {
+    // The whole screen's rule is that a measured fact beats an invented one,
+    // and "אין עדיין תוכנית" is a claim about the library. While the read is in
+    // flight nothing has been measured yet, so saying it would be inventing the
+    // one fact this section exists to report.
+    search = new URLSearchParams('industry=retail&role=ceo&need=profitability')
+    let resolvePlan: (found: unknown) => void = () => {}
+    labPlans.getPlan.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePlan = resolve
+      }),
+    )
+    setup()
+
+    await waitFor(() => expect(labPlans.getPlan).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText(/אין עדיין תוכנית/)).not.toBeInTheDocument()
+
+    resolvePlan(null)
+    expect(await screen.findByText(/אין עדיין תוכנית/)).toBeInTheDocument()
+  })
+
+  it('claims nothing about the need when the plan read fails outright', async () => {
+    // A read that never answered is not evidence of an empty library. The alert
+    // at the top says what actually happened; the section says nothing.
+    search = new URLSearchParams('industry=retail&role=ceo&need=profitability')
+    labPlans.getPlan.mockRejectedValue(new Error('boom'))
+    setup()
+
+    expect(await screen.findByText('לא הצלחנו לטעון את התוכנית')).toBeInTheDocument()
+    expect(screen.queryByText(/אין עדיין תוכנית/)).not.toBeInTheDocument()
+  })
+
   it('renders no persuasions section for a hand-edited URL naming only a need', async () => {
     // Only reachable by editing the URL directly -- the screen's own controls
     // never produce this. Without industry and role, `gen-<industry>-<role>-<need>`

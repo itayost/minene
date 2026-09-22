@@ -41,6 +41,11 @@
   position: sticky;
   inset-inline-start: 0;
   background: var(--surface);
+  /* Explicit, because `absent` cells carry opacity: 0.45 and an element with
+     opacity below 1 paints in the same layer as a positioned one -- in tree
+     order, which puts every cell after this header. Left at auto, the dimmed
+     cells slide over the industry label they are meant to scroll under. */
+  z-index: 1;
 }
 
 .cell {

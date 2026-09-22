@@ -1,4 +1,4 @@
-import { type CellIndex, cellKey, placeRun } from './cell'
+import { type CellIndex, cellKey, cellKeyOf, placeRun } from './cell'
 import type { Run } from './engine/types'
 import type { StoredSimulation } from './lib/simulations'
 import type { MatrixCell } from './Matrix'
@@ -56,7 +56,7 @@ export function runsForRole(
   needs: readonly { needKey: string }[],
 ): Run[] {
   return needs.flatMap(
-    (need) => placed.runsByCell.get(`${industry}/${roleSlug}/${need.needKey}`) ?? [],
+    (need) => placed.runsByCell.get(cellKeyOf(industry, roleSlug, need.needKey)) ?? [],
   )
 }
 

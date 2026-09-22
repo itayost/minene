@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { preparePlan } from '../../src/persuade/engine/prepare'
 import { isAskPhotographable } from '../../src/persuade/engine/rules'
+import { createUsageMeter, withUsageMeter } from '../../src/persuade/engine/usage'
 import { setModelOverrides } from '../../src/persuade/lib/model'
 import { jsonModel, recordingJsonModel } from './helpers'
 
@@ -62,6 +63,21 @@ describe('stage 0 preparation', () => {
     setModelOverrides({ planner: jsonModel([planPayload]) })
     const plan = await preparePlan({ ...input, onBehalfOf: null })
     expect(plan.onBehalfOf).toBeNull()
+  })
+
+  test('counts its own tokens, so a run’s recorded spend includes stage 0', async () => {
+    // The `planner` role exists for this call and the lab generator. Left
+    // unrecorded here, every simulation the worker stores reports a flat zero
+    // for the most expensive single call it makes before a word is said.
+    setModelOverrides({ planner: jsonModel([planPayload]) })
+    const meter = createUsageMeter()
+
+    await withUsageMeter(meter, async () => {
+      await preparePlan(input)
+    })
+
+    // Every scripted call reports 10 input and 10 output tokens.
+    expect(meter.totals().planner).toEqual({ input: 10, output: 10 })
   })
 
   test('clamps a stray escalation rung into the one-to-five ladder', async () => {

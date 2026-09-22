@@ -64,8 +64,17 @@ export function placeRun(index: CellIndex, planId: string | null | undefined): R
   return index.get(planId) ?? null
 }
 
+/**
+ * The one spelling of a cell's key. Exported beside `cellKey` because the
+ * readers hold three loose strings (the URL's industry, role and need) rather
+ * than a RoleNeed, and three hand-written copies of this template is three
+ * places to forget when the separator changes.
+ */
+export const cellKeyOf = (industry: string, roleSlug: string, needKey: string): string =>
+  `${industry}/${roleSlug}/${needKey}`
+
 export const cellKey = (cell: RoleNeed): string =>
-  `${cell.industry}/${cell.roleSlug}/${cell.needKey}`
+  cellKeyOf(cell.industry, cell.roleSlug, cell.needKey)
 
 /**
  * The only Hebrew an industry has. role_needs carries role_label and

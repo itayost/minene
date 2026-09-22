@@ -76,6 +76,20 @@ describe('reading one library plan by key', () => {
     await expect(createLabPlansApi(client).getPlan('nothing')).resolves.toBeNull()
   })
 
+  it('returns null for a row whose plan jsonb is empty, rather than a hollow plan', async () => {
+    // Spreading a null jsonb yields `{}`, and a plan with no `arguments` array
+    // takes the whole screen down on the first `.map`. A row with nothing in it
+    // is the same answer to the reader as no row at all.
+    const { client } = fakeDb({
+      data: { plan_key: 'gen-retail-ceo-profitability', plan: null } as never,
+      error: null,
+    })
+
+    await expect(
+      createLabPlansApi(client).getPlan('gen-retail-ceo-profitability'),
+    ).resolves.toBeNull()
+  })
+
   it('throws with a Hebrew message when the read fails', async () => {
     const { client } = fakeDb({ data: null, error: { message: 'connection reset' } })
 

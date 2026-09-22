@@ -82,5 +82,12 @@ export function useLiveCounts(api: CountsApi) {
     }
   }, [refresh])
 
-  return { counts, stale, lastOk, refresh: () => void refresh() }
+  // Wrapped once rather than per render: a fresh arrow every render would make
+  // every `useCallback` and `useEffect` a caller hangs off this identity fire
+  // again on every render, which is the opposite of what those guards are for.
+  const trigger = useCallback(() => {
+    void refresh()
+  }, [refresh])
+
+  return { counts, stale, lastOk, refresh: trigger }
 }

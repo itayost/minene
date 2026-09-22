@@ -39,7 +39,11 @@ export function createLabPlansApi(client: PlansClient) {
         .maybeSingle()
 
       if (error) throw new Error(`קריאת התוכנית נכשלה: ${error.message}`)
-      if (!data) return null
+      // `!data.plan` as well as `!data`: a row whose jsonb is null spreads to
+      // `{}`, and a plan with no `arguments` array takes the whole screen down
+      // on the first `.map`. A row with nothing in it is the same answer to
+      // the reader as no row at all.
+      if (!data?.plan) return null
 
       // plan_key is asserted over the stored plan's own id, exactly as
       // loadPlans does: the key is the handle a run is recorded under.

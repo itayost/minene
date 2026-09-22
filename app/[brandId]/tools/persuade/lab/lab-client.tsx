@@ -8,7 +8,7 @@ import type { Role } from '../../../../../src/brain/types'
 import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
 import { blockersIn } from '../../../../../src/persuade/bank'
 import { Counters } from '../../../../../src/persuade/Counters'
-import { cellIndex, planKeyFor } from '../../../../../src/persuade/cell'
+import { cellIndex, cellKeyOf, planKeyFor } from '../../../../../src/persuade/cell'
 import { coverageOf, gridFrom, placeAll } from '../../../../../src/persuade/coverage'
 import type { PersuasionPlan } from '../../../../../src/persuade/engine/types'
 import { createLabPlansApi } from '../../../../../src/persuade/lab-plans-api'
@@ -54,6 +54,15 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
   const [needRows, setNeedRows] = useState<NeedRow[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [plan, setPlan] = useState<PersuasionPlan | null>(null)
+  /**
+   * Distinct from `plan === null`, for the same reason `loaded` is distinct
+   * from an empty `needRows`: a fetch still in flight, a fetch that failed and
+   * a need that genuinely has no generated plan all three leave `plan` at null,
+   * and only the last is a fact about the library. Without this the screen
+   * answered "אין עדיין תוכנית" for the length of every round trip and again
+   * after every failed read -- a claim it had not measured.
+   */
+  const [planStatus, setPlanStatus] = useState<'none' | 'pending' | 'ready' | 'failed'>('none')
   const [error, setError] = useState('')
   // Distinct from `needRows.length === 0`: a `role_needs` table that is
   // genuinely empty and a `load()` that never completed both leave `needRows`
@@ -158,7 +167,9 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
 
   const needRuns = useMemo(
     () =>
-      industry && role && need ? (placed.runsByCell.get(`${industry}/${role}/${need}`) ?? []) : [],
+      industry && role && need
+        ? (placed.runsByCell.get(cellKeyOf(industry, role, need)) ?? [])
+        : [],
     [industry, need, placed, role],
   )
 
@@ -167,16 +178,28 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
   useEffect(() => {
     if (!industry || !role || !need) {
       setPlan(null)
+      setPlanStatus('none')
       return
     }
+    // Cleared before the fetch, not after it: leaving the previous need's plan
+    // on screen would show one need's arguments beside another need's win
+    // counts for the length of the round trip.
+    setPlan(null)
+    setPlanStatus('pending')
     let live = true
     void labPlansApi
       .getPlan(planKeyFor({ industry, roleSlug: role, needKey: need }))
       .then((found) => {
-        if (live) setPlan(found)
+        if (!live) return
+        setPlan(found)
+        setPlanStatus('ready')
       })
       .catch((failure) => {
         if (!live) return
+        // 'failed', never 'ready': a read that never answered is not evidence
+        // that the need has no plan, and saying so would invent the one fact
+        // this section exists to report.
+        setPlanStatus('failed')
         if (handleError(failure)) setError('לא הצלחנו לטעון את התוכנית')
       })
     return () => {
@@ -221,7 +244,10 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
 
         {/* Outside the "are there runs" branch, deliberately. A control inside
             it would make the first run the one thing this screen could not do. */}
-        <RunControl onFinished={load} personas={personas} plans={plans} roles={roles} />
+        {/* `onRefresh`, not `load`: a run that just landed changes the counters
+            as well as the grid, and reloading only one of them leaves two
+            numbers on the same screen disagreeing until the next 15s poll. */}
+        <RunControl onFinished={onRefresh} personas={personas} plans={plans} roles={roles} />
 
         {loaded && cells.length === 0 ? (
           // Only reachable once a load has actually succeeded -- a failed load
@@ -274,8 +300,9 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
             <ul className="needs">
               {selectedRole.needs.map((entry) => {
                 const coverage = coverageOf(
-                  placed.runsByCell.get(`${industry}/${selectedRole.roleSlug}/${entry.needKey}`) ??
-                    [],
+                  placed.runsByCell.get(
+                    cellKeyOf(industry, selectedRole.roleSlug, entry.needKey),
+                  ) ?? [],
                 )
                 return (
                   <li key={entry.needKey}>
@@ -302,11 +329,21 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
 
         {industry && role && need ? (
           <section aria-label="שכנועים לצורך">
-            {plan === null ? (
+            {/* Three separate conditions rather than one chain, and `failed`
+                appears in none of them on purpose: a read that never answered
+                says nothing about the need, and the alert at the top already
+                says what did happen. */}
+            {planStatus === 'pending' ? (
+              <p className="knowledge-message">טוען את התוכנית…</p>
+            ) : null}
+
+            {planStatus === 'ready' && plan === null ? (
               // A need with no generated plan is a real state, not an error:
               // there are 130 needs and generation is a separate pass over them.
               <p className="knowledge-message">אין עדיין תוכנית לצורך הזה.</p>
-            ) : (
+            ) : null}
+
+            {plan ? (
               <>
                 <p className="knowledge-message">
                   הניצחונות נספרים לפי קטגוריה, לא לפי המשפט עצמו: מה שהשופט רשם כטיעון המנצח הוא
@@ -349,7 +386,7 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
                   </p>
                 ) : null}
               </>
-            )}
+            ) : null}
           </section>
         ) : null}
       </section>
