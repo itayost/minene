@@ -152,6 +152,40 @@ export function createSimulationsStore(client: SupabaseClient) {
       return rows.map(toStored)
     },
 
+    /**
+     * The same rows as listSimulationSummaries, but only those at or after a
+     * timestamp.
+     *
+     * The screen reloads its grid whenever the run count changes, and while the
+     * loop is sweeping that is nearly every fifteen-second poll. Re-paging the
+     * whole table each time is work proportional to everything ever recorded in
+     * order to learn about a handful of new rows -- invisible at 168 of them
+     * and unbounded at the thousand a day the cap allows.
+     *
+     * `gte`, not `gt`, and the caller dedupes by id: two runs can share a
+     * created_at, and `gt` past the newest one held would step over its twin
+     * and lose it silently, which is the one failure this table must never
+     * have.
+     */
+    async listSimulationSummariesSince(iso: string, pageSize = 1000): Promise<StoredSimulation[]> {
+      const rows: SimulationRow[] = []
+      for (let from = 0; ; ) {
+        const { data, error } = await client
+          .from('simulations')
+          .select(SUMMARY_COLUMNS)
+          .gte('created_at', iso)
+          .order('created_at', { ascending: false })
+          .range(from, from + pageSize - 1)
+
+        if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
+        const page = (data ?? []) as SimulationRow[]
+        if (page.length === 0) break
+        rows.push(...page)
+        from += page.length
+      }
+      return rows.map(toStored)
+    },
+
     async countSimulations(): Promise<number> {
       const { count, error } = await client
         .from('simulations')

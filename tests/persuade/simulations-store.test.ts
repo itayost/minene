@@ -208,6 +208,27 @@ describe('reading without the conversations', () => {
   })
 })
 
+describe('reading only what is new', () => {
+  it('filters on created_at, and overlaps by one timestamp rather than stepping past it', async () => {
+    // `gte`, not `gt`. Two runs can share a created_at, and a `gt` past the
+    // newest row already held would step over its twin and lose it with no
+    // sign that a row was ever left out -- the one failure this table must not
+    // have. The overlap is paid for by a dedupe on the caller's side.
+    const { store, gteCall, selectedTable } = fake([])
+    await store.listSimulationSummariesSince('2026-09-22T00:00:00.000Z')
+
+    expect(selectedTable()).toBe('simulations')
+    expect(gteCall()).toEqual({ column: 'created_at', value: '2026-09-22T00:00:00.000Z' })
+  })
+
+  it('does not ask for turns either', () => {
+    const { store, selectedColumns } = fake([])
+    void store.listSimulationSummariesSince('2026-09-22T00:00:00.000Z')
+
+    expect(selectedColumns()).not.toContain('turns')
+  })
+})
+
 describe('counting without reading', () => {
   // Each of these asserts the table and the filter column, not just the
   // returned number. A fake that only checked the count would still pass if

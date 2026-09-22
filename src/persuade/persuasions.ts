@@ -19,7 +19,6 @@ export interface AnnotatedArgument {
   category: ArgumentCategory
   categoryLabel: string
   text: string
-  strength: number
   /** Wins by this argument's CATEGORY, not by this sentence. */
   categoryWins: number
   /** The sentences that actually won in that category, as the judge recorded them. */
@@ -56,7 +55,6 @@ export function persuasionsFor(plan: PersuasionPlan | null, runs: readonly Run[]
         category: argument.category,
         categoryLabel: CATEGORY_LABELS[argument.category],
         text: argument.text,
-        strength: argument.strength,
         categoryWins: entry?.wonCount ?? 0,
         winningSentences: entry?.examples ?? [],
       }

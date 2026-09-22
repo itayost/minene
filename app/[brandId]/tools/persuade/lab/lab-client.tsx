@@ -133,14 +133,47 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
   // 15s timer -- re-paging listSimulationSummaries every tick would spend the
   // exact cost that method exists to avoid. `null` on the very first render
   // means "no reading yet", not "zero", so it is excluded from the compare.
+  /**
+   * Only the runs, and only the ones that landed since the newest one held.
+   *
+   * The grid has to follow the counters or the screen shows two numbers off the
+   * same table from different moments -- but a full re-page to learn about a
+   * handful of new rows is work proportional to everything ever recorded, and
+   * while the loop is sweeping this fires on nearly every poll. Merged by id
+   * rather than appended: the read overlaps by one timestamp on purpose (see
+   * listSimulationSummariesSince), so the newest rows come back twice.
+   */
+  const loadNewRuns = useCallback(async () => {
+    try {
+      const newest = simulations.reduce(
+        (latest, sim) => (sim.run.createdAt > latest ? sim.run.createdAt : latest),
+        '',
+      )
+      // Nothing held yet means nothing to be incremental about.
+      if (!newest) return void (await load())
+
+      const fresh = await simulationsApi.listSimulationSummariesSince(newest)
+      if (fresh.length === 0) return
+
+      setSimulations((held) => {
+        const byId = new Map(held.map((sim) => [sim.id, sim]))
+        for (const sim of fresh) byId.set(sim.id, sim)
+        return [...byId.values()].sort((a, b) => b.run.createdAt.localeCompare(a.run.createdAt))
+      })
+    } catch (failure) {
+      if (handleError(failure))
+        setError(failure instanceof Error ? failure.message : 'לא הצלחנו לרענן את הריצות')
+    }
+  }, [handleError, load, simulations, simulationsApi])
+
   const previousTotal = useRef<number | null>(null)
   useEffect(() => {
     if (counts === null) return
     if (previousTotal.current !== null && previousTotal.current !== counts.total) {
-      void load()
+      void loadNewRuns()
     }
     previousTotal.current = counts.total
-  }, [counts, load])
+  }, [counts, loadNewRuns])
 
   const onRefresh = useCallback(() => {
     refresh()

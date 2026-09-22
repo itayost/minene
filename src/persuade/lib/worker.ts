@@ -7,6 +7,7 @@ import { createUsageMeter, withUsageMeter } from '../engine/usage'
 import { isWorldState, personaInWorld, type WorldState } from '../engine/world'
 import { type BreakerOutcome, breakerVerdict, DEFAULT_BREAKER, readRecentOutcomes } from './breaker'
 import { getPersona, getPlan } from './content'
+import { startOfUtcDay } from './day'
 import { type FeedReport, refillFeed } from './feed'
 import { modelId } from './model'
 import { runPool } from './pool'
@@ -77,12 +78,10 @@ export interface TickDeps {
 
 /** Jobs claimed today, any status, which is what the cap is measured against. */
 async function attemptsToday(client: SupabaseClient): Promise<number> {
-  const since = new Date()
-  since.setUTCHours(0, 0, 0, 0)
   const { count, error } = await client
     .from('simulation_jobs')
     .select('id', { count: 'exact', head: true })
-    .gte('claimed_at', since.toISOString())
+    .gte('claimed_at', startOfUtcDay())
 
   // A cap that cannot be read is a cap that is not enforced. Failing closed
   // costs a batch; failing open costs money until somebody notices.

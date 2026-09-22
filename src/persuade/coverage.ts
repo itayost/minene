@@ -16,7 +16,6 @@ import type { TaxonomyIndustry } from './taxonomy'
 export interface Placed {
   runsByCell: ReadonlyMap<string, Run[]>
   unplaced: number
-  total: number
 }
 
 export function placeAll(index: CellIndex, sims: readonly StoredSimulation[]): Placed {
@@ -35,7 +34,7 @@ export function placeAll(index: CellIndex, sims: readonly StoredSimulation[]): P
     else runsByCell.set(key, [sim.run])
   }
 
-  return { runsByCell, unplaced, total: sims.length }
+  return { runsByCell, unplaced }
 }
 
 /**

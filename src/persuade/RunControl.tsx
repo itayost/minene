@@ -75,15 +75,11 @@ export function RunControl({ onFinished, personas, plans, roles }: RunControlPro
     setError('')
     setNotice('')
 
-    // The industry no longer decides which cell a run lands in -- placement is
-    // an exact match of the plan's id against the taxonomy (cell.ts's
-    // placeRun), whatever is chosen here. It is still recorded on every row
-    // and still required by the database, so an empty value is refused before
-    // ten model calls are spent finding that out from the route instead.
-    if (!industry.trim()) {
-      setError('צריך לבחור ענף כדי לשמור את הריצה.')
-      return
-    }
+    // No empty-industry check: the field is a select over a fixed list with no
+    // blank option, so it cannot produce one. The industry does not decide
+    // which cell a run lands in either -- placement is an exact match of the
+    // plan's id against the taxonomy (cell.ts's placeRun) -- but it is still
+    // recorded on every row and still constrained by the database.
     const plan = plans.find((p) => p.id === planId)
     if (!plan) {
       setError('צריך לבחור נושא לשיחה.')

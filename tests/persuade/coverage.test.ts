@@ -60,7 +60,6 @@ describe('placing runs on the taxonomy', () => {
 
     const inCells = [...placed.runsByCell.values()].reduce((n, runs) => n + runs.length, 0)
     expect(inCells + placed.unplaced).toBe(sims.length)
-    expect(placed.total).toBe(sims.length)
   })
 })
 

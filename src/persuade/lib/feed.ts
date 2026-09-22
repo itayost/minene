@@ -215,15 +215,28 @@ async function readNeedsByPlanKey(client: SupabaseClient): Promise<Map<string, s
   const { data, error } = await client.from('role_needs').select('industry,role_slug,need_key')
   if (error) throw new Error(`קריאת role_needs נכשלה: ${error.message}`)
 
+  // Last-wins on a duplicate key would be worse here than it is on the read
+  // side. `planKeyFor` is not injective -- role slugs and need keys both admit
+  // hyphens, so two distinct (industry, role, need) tuples can format to one
+  // string -- and where cell.ts's `cellIndex` answers that with null and
+  // declines to place a run, a bare `new Map(...)` would silently pick one and
+  // stamp its need onto every job queued under that key, permanently. The same
+  // rule resolved two ways, and this is the copy that writes.
+  const byKey = new Map<string, string | null>()
+  for (const row of (data ?? []) as Record<string, unknown>[]) {
+    const needKey = String(row.need_key)
+    const key = planKeyFor({
+      industry: String(row.industry),
+      roleSlug: String(row.role_slug),
+      needKey,
+    })
+    byKey.set(key, byKey.has(key) ? null : needKey)
+  }
+
+  // An ambiguous key records no need rather than a guessed one, which is what
+  // the column meant before this became a taxonomy need at all.
   return new Map(
-    ((data ?? []) as Record<string, unknown>[]).map((row) => [
-      planKeyFor({
-        industry: String(row.industry),
-        roleSlug: String(row.role_slug),
-        needKey: String(row.need_key),
-      }),
-      String(row.need_key),
-    ]),
+    [...byKey.entries()].filter((entry): entry is [string, string] => entry[1] !== null),
   )
 }
 

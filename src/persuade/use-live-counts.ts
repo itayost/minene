@@ -1,19 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { startOfUtcDay } from './lib/day'
 
-/**
- * The same boundary the cap uses.
- *
- * worker.ts's attemptsToday calls setUTCHours(0,0,0,0) on simulation_jobs. A
- * screen that counted a local day would show a number against a cap measured
- * over a different window, and the two would disagree for three hours a day.
- */
-export function startOfUtcDay(now: Date = new Date()): string {
-  const start = new Date(now)
-  start.setUTCHours(0, 0, 0, 0)
-  return start.toISOString()
-}
+export { startOfUtcDay }
 
 export interface Counts {
   total: number

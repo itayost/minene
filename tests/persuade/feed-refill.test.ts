@@ -242,6 +242,44 @@ describe('refillFeed', () => {
     expect(jobs.every((job) => job.need === 'daily-targets')).toBe(true)
   })
 
+  test('a plan key two cells both claim commits no need, rather than one of them', async () => {
+    // planKeyFor is not injective: role slugs and need keys both admit hyphens,
+    // so ('area-manager','food-waste') and ('area','manager-food-waste') format
+    // to one string. cell.ts already refuses to PLACE a run on an ambiguous
+    // key; this is the writing half agreeing with it. A bare Map would keep
+    // whichever row came last and stamp its need onto every job queued under
+    // that key, permanently and with nothing on screen to show it was a guess.
+    const personas = [
+      { persona_key: 'sam', industry: 'retail', job_role_name: 'מנהל אזור', source: 'manual' },
+    ]
+    const plans = [
+      {
+        plan_key: 'gen-retail-area-manager-food-waste',
+        industry: 'retail',
+        job_role_name: 'מנהל אזור',
+        source: 'generated',
+      },
+    ]
+    const roleNeeds = [
+      { industry: 'retail', role_slug: 'area-manager', need_key: 'food-waste' },
+      { industry: 'retail', role_slug: 'area', need_key: 'manager-food-waste' },
+    ]
+    const { client, commits } = fakeClient({
+      pending: 0,
+      personas,
+      plans,
+      roleNeeds,
+      feed: { next_index: 0, pass: 0, inputs_version: null },
+      commitResult: true,
+    })
+
+    await refillFeed(client, SETTINGS)
+
+    const jobs = commits[0]?.p_jobs as { need: string | null }[]
+    expect(jobs.length).toBeGreaterThan(0)
+    expect(jobs.every((job) => job.need === null)).toBe(true)
+  })
+
   test('a plan outside the taxonomy commits no need', async () => {
     // briefings predates the taxonomy and matches no role_needs row. A
     // populated map that simply has nothing for it must still yield null,
