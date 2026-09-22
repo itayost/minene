@@ -70,9 +70,30 @@ export function Matrix({
           {industries.map(([industry, label]) => (
             <tr key={industry}>
               <th scope="row">{label}</th>
-              {roles.map(([slug]) => {
+              {roles.map(([slug, roleLabel]) => {
                 const cell = byKey.get(`${industry}::${slug}`)
-                if (!cell) return <td className="cell" data-heat="none" key={slug} />
+                if (!cell) {
+                  // Structurally absent, not merely unrun: roles are an
+                  // industry-specific vocabulary (only 21 of the 5*26 = 130
+                  // (industry, role) combinations the cross-product implies
+                  // are real), so this combination can never have a run. Its
+                  // own token keeps it from being read as "no runs here",
+                  // which is what data-heat="none" means on this screen.
+                  return (
+                    <td
+                      aria-label={`${label}, ${roleLabel}, התפקיד הזה לא קיים בענף הזה`}
+                      className="cell"
+                      data-heat="absent"
+                      key={slug}
+                      role="gridcell"
+                      // Programmatically focusable (satisfies the grid role's
+                      // own a11y requirement) without joining the Tab order --
+                      // unlike the real cells beside it, there is nothing here
+                      // to act on.
+                      tabIndex={-1}
+                    />
+                  )
+                }
 
                 const measured = cell.persuasionRate !== null
                 return (

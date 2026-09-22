@@ -81,4 +81,15 @@ describe('the counters', () => {
 
     expect(screen.getByText(/טוען/)).toBeInTheDocument()
   })
+
+  it('offers a way out when the very first read fails, instead of loading forever', () => {
+    // counts === null and stale === true together mean there are no last-good
+    // numbers to fall back to -- unlike a later failure, which keeps the old
+    // numbers on screen. Rendering "טוען מונים…" here would trap the reader
+    // behind a spinner nothing on the page can ever clear.
+    render(<Counters counts={null} dailyCap={1000} lastOk={null} onRefresh={() => {}} stale />)
+
+    expect(screen.getByRole('status')).toHaveTextContent(/לא הצלחנו לטעון/)
+    expect(screen.getByRole('button', { name: /רענון/ })).toBeInTheDocument()
+  })
 })

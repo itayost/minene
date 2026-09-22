@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -16,7 +16,6 @@ vi.mock('../../src/auth/supabase-browser', () => ({
 }))
 
 const sims = vi.hoisted(() => ({
-  listSimulations: vi.fn(),
   listSimulationSummaries: vi.fn(),
   countSimulations: vi.fn(),
   countSimulationsSince: vi.fn(),
@@ -93,7 +92,6 @@ const setup = () => {
 beforeEach(() => {
   vi.clearAllMocks()
   search = new URLSearchParams()
-  sims.listSimulations.mockResolvedValue([])
   sims.listSimulationSummaries.mockResolvedValue([])
   sims.countSimulations.mockResolvedValue(0)
   sims.countSimulationsSince.mockResolvedValue(0)
@@ -139,7 +137,9 @@ describe('the lab, before anything has been run', () => {
     const user = setup()
     await waitFor(() => expect(sims.listSimulationSummaries).toHaveBeenCalledTimes(1))
 
-    await user.type(await screen.findByLabelText('ענף'), 'אופנה')
+    // A real slug, not free text: the field is a select over the closed list
+    // the database constrains `simulations.industry` to.
+    await user.selectOptions(await screen.findByLabelText('ענף'), 'bank')
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     await waitFor(() => expect(sims.listSimulationSummaries).toHaveBeenCalledTimes(2))
@@ -150,10 +150,14 @@ describe('the grid is drawn from the taxonomy', () => {
   it('shows an industry nobody has run', async () => {
     // infrastructure has never had a run. It is on screen because the grid is
     // built from role_needs, and for an instrument the hole is the finding.
+    // Scoped to the grid itself: both industry names are ALSO option labels in
+    // RunControl's own industry select now, so a bare screen.findByText would
+    // match twice.
     setup()
 
-    expect(await screen.findByText('תשתיות')).toBeInTheDocument()
-    expect(await screen.findByText('קמעונאות')).toBeInTheDocument()
+    const grid = await screen.findByRole('grid')
+    expect(within(grid).getByText('תשתיות')).toBeInTheDocument()
+    expect(within(grid).getByText('קמעונאות')).toBeInTheDocument()
   })
 
   it('says how many runs it could not place instead of dropping them', async () => {
@@ -232,7 +236,7 @@ describe('drilling down', () => {
     search = new URLSearchParams('need=profitability')
     setup()
 
-    await screen.findByText('קמעונאות')
+    await screen.findByRole('grid')
     expect(labPlans.getPlan).not.toHaveBeenCalled()
     expect(screen.queryByLabelText('שכנועים לצורך')).not.toBeInTheDocument()
   })
@@ -269,5 +273,79 @@ describe('the counters', () => {
 
     expect(await screen.findByText('168')).toBeInTheDocument()
     expect(await screen.findByText(/12 מתוך 1,000/)).toBeInTheDocument()
+  })
+})
+
+describe('when the load itself fails', () => {
+  it('says the load failed, in its own words, rather than claiming the map is empty', async () => {
+    // Each of the three reads names itself when it throws (see taxonomy-api.ts
+    // and lib/simulations.ts). Asserting on that exact text is how this test
+    // tells "the load failed" from "the load succeeded and found nothing".
+    taxonomy.listRoleNeeds.mockRejectedValue(new Error('קריאת מפת הצרכים נכשלה: bang'))
+    setup()
+
+    expect(await screen.findByText('קריאת מפת הצרכים נכשלה: bang')).toBeInTheDocument()
+    // cells.length === 0 is true here too, exactly as it would be for a
+    // genuinely empty taxonomy -- the claim below must not follow from that
+    // alone.
+    expect(screen.queryByText(/מפת הצרכים ריקה/)).not.toBeInTheDocument()
+  })
+
+  it('still makes the empty-map claim once a load actually succeeds and finds nothing', async () => {
+    // The failure path must not swallow the success path: an empty
+    // role_needs is still a real, reportable state once the read itself
+    // worked.
+    taxonomy.listRoleNeeds.mockResolvedValue([])
+    setup()
+
+    expect(await screen.findByText(/מפת הצרכים ריקה/)).toBeInTheDocument()
+  })
+})
+
+describe('keeping the grid and the counters from drifting apart', () => {
+  it('reloads the grid together with the counters when the operator presses refresh', async () => {
+    const user = setup()
+    await waitFor(() => expect(taxonomy.listRoleNeeds).toHaveBeenCalledTimes(1))
+
+    await user.click(await screen.findByRole('button', { name: 'רענון' }))
+
+    await waitFor(() => expect(taxonomy.listRoleNeeds).toHaveBeenCalledTimes(2))
+    expect(sims.countSimulations).toHaveBeenCalledTimes(2)
+  })
+
+  it('reloads the grid when the poll finds a new total, and not merely because the timer ticked', async () => {
+    vi.useFakeTimers()
+    // Advancing the fake clock fires the interval and lets its own promise
+    // chain settle, but the reload this test is watching for is one render
+    // further downstream -- a state update in response to THAT chain, read by
+    // an effect, that starts a second async call. A couple of zero-length
+    // advances give React the extra microtask turns to catch up before the
+    // next assertion.
+    const settle = async () => {
+      await vi.advanceTimersByTimeAsync(0)
+      await vi.advanceTimersByTimeAsync(0)
+    }
+    try {
+      sims.countSimulations
+        .mockResolvedValueOnce(168) // the read on mount
+        .mockResolvedValueOnce(168) // first poll tick: unchanged
+        .mockResolvedValueOnce(170) // second poll tick: a new run landed
+      setup()
+      await settle()
+
+      expect(taxonomy.listRoleNeeds).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(15_000)
+      await settle()
+      // Same total as before: re-paging the grid off a bare timer tick is the
+      // exact cost listSimulationSummaries exists to avoid.
+      expect(taxonomy.listRoleNeeds).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(15_000)
+      await settle()
+      expect(taxonomy.listRoleNeeds).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

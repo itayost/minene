@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createBrowserSupabase } from '../../../../../src/auth/supabase-browser'
 import { createRolesApi, type RolesClient } from '../../../../../src/brain/roles-api'
 import type { Role } from '../../../../../src/brain/types'
@@ -55,6 +55,10 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
   const [roles, setRoles] = useState<Role[]>([])
   const [plan, setPlan] = useState<PersuasionPlan | null>(null)
   const [error, setError] = useState('')
+  // Distinct from `needRows.length === 0`: a `role_needs` table that is
+  // genuinely empty and a `load()` that never completed both leave `needRows`
+  // at its initial `[]`. Only the first is a fact about the taxonomy.
+  const [loaded, setLoaded] = useState(false)
 
   const { counts, stale, lastOk, refresh } = useLiveCounts(simulationsApi)
 
@@ -95,14 +99,44 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
       setSimulations(runs)
       setNeedRows(needs)
       setRoles(catalogue)
+      setError('')
+      setLoaded(true)
     } catch (failure) {
-      if (handleError(failure)) setError('לא הצלחנו לטעון את הריצות')
+      // handleError still runs first: an expired session redirects rather than
+      // showing a message on a screen where nothing left works, and `null`
+      // here means that redirect is already under way.
+      const handled = handleError(failure)
+      if (!handled) return
+      // The failure's OWN message, not a fixed line naming "the runs" --
+      // Promise.all rejects with whichever of the three reads actually threw,
+      // and each names itself (taxonomy-api's own "קריאת מפת הצרכים נכשלה",
+      // the simulations store's "קריאת הסימולציות נכשלה", and so on). A fixed
+      // string here would tell the reader the wrong one failed.
+      setError(failure instanceof Error ? failure.message : handled)
     }
   }, [handleError, rolesApi, simulationsApi, taxonomyApi])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  // Reloads the grid whenever the cheap count changes, not on the poll's own
+  // 15s timer -- re-paging listSimulationSummaries every tick would spend the
+  // exact cost that method exists to avoid. `null` on the very first render
+  // means "no reading yet", not "zero", so it is excluded from the compare.
+  const previousTotal = useRef<number | null>(null)
+  useEffect(() => {
+    if (counts === null) return
+    if (previousTotal.current !== null && previousTotal.current !== counts.total) {
+      void load()
+    }
+    previousTotal.current = counts.total
+  }, [counts, load])
+
+  const onRefresh = useCallback(() => {
+    refresh()
+    void load()
+  }, [refresh, load])
 
   const taxonomy = useMemo(() => taxonomyFrom(needRows), [needRows])
   const index = useMemo(() => cellIndex(needRows), [needRows])
@@ -173,7 +207,7 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
           counts={counts}
           dailyCap={dailyCap}
           lastOk={lastOk}
-          onRefresh={refresh}
+          onRefresh={onRefresh}
           stale={stale}
         />
 
@@ -189,9 +223,14 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
             it would make the first run the one thing this screen could not do. */}
         <RunControl onFinished={load} personas={personas} plans={plans} roles={roles} />
 
-        {cells.length === 0 ? (
+        {loaded && cells.length === 0 ? (
+          // Only reachable once a load has actually succeeded -- a failed load
+          // also leaves `cells` at its initial empty state, and that is a fact
+          // about the network, not about role_needs.
           <p className="knowledge-message">מפת הצרכים ריקה, ולכן אין ממה לבנות את המטריצה.</p>
-        ) : (
+        ) : null}
+
+        {cells.length > 0 ? (
           <>
             <Matrix cells={cells} onSelect={onSelectCell} selected={selectedCell} />
 
@@ -216,9 +255,16 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
                 <i aria-hidden="true" className="cell" data-heat="none" />
                 אין ריצות — לא אפס אחוז
               </span>
+              {/* Its own entry, distinct from "no runs": this swatch means the
+                  role does not exist in that industry at all, so the cell
+                  could never have a run to begin with. */}
+              <span className="matrix-legend__absent">
+                <i aria-hidden="true" className="cell" data-heat="absent" />
+                התפקיד לא קיים בענף — לא תא ריק
+              </span>
             </div>
           </>
-        )}
+        ) : null}
 
         {selectedRole && industry ? (
           <section aria-label={`צרכים: ${selectedRole.roleLabel}`}>

@@ -73,26 +73,30 @@ beforeEach(() => {
 })
 
 describe('starting a simulation', () => {
-  it('refuses to run without an industry, which is the cell it would belong to', async () => {
+  it('defaults to a real industry already selected, since the field is a closed list now', async () => {
+    // simulations.industry is a slug the database constrains to a closed list
+    // (see cell.ts's INDUSTRY_LABELS). Free text used to let the field be left
+    // blank; a select cannot be, so there is no longer a way to submit with no
+    // industry chosen at all -- the run always carries a real one.
     const { user } = setup()
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
-    // A run with no cell is a run nothing can ever read: the matrix and the
-    // bank are both queries by cell.
-    expect(screen.getByRole('alert')).toHaveTextContent('ענף')
-    expect(fetch).not.toHaveBeenCalled()
+    await waitFor(() => expect(fetch).toHaveBeenCalled())
+    const body = JSON.parse((vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit).body as string)
+    expect(body.cell.industry).toBe('retail')
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('sends the cell, the persona and the plan', async () => {
     const { user } = setup()
-    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    await user.selectOptions(screen.getByLabelText('ענף'), 'bank')
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalled())
     const body = JSON.parse((vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit).body as string)
     expect(body).toMatchObject({
       personaId: 'rona',
-      cell: { industry: 'אופנה', jobRoleId: 'r1' },
+      cell: { industry: 'bank', jobRoleId: 'r1' },
     })
     expect(body.config.plan.id).toBe('briefings')
   })
@@ -121,7 +125,8 @@ describe('starting a simulation', () => {
     )
 
     const { user, onFinished } = setup()
-    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    // The industry field now defaults to a real, valid slug on mount (it is a
+    // closed-list select), so these tests no longer need to touch it.
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     expect(await screen.findByText('רותי, בקשה אחת.')).toBeVisible()
@@ -149,7 +154,8 @@ describe('starting a simulation', () => {
     )
 
     const { user } = setup()
-    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    // The industry field now defaults to a real, valid slug on mount (it is a
+    // closed-list select), so these tests no longer need to touch it.
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     expect(await screen.findByText('[לא ענה]')).toBeVisible()
@@ -169,7 +175,8 @@ describe('starting a simulation', () => {
     )
 
     const { user, onFinished } = setup()
-    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    // The industry field now defaults to a real, valid slug on mount (it is a
+    // closed-list select), so these tests no longer need to touch it.
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     expect(await screen.findByText('רותי, בקשה אחת.')).toBeVisible()
@@ -195,7 +202,8 @@ describe('starting a simulation', () => {
     )
 
     const { user, onFinished } = setup()
-    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    // The industry field now defaults to a real, valid slug on mount (it is a
+    // closed-list select), so these tests no longer need to touch it.
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalled())
@@ -211,7 +219,8 @@ describe('starting a simulation', () => {
       vi.fn(async () => ndjson([{ type: 'done', run: { id: 'sim-1' } }, { type: 'unsaved' }])),
     )
     const { user, onFinished } = setup()
-    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    // The industry field now defaults to a real, valid slug on mount (it is a
+    // closed-list select), so these tests no longer need to touch it.
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/לא נשמרה/)
@@ -229,7 +238,8 @@ describe('starting a simulation', () => {
     rerender(<RunControl onFinished={vi.fn()} personas={PERSONAS} plans={PLANS} roles={ROLES} />)
 
     const user = userEvent.setup()
-    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    // The industry field now defaults to a real, valid slug on mount (it is a
+    // closed-list select), so these tests no longer need to touch it.
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalled())
@@ -243,7 +253,8 @@ describe('starting a simulation', () => {
       vi.fn(async () => ndjson([{ type: 'unscored' }, { type: 'done', run: { id: 'sim-1' } }])),
     )
     const { user } = setup()
-    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    // The industry field now defaults to a real, valid slug on mount (it is a
+    // closed-list select), so these tests no longer need to touch it.
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     // An unscored run is kept, but it cannot reach the bank -- so the cell will
@@ -267,7 +278,8 @@ describe('starting a simulation', () => {
       })),
     )
     const { user } = setup()
-    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    // The industry field now defaults to a real, valid slug on mount (it is a
+    // closed-list select), so these tests no longer need to touch it.
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/SUPABASE_SECRET_KEY/)
@@ -286,7 +298,8 @@ describe('starting a simulation', () => {
       })),
     )
     const { user } = setup()
-    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    // The industry field now defaults to a real, valid slug on mount (it is a
+    // closed-list select), so these tests no longer need to touch it.
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/נכשלה/)
@@ -298,7 +311,8 @@ describe('starting a simulation', () => {
       vi.fn(async () => ({ ok: false, status: 403, json: async () => ({}) })),
     )
     const { user } = setup()
-    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    // The industry field now defaults to a real, valid slug on mount (it is a
+    // closed-list select), so these tests no longer need to touch it.
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/נכשלה|בעלים/)
@@ -317,7 +331,8 @@ describe('starting a simulation', () => {
       vi.fn(async () => ({ ok: false, status: 401, json: async () => ({}) })),
     )
     const { user } = setup()
-    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    // The industry field now defaults to a real, valid slug on mount (it is a
+    // closed-list select), so these tests no longer need to touch it.
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     await waitFor(() =>
@@ -334,7 +349,8 @@ describe('starting a simulation', () => {
       auth: { getSession: async () => ({ data: { session: null } }) },
     } as never)
     const { user } = setup()
-    await user.type(screen.getByLabelText('ענף'), 'אופנה')
+    // The industry field now defaults to a real, valid slug on mount (it is a
+    // closed-list select), so these tests no longer need to touch it.
     await user.click(screen.getByRole('button', { name: 'הרצת סימולציה' }))
 
     await waitFor(() => expect(router.replace).toHaveBeenCalled())

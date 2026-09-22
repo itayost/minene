@@ -25,6 +25,23 @@ export function Counters({
   onRefresh: () => void
 }) {
   if (!counts) {
+    // `stale` here means the FIRST read failed, not merely that a later one
+    // did -- there are no last-good numbers to fall back to yet. Rendering the
+    // loading line forever would leave the reader with a permanent spinner and
+    // no way out except reloading the page, which is exactly the silent-stop
+    // failure mode this instrument's own design argues against.
+    if (stale) {
+      return (
+        <div className="counters" dir="rtl">
+          <p className="counters__state" role="status">
+            {`לא הצלחנו לטעון את המונים. הקריאה האחרונה שהצליחה: ${lastOk ? time(lastOk) : 'לא הייתה'}`}
+          </p>
+          <button className="counters__refresh" onClick={onRefresh} type="button">
+            רענון
+          </button>
+        </div>
+      )
+    }
     return (
       <p className="counters__loading" dir="rtl">
         טוען מונים…

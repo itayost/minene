@@ -137,67 +137,6 @@ describe('saving a simulation', () => {
   })
 })
 
-describe('reading simulations back', () => {
-  it('selects the score, or the bank has nothing to read', async () => {
-    const { store, selectedColumns } = fake()
-    await store.listSimulations()
-
-    expect(selectedColumns()).toContain('score')
-  })
-
-  it('rebuilds a run the bank and the rates can use', async () => {
-    const { store } = fake([
-      {
-        id: 'sim-1',
-        industry: 'אופנה',
-        job_role_id: 'r1',
-        persona_id: 'rona',
-        plan: { id: 'p1' },
-        turns: [{ role: 'persuader', text: 'שלום', interaction: 1 }],
-        state: { outcome: 'agreed', blockers: ['overloaded'], interaction: 2 },
-        score: {
-          winningCategory: 'numbers',
-          winningArgument: 'פי שלוש',
-          grade: 80,
-          responseValidity: 'did',
-        },
-        created_at: '2026-08-27T10:00:00Z',
-      },
-    ])
-
-    const [first] = await store.listSimulations()
-
-    expect(first?.run.state.outcome).toBe('agreed')
-    expect(first?.run.score?.winningCategory).toBe('numbers')
-    expect(first?.cell).toEqual({ industry: 'אופנה', jobRoleId: 'r1' })
-  })
-
-  it('returns every simulation, not just the newest page of them', async () => {
-    // The matrix and the bank read this list and trust it is the whole table --
-    // neither warns about a sample. A table larger than one page silently
-    // losing its older rows is exactly the failure this store's own comments
-    // (and the matrix's, and the bank's) say to never let happen: a smaller
-    // number shown confidently instead of the real one.
-    const row = (i: number): Row => ({
-      id: `sim-${i}`,
-      industry: 'אופנה',
-      job_role_id: 'r1',
-      persona_id: 'rona',
-      plan: { id: 'p1' },
-      turns: [],
-      state: { outcome: 'agreed', blockers: [], interaction: 1 },
-      score: null,
-      created_at: new Date(2026, 0, 1, 0, 0, i).toISOString(),
-    })
-    const total = 650
-    const { store } = fake(Array.from({ length: total }, (_, i) => row(i)))
-
-    const all = await store.listSimulations()
-
-    expect(all).toHaveLength(total)
-  })
-})
-
 describe('reading without the conversations', () => {
   it('does not ask for turns', () => {
     const { store, selectedColumns } = fake([])

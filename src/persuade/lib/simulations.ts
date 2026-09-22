@@ -21,22 +21,16 @@ export interface StoredSimulation {
 }
 
 /**
- * Every column the bank and the rates read.
- *
- * `score` is the one that matters and the one the conversations store drops:
- * buildBank keys off `run.score?.winningCategory`, so a bank assembled from
- * rows that never carried a score comes back empty however many were scored.
- */
-const SIMULATION_COLUMNS =
-  'id,industry,job_role_id,need,persona_id,plan,turns,state,outcome,score,created_at'
-
-/**
  * Every column the screen needs and not one more.
  *
  * `turns` is the whole conversation. The lab screen reads state.outcome for the
  * rate, state.blockers for the blocker list and score for the bank, and never
  * the turns themselves -- so paging them in is hundreds of megabytes spent to
  * compute a percentage once the loop runs at its cap.
+ *
+ * `score` is the one column here that matters most and is easiest to drop by
+ * habit: buildBank keys off `run.score?.winningCategory`, so a bank assembled
+ * from rows that never carried it comes back empty however many were scored.
  */
 const SUMMARY_COLUMNS =
   'id,industry,job_role_id,need,persona_id,plan,state,outcome,score,created_at'
@@ -126,37 +120,20 @@ export function createSimulationsStore(client: SupabaseClient) {
      * a number was ever left out. The worker queues up to
      * `PERSUADER_DAILY_RUN_CAP` runs a day, so a fixed cap is not a distant
      * risk here, it is a matter of days.
+     *
+     * Without the conversations, and deliberately the only reader left: a
+     * `listSimulations` that paged `turns` in too used to sit beside this one
+     * with no caller anywhere in the repo, which is a second way to pay the
+     * cost this method exists to avoid -- someone reaching for the wrong one
+     * out of habit. It was removed rather than kept "just in case".
      */
-    async listSimulations(pageSize = 1000): Promise<StoredSimulation[]> {
+    async listSimulationSummaries(pageSize = 1000): Promise<StoredSimulation[]> {
       const rows: SimulationRow[] = []
       // The window advances by what came back, not by what was asked for, and
       // stops only on an empty page. PostgREST caps a response at its own
       // max-rows: if that cap is below `pageSize` every page arrives short,
       // and treating a short page as the last one would stop on the first --
       // reintroducing the truncation this loop exists to prevent.
-      for (let from = 0; ; ) {
-        const { data, error } = await client
-          .from('simulations')
-          .select(SIMULATION_COLUMNS)
-          .order('created_at', { ascending: false })
-          .range(from, from + pageSize - 1)
-
-        if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
-        const page = (data ?? []) as SimulationRow[]
-        if (page.length === 0) break
-        rows.push(...page)
-        from += page.length
-      }
-      return rows.map(toStored)
-    },
-
-    /**
-     * The same rows as listSimulations, without the conversations. Paged the
-     * same way and for the same reason: a `.limit(n)` here is a silent ceiling
-     * that shows cells as unrun.
-     */
-    async listSimulationSummaries(pageSize = 1000): Promise<StoredSimulation[]> {
-      const rows: SimulationRow[] = []
       for (let from = 0; ; ) {
         const { data, error } = await client
           .from('simulations')
