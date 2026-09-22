@@ -304,9 +304,24 @@ describe('sweeping the world space', () => {
     expect(jobs).toHaveLength(12)
   })
 
-  test('records the reason as the cell, so the matrix has its third axis', () => {
+  test('records no need with no taxonomy map, keeping the reason in world', () => {
+    // need used to mirror the world's reason. It no longer does: the reason
+    // stays on world (the matrix's third axis), and need is the taxonomy's,
+    // recorded only when the caller supplies one.
     const jobs = planSweep({ personaKeys: ['adi'], planKeys: ['p'], cells: 1 })
-    expect(jobs[0]!.need).toBe(jobs[0]!.world!.reason)
+    expect(jobs[0]!.need).toBeNull()
+    expect(jobs[0]!.world!.reason).toBeTruthy()
+  })
+
+  test('records the taxonomy’s need key when the sweep is given the map', () => {
+    const jobs = planSweep({
+      personaKeys: ['adi'],
+      planKeys: ['gen-retail-ceo-profitability'],
+      cells: 1,
+      needByPlanKey: new Map([['gen-retail-ceo-profitability', 'profitability']]),
+    })
+    expect(jobs[0]!.need).toBe('profitability')
+    expect(jobs[0]!.need).not.toBe(jobs[0]!.world!.reason)
   })
 })
 

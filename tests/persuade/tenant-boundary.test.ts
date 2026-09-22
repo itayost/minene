@@ -66,4 +66,25 @@ describe('a simulation never touches a tenant’s knowledge', () => {
     expect(turn).not.toMatch(/tenantId|tenant_id/)
     expect(turn).not.toMatch(/assignmentId|assignment_id/)
   })
+
+  it('holds for the screen that reads the sweep back', () => {
+    // These modules read the taxonomy and the runs, both industry-scoped rather
+    // than tenant-scoped. The moment one of them reads a tenant's rules, one
+    // business's knowledge appears on a grid every business can open.
+    for (const path of [
+      'src/persuade/cell.ts',
+      'src/persuade/coverage.ts',
+      'src/persuade/taxonomy.ts',
+      'src/persuade/taxonomy-api.ts',
+      'src/persuade/persuasions.ts',
+      'src/persuade/lab-plans-api.ts',
+      'src/persuade/use-live-counts.ts',
+    ]) {
+      const text = source(path)
+      expect(text).not.toMatch(/ammunition/i)
+      expect(text).not.toMatch(/tenantId|tenant_id/)
+      expect(text).not.toMatch(/assignmentId|assignment_id/)
+      expect(text).not.toMatch(/from\('(rules|documents|profiles)'\)/)
+    }
+  })
 })

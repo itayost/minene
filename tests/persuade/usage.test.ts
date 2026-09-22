@@ -43,6 +43,8 @@ describe('usage meter', () => {
       persuader: { input: 10, output: 10 },
       target: { input: 10, output: 10 },
       judge: { input: 10, output: 10 },
+      // A simulation never calls the planner, so its total stays at zero.
+      planner: { input: 0, output: 0 },
     })
   })
 

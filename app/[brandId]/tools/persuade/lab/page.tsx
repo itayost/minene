@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
 import { requireBrand } from '../../../../../src/auth/require-brand'
 import { listPersonaOptions, loadPlans } from '../../../../../src/persuade/lib/content'
+import { workerSettings } from '../../../../../src/persuade/lib/worker-settings'
 import { LabClient } from './lab-client'
 
 type LabParams = { params: Promise<{ brandId: string }> }
@@ -28,5 +30,11 @@ export default async function LabPage({ params }: LabParams) {
   // is allowed to see it.
   const [personas, plans] = await Promise.all([listPersonaOptions(), loadPlans()])
 
-  return <LabClient personas={personas} plans={plans} />
+  return (
+    // useSearchParams needs a Suspense boundary above it, otherwise the whole
+    // route opts out of static rendering with a build-time warning.
+    <Suspense fallback={<p className="knowledge-message">טוען את המעבדה…</p>}>
+      <LabClient dailyCap={workerSettings().dailyCap} personas={personas} plans={plans} />
+    </Suspense>
+  )
 }

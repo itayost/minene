@@ -35,6 +35,17 @@
 
 .matrix th[scope="row"] {
   text-align: right;
+  /* 21 role columns at a 74px minimum is roughly 1,600px, so the grid scrolls
+     horizontally on every screen this ships to -- and without this, the one
+     label saying which industry a row is stays on the far side of that scroll. */
+  position: sticky;
+  inset-inline-start: 0;
+  background: var(--surface);
+  /* Explicit, because `absent` cells carry opacity: 0.45 and an element with
+     opacity below 1 paints in the same layer as a positioned one -- in tree
+     order, which puts every cell after this header. Left at auto, the dimmed
+     cells slide over the industry label they are meant to scroll under. */
+  z-index: 1;
 }
 
 .cell {
@@ -85,11 +96,25 @@
 
 /* No runs is not nought per cent, so it gets no fill at all. The hatch is
    secondary encoding: the distinction has to survive greyscale, colour
-   blindness and a printed page, none of which a lighter tint would. */
+   blindness and a printed page, none of which a lighter tint would. This is a
+   real cell -- clicking it is how the drill-down is reached for a role nobody
+   has swept yet -- so it keeps .cell's own cursor: pointer. */
 .cell[data-heat="none"] {
   background: repeating-linear-gradient(135deg, transparent 0 5px, var(--border) 5px 6px);
   color: var(--muted);
   box-shadow: inset 0 0 0 1px var(--border);
+}
+
+/* Structurally absent: this (industry, role) pair is not in the taxonomy at
+   all, so it can never carry a run. Flat and dimmed rather than hatched, on
+   purpose -- the hatch already means "unrun but real", and reusing it here
+   would put the wrong sentence in a screen reader's mouth and the wrong
+   pattern in a sighted reader's eye. Not clickable: there is nothing to
+   select. */
+.cell[data-heat="absent"] {
+  background: var(--surface-sunken);
+  color: var(--muted);
+  opacity: 0.45;
   cursor: default;
 }
 
@@ -121,7 +146,8 @@
    width and made five swatches claim 370px inside a 402px shell, pushing the
    100% label off the screen entirely. */
 .matrix-legend__ramp i,
-.matrix-legend__none i {
+.matrix-legend__none i,
+.matrix-legend__absent i {
   display: block;
   width: 22px;
   min-width: 0;
@@ -131,47 +157,12 @@
   cursor: default;
 }
 
-/* The bank. A cell's own findings, derived from its runs rather than stored. */
-.bank {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 8px;
-}
-
-.bank__row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: baseline;
-  padding: 9px 11px;
-  border-radius: 10px;
-  background: var(--surface-sunken);
-  font-size: 0.85rem;
-}
-
-.bank__category {
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--muted);
-  font-size: 0.66rem;
-  white-space: nowrap;
-}
-
-.bank__won {
-  color: var(--positive);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 /* Each end of the ramp is labelled where it sits. An arrow beside the strip
    makes the reader work out which end it means, and in RTL that is ambiguous
    enough to be worth four extra elements. */
 .matrix-legend__scale,
-.matrix-legend__none {
+.matrix-legend__none,
+.matrix-legend__absent {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -267,4 +258,125 @@
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--muted);
+}
+
+.counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: baseline;
+  margin-block: 1rem;
+}
+
+.counters__figure {
+  display: flex;
+  flex-direction: column;
+}
+
+.counters__figure b {
+  font-size: 1.75rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.counters__figure span {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.counters__state {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+  opacity: 0.75;
+  margin: 0;
+}
+
+.counters__refresh {
+  padding-block: 0.25rem;
+  padding-inline: 0.75rem;
+}
+
+.needs {
+  list-style: none;
+  margin-block: 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.needs__row {
+  inline-size: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem;
+  text-align: start;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+.needs__row:hover {
+  border-color: currentColor;
+}
+
+.needs__row[aria-pressed="true"] {
+  border-color: currentColor;
+  font-weight: 600;
+}
+
+.needs__meta,
+.needs__coverage {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.persuasions {
+  list-style: none;
+  margin-block: 1rem;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+/* The bank's own surface, pill and win colour -- .persuasions replaced the
+   bank list in Task 9, and it should not have replaced its treatment along
+   with it. */
+.persuasions__row {
+  display: grid;
+  grid-template-columns: minmax(6rem, auto) 1fr auto;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: var(--surface-sunken);
+  font-size: 0.85rem;
+}
+
+.persuasions__category {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+.persuasions__won {
+  color: var(--positive);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .needs__row,
+  .persuasions__row {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
 }

@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  */
-import { describe, expect, test } from 'vitest'
+import { describe, expect, it, test } from 'vitest'
 import { DEFAULT_RULES } from '../../src/persuade/engine/rules'
 import { worldCells } from '../../src/persuade/engine/world'
 import {
@@ -139,12 +139,14 @@ describe('planChunk', () => {
 })
 
 describe('jobsForChunk', () => {
-  test('builds queue rows with the world, its reason and the pass', () => {
+  test('builds queue rows with the world and the pass', () => {
     const pairs = [{ personaKey: 'adi', planKey: 'briefings', industry: 'retail' }]
     const cells = worldCells()
     const chunk = planChunk({ nextIndex: 0, pass: 1 }, 1, cells.length, 1)
     const [job] = jobsForChunk(chunk, pairs, cells)
 
+    // No map supplied: need is null, not the world's reason. See the
+    // 'the need a job records' block below for the taxonomy-driven cases.
     expect(job).toMatchObject({
       experiment: null,
       variant: null,
@@ -153,10 +155,64 @@ describe('jobsForChunk', () => {
       industry: 'retail',
       segment: null,
       job_role_id: null,
-      need: cells[0]?.reason,
+      need: null,
       rules: DEFAULT_RULES,
       pass: 1,
     })
     expect(job?.world).not.toBeNull()
+    expect(job?.world?.reason).toBe(cells[0]?.reason)
+  })
+})
+
+describe('the need a job records', () => {
+  const chunkOf = (count: number) => ({
+    positions: Array.from({ length: count }, (_, i) => ({ pairIndex: i, worldIndex: 0, pass: 0 })),
+    nextIndex: count,
+    pass: 0,
+  })
+
+  const pairs = [
+    { personaKey: 'p1', planKey: 'gen-retail-ceo-profitability', industry: 'retail' },
+    { personaKey: 'p2', planKey: 'briefings', industry: 'retail' },
+  ]
+
+  it('writes the plan’s need key, not the world’s reason', () => {
+    const jobs = jobsForChunk(
+      chunkOf(1),
+      pairs,
+      worldCells(),
+      new Map([['gen-retail-ceo-profitability', 'profitability']]),
+    )
+
+    expect(jobs[0]?.need).toBe('profitability')
+  })
+
+  it('keeps the world’s reason on the job, in the world', () => {
+    // The reason is not being dropped, it is being put back where it belongs.
+    // A test that only asserted the need would pass equally well if the reason
+    // had been lost.
+    const jobs = jobsForChunk(
+      chunkOf(1),
+      pairs,
+      worldCells(),
+      new Map([['gen-retail-ceo-profitability', 'profitability']]),
+    )
+
+    expect(jobs[0]?.world?.reason).toBeTruthy()
+    expect(jobs[0]?.need).not.toBe(jobs[0]?.world?.reason)
+  })
+
+  it('records no need for a plan outside the taxonomy', () => {
+    // briefings belongs to no cell. Null says so; inventing one would put every
+    // run of it under a need nobody wrote.
+    const jobs = jobsForChunk(chunkOf(2), pairs, worldCells(), new Map())
+
+    expect(jobs.every((job) => job.need === null)).toBe(true)
+  })
+
+  it('records no need when no map is supplied at all', () => {
+    const jobs = jobsForChunk(chunkOf(1), pairs, worldCells())
+
+    expect(jobs[0]?.need).toBeNull()
   })
 })

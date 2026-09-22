@@ -3,10 +3,19 @@
 import { useState } from 'react'
 import type { Role } from '../brain/types'
 import { useApiErrorHandler } from '../brain/use-api-error'
+import { INDUSTRY_LABELS, industryLabel } from './cell'
 import { SILENT_TURN_MARKER } from './engine/prompts'
 import { DEFAULT_RULES } from './engine/rules'
 import type { PersuasionPlan, TargetPersona, Turn } from './engine/types'
 import { streamSimulation } from './simulate-api'
+
+/**
+ * The closed list the database itself enforces (see cell.ts's own note about
+ * the check constraint on `simulations.industry`). Free text here used to let
+ * an operator type a word the constraint would reject -- a run that looked
+ * like it started and then failed to save.
+ */
+const INDUSTRY_SLUGS = Object.keys(INDUSTRY_LABELS)
 
 /**
  * The lab could read runs long before it could start one, which made the matrix
@@ -38,16 +47,18 @@ export function RunControl({ onFinished, personas, plans, roles }: RunControlPro
   // nothing left works.
   const handleError = useApiErrorHandler()
 
-  const [industry, setIndustry] = useState('')
+  const [industry, setIndustry] = useState(INDUSTRY_SLUGS[0] ?? '')
   /**
    * Empty means "whatever the first role is", resolved on every render rather
    * than captured once.
    *
    * The screen above loads its roles asynchronously, so this always mounts with
    * an empty list -- and a default read once at mount would leave the state at
-   * '' while the select displayed a real role. The run would then be saved with
-   * no role, and `matrixFrom` matches cells by role id, so it would sit in no
-   * column of the matrix, forever.
+   * '' while the select displayed a real role. job_role_id no longer decides
+   * where a run lands in the grid: placement is an exact match of the run's
+   * plan id against the taxonomy (see cell.ts's placeRun), regardless of what
+   * role was chosen here. This default exists only so the row is not saved
+   * with a blank job_role_id, not to avoid a misplaced run.
    */
   const [chosenRoleId, setChosenRoleId] = useState('')
   const jobRoleId = chosenRoleId || roles[0]?.id || ''
@@ -64,11 +75,13 @@ export function RunControl({ onFinished, personas, plans, roles }: RunControlPro
     setError('')
     setNotice('')
 
-    // A run with no cell is a run nothing can ever read: the matrix and the
-    // bank are both queries by cell. The route refuses it too -- this refuses
-    // it before ten model calls are spent finding that out.
+    // The industry no longer decides which cell a run lands in -- placement is
+    // an exact match of the plan's id against the taxonomy (cell.ts's
+    // placeRun), whatever is chosen here. It is still recorded on every row
+    // and still required by the database, so an empty value is refused before
+    // ten model calls are spent finding that out from the route instead.
     if (!industry.trim()) {
-      setError('צריך ענף. בלי ענף אין תא במטריצה שהריצה שייכת אליו.')
+      setError('צריך לבחור ענף כדי לשמור את הריצה.')
       return
     }
     const plan = plans.find((p) => p.id === planId)
@@ -116,11 +129,13 @@ export function RunControl({ onFinished, personas, plans, roles }: RunControlPro
       <div className="run-control__fields">
         <label>
           ענף
-          <input
-            onChange={(e) => setIndustry(e.target.value)}
-            placeholder="אופנה, מסעדנות, קמעונאות"
-            value={industry}
-          />
+          <select onChange={(e) => setIndustry(e.target.value)} value={industry}>
+            {INDUSTRY_SLUGS.map((slug) => (
+              <option key={slug} value={slug}>
+                {industryLabel(slug)}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label>

@@ -4,6 +4,7 @@ import { type Ammunition, formatAmmunition, strengthFromLikePct } from './ammuni
 import { ARGUMENT_LABELS, RUNG_LABELS } from './knowledge'
 import { normalizeEscalation, planSchema } from './plan-schema'
 import type { Argument, PersuasionPlan } from './types'
+import { recordUsage } from './usage'
 
 /**
  * Stage 0. Nothing is said to the counterpart before this exists.
@@ -156,13 +157,18 @@ ${input.ammunition ? `\n${formatAmmunition(input.ammunition)}\n` : ''}
 export async function preparePlan(input: PrepareInput): Promise<PersuasionPlan> {
   const { system, prompt } = preparePrompt(input)
 
-  const { object } = await generateObject({
+  const { object, usage } = await generateObject({
     model: model('planner'),
     schema: planSchema,
     system,
     prompt,
     ...callOptions('planner'),
   })
+  // Stage 0 is a paid call like the three the meter already counted, and the
+  // `planner` role exists to hold it. Left out, `simulations.usage.planner`
+  // reads as a flat zero on every worker run and understates what the run
+  // cost. Outside a meter scope -- the chat route -- this stays a no-op.
+  recordUsage('planner', usage)
 
   return {
     ...object,

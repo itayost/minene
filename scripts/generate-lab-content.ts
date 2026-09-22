@@ -34,6 +34,11 @@ async function main(): Promise<void> {
   console.log(
     `נכתבו ${report.written.length}, דולגו ${report.skipped.length}, נדחו ${report.rejected.length}.`,
   )
+  // Printed every run: generation is the most expensive thing this project
+  // does, and it used to leave no trace of what it spent.
+  console.log(
+    `טוקנים: ${report.usage.input.toLocaleString('en-US')} קלט, ${report.usage.output.toLocaleString('en-US')} פלט.`,
+  )
   for (const rejection of report.rejected) {
     console.error(`  - ${rejection.key}: ${rejection.problems.join(' · ')}`)
   }

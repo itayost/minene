@@ -1,8 +1,10 @@
 import { generateObject } from 'ai'
 import { z } from 'zod'
+import { industryLabel, planKeyFor, type RoleNeed, type RoleRef } from '../cell'
 import { RUNG_LABELS } from '../engine/knowledge'
 import { normalizeEscalation, planSchema } from '../engine/plan-schema'
 import type { Argument, PersuasionPlan, TargetPersona } from '../engine/types'
+import { recordUsage } from '../engine/usage'
 import { callOptions, model } from './model'
 
 /**
@@ -14,32 +16,9 @@ import { callOptions, model } from './model'
  * reads nothing itself.
  */
 
-export interface RoleRef {
-  industry: string
-  roleSlug: string
-  roleLabel: string
-  roleOrder: number
-}
-
-export interface RoleNeed extends RoleRef {
-  needKey: string
-  needLabel: string
-  metaNeed: string
-}
+export { planKeyFor, type RoleNeed, type RoleRef }
 
 export const COMPANY_MANAGEMENT = 'הנהלת החברה'
-
-const INDUSTRY_LABELS: Record<string, string> = {
-  retail: 'קמעונאות',
-  bank: 'בנקאות',
-  healthcare: 'בריאות',
-}
-
-/** The industry as the model should read it in a prompt; an unlisted key passes through as-is. */
-const industryLabel = (industry: string): string => INDUSTRY_LABELS[industry] ?? industry
-
-export const planKeyFor = (need: RoleNeed): string =>
-  `gen-${need.industry}-${need.roleSlug}-${need.needKey}`
 
 export const personaKeyFor = (role: RoleRef, index: 1 | 2): string =>
   `gen-${role.industry}-${role.roleSlug}-${index}`
@@ -86,13 +65,14 @@ ${ladder()}`,
 
 export async function generatePlan(need: RoleNeed, requester: string): Promise<PersuasionPlan> {
   const { system, prompt } = planPrompt(need, requester)
-  const { object } = await generateObject({
+  const { object, usage } = await generateObject({
     model: model('planner'),
     schema: planSchema,
     system,
     prompt,
     ...callOptions('planner'),
   })
+  recordUsage('planner', usage)
 
   return {
     ...object,
@@ -143,13 +123,14 @@ export async function generatePersona(
   avoidNames: readonly string[],
 ): Promise<TargetPersona> {
   const { system, prompt } = personaPrompt(role, index, avoidNames)
-  const { object } = await generateObject({
+  const { object, usage } = await generateObject({
     model: model('planner'),
     schema: personaSchema,
     system,
     prompt,
     ...callOptions('planner'),
   })
+  recordUsage('planner', usage)
 
   return {
     id: personaKeyFor(role, index),

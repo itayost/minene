@@ -21,14 +21,19 @@ export interface StoredSimulation {
 }
 
 /**
- * Every column the bank and the rates read.
+ * Every column the screen needs and not one more.
  *
- * `score` is the one that matters and the one the conversations store drops:
- * buildBank keys off `run.score?.winningCategory`, so a bank assembled from
- * rows that never carried a score comes back empty however many were scored.
+ * `turns` is the whole conversation. The lab screen reads state.outcome for the
+ * rate, state.blockers for the blocker list and score for the bank, and never
+ * the turns themselves -- so paging them in is hundreds of megabytes spent to
+ * compute a percentage once the loop runs at its cap.
+ *
+ * `score` is the one column here that matters most and is easiest to drop by
+ * habit: buildBank keys off `run.score?.winningCategory`, so a bank assembled
+ * from rows that never carried it comes back empty however many were scored.
  */
-const SIMULATION_COLUMNS =
-  'id,industry,job_role_id,need,persona_id,plan,turns,state,outcome,score,created_at'
+const SUMMARY_COLUMNS =
+  'id,industry,job_role_id,need,persona_id,plan,state,outcome,score,created_at'
 
 interface SimulationRow {
   id: string
@@ -36,7 +41,9 @@ interface SimulationRow {
   job_role_id: string | null
   persona_id: string | null
   plan: Run['plan']
-  turns: Run['turns'] | null
+  // Absent rather than null on a summary row: SUMMARY_COLUMNS never selects
+  // it, and toStored's `row.turns ?? []` treats "absent" the same as "null".
+  turns?: Run['turns'] | null
   state: Run['state']
   score: Run['score'] | null
   created_at: string
@@ -113,8 +120,14 @@ export function createSimulationsStore(client: SupabaseClient) {
      * a number was ever left out. The worker queues up to
      * `PERSUADER_DAILY_RUN_CAP` runs a day, so a fixed cap is not a distant
      * risk here, it is a matter of days.
+     *
+     * Without the conversations, and deliberately the only reader left: a
+     * `listSimulations` that paged `turns` in too used to sit beside this one
+     * with no caller anywhere in the repo, which is a second way to pay the
+     * cost this method exists to avoid -- someone reaching for the wrong one
+     * out of habit. It was removed rather than kept "just in case".
      */
-    async listSimulations(pageSize = 1000): Promise<StoredSimulation[]> {
+    async listSimulationSummaries(pageSize = 1000): Promise<StoredSimulation[]> {
       const rows: SimulationRow[] = []
       // The window advances by what came back, not by what was asked for, and
       // stops only on an empty page. PostgREST caps a response at its own
@@ -124,7 +137,7 @@ export function createSimulationsStore(client: SupabaseClient) {
       for (let from = 0; ; ) {
         const { data, error } = await client
           .from('simulations')
-          .select(SIMULATION_COLUMNS)
+          .select(SUMMARY_COLUMNS)
           .order('created_at', { ascending: false })
           .range(from, from + pageSize - 1)
 
@@ -134,7 +147,41 @@ export function createSimulationsStore(client: SupabaseClient) {
         rows.push(...page)
         from += page.length
       }
+      // toStored reads row.turns, which a summary row does not have. It already
+      // falls back to [], so violations comes back empty rather than undefined.
       return rows.map(toStored)
+    },
+
+    async countSimulations(): Promise<number> {
+      const { count, error } = await client
+        .from('simulations')
+        .select('id', { count: 'exact', head: true })
+      if (error) throw new Error(`ספירת הסימולציות נכשלה: ${error.message}`)
+      return count ?? 0
+    },
+
+    async countSimulationsSince(iso: string): Promise<number> {
+      const { count, error } = await client
+        .from('simulations')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', iso)
+      if (error) throw new Error(`ספירת הסימולציות של היום נכשלה: ${error.message}`)
+      return count ?? 0
+    },
+
+    /**
+     * What the daily cap actually bounds. worker.ts counts jobs claimed since
+     * UTC midnight, any status, because a failed job has already spent its
+     * model calls. Showing runs-added against that cap would understate the
+     * spend every time a job fails, and 249 of 413 have.
+     */
+    async countAttemptsSince(iso: string): Promise<number> {
+      const { count, error } = await client
+        .from('simulation_jobs')
+        .select('id', { count: 'exact', head: true })
+        .gte('claimed_at', iso)
+      if (error) throw new Error(`ספירת הניסיונות של היום נכשלה: ${error.message}`)
+      return count ?? 0
     },
   }
 }

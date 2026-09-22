@@ -17,7 +17,10 @@ import { createSimulationsStore } from './lib/simulations'
 export function createSimulationsApi(client: Parameters<typeof createSimulationsStore>[0]) {
   const store = createSimulationsStore(client)
   return {
-    listSimulations: (): Promise<StoredSimulation[]> => store.listSimulations(),
+    listSimulationSummaries: (): Promise<StoredSimulation[]> => store.listSimulationSummaries(),
+    countSimulations: (): Promise<number> => store.countSimulations(),
+    countSimulationsSince: (iso: string): Promise<number> => store.countSimulationsSince(iso),
+    countAttemptsSince: (iso: string): Promise<number> => store.countAttemptsSince(iso),
   }
 }
 

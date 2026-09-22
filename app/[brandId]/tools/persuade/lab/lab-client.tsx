@@ -1,84 +1,217 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createBrowserSupabase } from '../../../../../src/auth/supabase-browser'
 import { createRolesApi, type RolesClient } from '../../../../../src/brain/roles-api'
 import type { Role } from '../../../../../src/brain/types'
 import { useApiErrorHandler } from '../../../../../src/brain/use-api-error'
-import { blockersIn, buildBank } from '../../../../../src/persuade/bank'
+import { blockersIn } from '../../../../../src/persuade/bank'
+import { Counters } from '../../../../../src/persuade/Counters'
+import { cellIndex, cellKeyOf, planKeyFor } from '../../../../../src/persuade/cell'
+import { coverageOf, gridFrom, placeAll } from '../../../../../src/persuade/coverage'
 import type { PersuasionPlan } from '../../../../../src/persuade/engine/types'
-import { BLOCKER_LABELS, CATEGORY_LABELS } from '../../../../../src/persuade/labels'
+import { createLabPlansApi } from '../../../../../src/persuade/lab-plans-api'
+import { BLOCKER_LABELS } from '../../../../../src/persuade/labels'
 import type { StoredSimulation } from '../../../../../src/persuade/lib/simulations'
 import { Matrix, type MatrixCell } from '../../../../../src/persuade/Matrix'
-import { matrixFrom } from '../../../../../src/persuade/matrix-data'
+import { persuasionsFor } from '../../../../../src/persuade/persuasions'
 import { type PersonaOption, RunControl } from '../../../../../src/persuade/RunControl'
 import { createSimulationsApi } from '../../../../../src/persuade/simulations-api'
+import { type NeedRow, taxonomyFrom } from '../../../../../src/persuade/taxonomy'
+import { createTaxonomyApi } from '../../../../../src/persuade/taxonomy-api'
+import { useLiveCounts } from '../../../../../src/persuade/use-live-counts'
 
 interface LabClientProps {
   personas: PersonaOption[]
   plans: PersuasionPlan[]
+  /** PERSUADER_DAILY_RUN_CAP, read on the server. It is not a public variable. */
+  dailyCap: number
 }
 
 /**
  * One screen, not three.
  *
- * The matrix is the navigation, the rates are the cell contents, and the bank
- * is what a cell accumulates. Splitting those into a simulator, a measurement
- * screen and a matrix would have made three surfaces that each show a third of
- * the same fact -- which is the mistake the brain's five screens made.
+ * The grid is the navigation, the needs are what a cell contains, and the
+ * persuasions are what a need accumulates. Splitting those into a simulator, a
+ * measurement screen and a matrix would have made three surfaces that each show
+ * a third of the same fact -- the mistake the brain's five screens made.
+ *
+ * What changed on 2026-09-22: the grid is drawn from role_needs rather than
+ * from the runs. A sector nobody has run used to be absent from the screen,
+ * which answers "what have we measured". This screen answers "where has the
+ * sweep been", and for that question an empty cell is the whole point.
  */
-export function LabClient({ personas, plans }: LabClientProps) {
-  const simulationsApi = useMemo(() => createSimulationsApi(createBrowserSupabase() as never), [])
-  const rolesApi = useMemo(
-    () => createRolesApi(createBrowserSupabase() as unknown as RolesClient),
-    [],
-  )
+export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
+  const client = useMemo(() => createBrowserSupabase(), [])
+  const simulationsApi = useMemo(() => createSimulationsApi(client as never), [client])
+  const taxonomyApi = useMemo(() => createTaxonomyApi(client as never), [client])
+  const labPlansApi = useMemo(() => createLabPlansApi(client as never), [client])
+  const rolesApi = useMemo(() => createRolesApi(client as unknown as RolesClient), [client])
   const handleError = useApiErrorHandler()
 
-  const [selected, setSelected] = useState<MatrixCell | null>(null)
   const [simulations, setSimulations] = useState<StoredSimulation[]>([])
+  const [needRows, setNeedRows] = useState<NeedRow[]>([])
   const [roles, setRoles] = useState<Role[]>([])
+  const [plan, setPlan] = useState<PersuasionPlan | null>(null)
+  /**
+   * Distinct from `plan === null`, for the same reason `loaded` is distinct
+   * from an empty `needRows`: a fetch still in flight, a fetch that failed and
+   * a need that genuinely has no generated plan all three leave `plan` at null,
+   * and only the last is a fact about the library. Without this the screen
+   * answered "אין עדיין תוכנית" for the length of every round trip and again
+   * after every failed read -- a claim it had not measured.
+   */
+  const [planStatus, setPlanStatus] = useState<'none' | 'pending' | 'ready' | 'failed'>('none')
   const [error, setError] = useState('')
+  // Distinct from `needRows.length === 0`: a `role_needs` table that is
+  // genuinely empty and a `load()` that never completed both leave `needRows`
+  // at its initial `[]`. Only the first is a fact about the taxonomy.
+  const [loaded, setLoaded] = useState(false)
+
+  const { counts, stale, lastOk, refresh } = useLiveCounts(simulationsApi)
+
+  const params = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const industry = params.get('industry')
+  const role = params.get('role')
+  const need = params.get('need')
+
+  /**
+   * One state, not two. A filter and a drill-down each holding their own copy
+   * of "which cell" would be two things to keep in agreement, and the URL is
+   * the copy that also makes a cell a link.
+   */
+  const select = useCallback(
+    (next: { industry?: string | null; role?: string | null; need?: string | null }) => {
+      const query = new URLSearchParams(params.toString())
+      for (const [key, value] of Object.entries(next)) {
+        if (value) query.set(key, value)
+        else query.delete(key)
+      }
+      router.replace(`${pathname}?${query.toString()}`, { scroll: false })
+    },
+    [params, pathname, router],
+  )
 
   const load = useCallback(async () => {
     try {
-      const [runs, catalogue] = await Promise.all([
-        simulationsApi.listSimulations(),
+      const [runs, needs, catalogue] = await Promise.all([
+        // Summaries, not full rows: `turns` is a whole conversation and nothing
+        // here reads one. At the cap this screen exists to show, that column is
+        // the difference between a few megabytes and a few hundred.
+        simulationsApi.listSimulationSummaries(),
+        taxonomyApi.listRoleNeeds(),
         rolesApi.listRoles(),
       ])
       setSimulations(runs)
+      setNeedRows(needs)
       setRoles(catalogue)
+      setError('')
+      setLoaded(true)
     } catch (failure) {
-      if (handleError(failure)) setError('לא הצלחנו לטעון את הריצות')
+      // handleError still runs first: an expired session redirects rather than
+      // showing a message on a screen where nothing left works, and `null`
+      // here means that redirect is already under way.
+      const handled = handleError(failure)
+      if (!handled) return
+      // The failure's OWN message, not a fixed line naming "the runs" --
+      // Promise.all rejects with whichever of the three reads actually threw,
+      // and each names itself (taxonomy-api's own "קריאת מפת הצרכים נכשלה",
+      // the simulations store's "קריאת הסימולציות נכשלה", and so on). A fixed
+      // string here would tell the reader the wrong one failed.
+      setError(failure instanceof Error ? failure.message : handled)
     }
-  }, [handleError, rolesApi, simulationsApi])
+  }, [handleError, rolesApi, simulationsApi, taxonomyApi])
 
   useEffect(() => {
     void load()
   }, [load])
 
-  const cells = useMemo(
+  // Reloads the grid whenever the cheap count changes, not on the poll's own
+  // 15s timer -- re-paging listSimulationSummaries every tick would spend the
+  // exact cost that method exists to avoid. `null` on the very first render
+  // means "no reading yet", not "zero", so it is excluded from the compare.
+  const previousTotal = useRef<number | null>(null)
+  useEffect(() => {
+    if (counts === null) return
+    if (previousTotal.current !== null && previousTotal.current !== counts.total) {
+      void load()
+    }
+    previousTotal.current = counts.total
+  }, [counts, load])
+
+  const onRefresh = useCallback(() => {
+    refresh()
+    void load()
+  }, [refresh, load])
+
+  const taxonomy = useMemo(() => taxonomyFrom(needRows), [needRows])
+  const index = useMemo(() => cellIndex(needRows), [needRows])
+  const placed = useMemo(() => placeAll(index, simulations), [index, simulations])
+  const cells = useMemo(() => gridFrom(taxonomy, placed), [taxonomy, placed])
+
+  const selectedRole = useMemo(
     () =>
-      matrixFrom(
-        simulations,
-        roles.map((r) => ({ id: r.id, name: r.name })),
-      ),
-    [roles, simulations],
+      taxonomy
+        .find((entry) => entry.industry === industry)
+        ?.roles.find((entry) => entry.roleSlug === role) ?? null,
+    [industry, role, taxonomy],
   )
 
-  // The bank and the blockers are queries over the selected cell's runs, never
-  // a stored list -- so they cannot disagree with the evidence behind them.
-  const inCell = useMemo(
-    () =>
-      selected
-        ? simulations.filter(
-            (s) => s.cell.industry === selected.industry && s.cell.jobRoleId === selected.jobRoleId,
-          )
-        : [],
-    [selected, simulations],
+  const selectedCell = useMemo(
+    () => cells.find((cell) => cell.industry === industry && cell.roleSlug === role) ?? null,
+    [cells, industry, role],
   )
-  const bank = useMemo(() => buildBank(inCell.map((s) => s.run)), [inCell])
-  const blockers = useMemo(() => blockersIn(inCell.map((s) => s.run)), [inCell])
+
+  const needRuns = useMemo(
+    () =>
+      industry && role && need
+        ? (placed.runsByCell.get(cellKeyOf(industry, role, need)) ?? [])
+        : [],
+    [industry, need, placed, role],
+  )
+
+  // The plan is fetched per need rather than all 131 at once: the screen shows
+  // one at a time, and each is a full plan with arguments and objections.
+  useEffect(() => {
+    if (!industry || !role || !need) {
+      setPlan(null)
+      setPlanStatus('none')
+      return
+    }
+    // Cleared before the fetch, not after it: leaving the previous need's plan
+    // on screen would show one need's arguments beside another need's win
+    // counts for the length of the round trip.
+    setPlan(null)
+    setPlanStatus('pending')
+    let live = true
+    void labPlansApi
+      .getPlan(planKeyFor({ industry, roleSlug: role, needKey: need }))
+      .then((found) => {
+        if (!live) return
+        setPlan(found)
+        setPlanStatus('ready')
+      })
+      .catch((failure) => {
+        if (!live) return
+        // 'failed', never 'ready': a read that never answered is not evidence
+        // that the need has no plan, and saying so would invent the one fact
+        // this section exists to report.
+        setPlanStatus('failed')
+        if (handleError(failure)) setError('לא הצלחנו לטעון את התוכנית')
+      })
+    return () => {
+      live = false
+    }
+  }, [handleError, industry, labPlansApi, need, role])
+
+  const persuasions = useMemo(() => persuasionsFor(plan, needRuns), [needRuns, plan])
+  const blockers = useMemo(() => blockersIn(needRuns), [needRuns])
+
+  const onSelectCell = (cell: MatrixCell) =>
+    select({ industry: cell.industry, role: cell.roleSlug, need: null })
 
   return (
     <div className="brain-surface">
@@ -93,19 +226,39 @@ export function LabClient({ personas, plans }: LabClientProps) {
           </p>
         ) : null}
 
-        {/* Outside the "are there runs" branch below, deliberately. The matrix
-            is built from runs, so it is empty until one exists -- and a control
-            inside that branch would make the first run the one thing this
-            screen could never do. */}
-        <RunControl onFinished={load} personas={personas} plans={plans} roles={roles} />
+        <Counters
+          counts={counts}
+          dailyCap={dailyCap}
+          lastOk={lastOk}
+          onRefresh={onRefresh}
+          stale={stale}
+        />
 
-        {cells.length === 0 ? (
+        {/* A run that places nowhere is named, never dropped. Every run on
+            record carries the briefings plan, which predates the taxonomy. */}
+        {placed.unplaced > 0 ? (
           <p className="knowledge-message">
-            עדיין לא רצו סימולציות. המטריצה נבנית מהריצות, ולכן היא ריקה עד שתהיה הראשונה.
+            {`${placed.unplaced} ריצות מחוץ למפה: הן רצו על תוכנית שאינה שייכת לאף ענף, תפקיד וצורך.`}
           </p>
-        ) : (
+        ) : null}
+
+        {/* Outside the "are there runs" branch, deliberately. A control inside
+            it would make the first run the one thing this screen could not do. */}
+        {/* `onRefresh`, not `load`: a run that just landed changes the counters
+            as well as the grid, and reloading only one of them leaves two
+            numbers on the same screen disagreeing until the next 15s poll. */}
+        <RunControl onFinished={onRefresh} personas={personas} plans={plans} roles={roles} />
+
+        {loaded && cells.length === 0 ? (
+          // Only reachable once a load has actually succeeded -- a failed load
+          // also leaves `cells` at its initial empty state, and that is a fact
+          // about the network, not about role_needs.
+          <p className="knowledge-message">מפת הצרכים ריקה, ולכן אין ממה לבנות את המטריצה.</p>
+        ) : null}
+
+        {cells.length > 0 ? (
           <>
-            <Matrix cells={cells} onSelect={setSelected} selected={selected} />
+            <Matrix cells={cells} onSelect={onSelectCell} selected={selectedCell} />
 
             {/* Each end is labelled where it sits rather than described by an
                 arrow beside the ramp. "0% ← 100%" as one string forces the
@@ -128,41 +281,111 @@ export function LabClient({ personas, plans }: LabClientProps) {
                 <i aria-hidden="true" className="cell" data-heat="none" />
                 אין ריצות — לא אפס אחוז
               </span>
+              {/* Its own entry, distinct from "no runs": this swatch means the
+                  role does not exist in that industry at all, so the cell
+                  could never have a run to begin with. */}
+              <span className="matrix-legend__absent">
+                <i aria-hidden="true" className="cell" data-heat="absent" />
+                התפקיד לא קיים בענף — לא תא ריק
+              </span>
             </div>
           </>
-        )}
+        ) : null}
 
-        {selected ? (
-          <section aria-label={`${selected.industry} · ${selected.jobRoleName}`}>
-            <h3 className="knowledge-heading">{`${selected.industry} · ${selected.jobRoleName}`}</h3>
-            <p className="knowledge-message">
-              {selected.persuasionRate === null
-                ? 'אין ריצות בתא הזה, ולכן אין מה למדוד בו עדיין.'
-                : `${selected.runs} ריצות · ${selected.persuasionRate}% שכנוע`}
-            </p>
-
-            {bank.length ? (
-              <ul className="bank">
-                {bank.map((entry) => (
-                  <li className="bank__row" key={entry.category}>
-                    <span className="bank__category">{CATEGORY_LABELS[entry.category]}</span>
-                    <span>{entry.examples[0] ?? '—'}</span>
-                    <span className="bank__won">{`ניצח ${entry.wonCount}×`}</span>
+        {selectedRole && industry ? (
+          <section aria-label={`צרכים: ${selectedRole.roleLabel}`}>
+            <h3 className="knowledge-heading">
+              {`${selectedCell?.industryLabel ?? industry} · ${selectedRole.roleLabel}`}
+            </h3>
+            <ul className="needs">
+              {selectedRole.needs.map((entry) => {
+                const coverage = coverageOf(
+                  placed.runsByCell.get(
+                    cellKeyOf(industry, selectedRole.roleSlug, entry.needKey),
+                  ) ?? [],
+                )
+                return (
+                  <li key={entry.needKey}>
+                    <button
+                      aria-pressed={need === entry.needKey}
+                      className="needs__row"
+                      onClick={() => select({ need: entry.needKey })}
+                      type="button"
+                    >
+                      <span className="needs__label">{entry.needLabel}</span>
+                      <span className="needs__meta">{entry.metaNeed}</span>
+                      <span className="needs__coverage">
+                        {coverage.persuasionRate === null
+                          ? 'אין ריצות'
+                          : `${coverage.runs} ריצות · ${coverage.persuasionRate}% שכנוע`}
+                      </span>
+                    </button>
                   </li>
-                ))}
-              </ul>
-            ) : selected.runs > 0 ? (
-              // Runs but no bank means nothing was scored, which is a different
-              // fact from nothing having been run, and worth saying separately.
-              <p className="knowledge-message">
-                אף ריצה בתא הזה לא נוקדה, ולכן אין עדיין טיעונים מנצחים.
-              </p>
+                )
+              })}
+            </ul>
+          </section>
+        ) : null}
+
+        {industry && role && need ? (
+          <section aria-label="שכנועים לצורך">
+            {/* Three separate conditions rather than one chain, and `failed`
+                appears in none of them on purpose: a read that never answered
+                says nothing about the need, and the alert at the top already
+                says what did happen. */}
+            {planStatus === 'pending' ? (
+              <p className="knowledge-message">טוען את התוכנית…</p>
             ) : null}
 
-            {blockers.length ? (
-              <p className="knowledge-message">
-                {`החסם השכיח כאן: ${BLOCKER_LABELS[blockers[0]!.blocker]} — נתקלו בו ${blockers[0]!.encountered} פעמים, נשבר ב-${blockers[0]!.overcome}.`}
-              </p>
+            {planStatus === 'ready' && plan === null ? (
+              // A need with no generated plan is a real state, not an error:
+              // there are 130 needs and generation is a separate pass over them.
+              <p className="knowledge-message">אין עדיין תוכנית לצורך הזה.</p>
+            ) : null}
+
+            {plan ? (
+              <>
+                <p className="knowledge-message">
+                  הניצחונות נספרים לפי קטגוריה, לא לפי המשפט עצמו: מה שהשופט רשם כטיעון המנצח הוא
+                  טקסט חופשי, והקטגוריה היא הקישור היחיד שאפשר לסמוך עליו.
+                </p>
+
+                <ul className="persuasions">
+                  {persuasions.arguments.map((argument) => (
+                    <li className="persuasions__row" key={argument.id}>
+                      <span className="persuasions__category">{argument.categoryLabel}</span>
+                      <span>{argument.text}</span>
+                      <span className="persuasions__won">
+                        {argument.categoryWins === 0
+                          ? 'עוד לא ניצח'
+                          : `ניצח ${argument.categoryWins}×`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                {persuasions.unwrittenWins.length ? (
+                  <p className="knowledge-message">
+                    {`ניצחו כאן בלי להיות כתובים בתוכנית: ${persuasions.unwrittenWins
+                      .map((win) => `${win.categoryLabel} (${win.wonCount}×)`)
+                      .join(', ')}`}
+                  </p>
+                ) : null}
+
+                {needRuns.length > 0 && persuasions.scoredRuns === 0 ? (
+                  // Runs but no scores is a different fact from no runs, and
+                  // from runs that lost. All three read differently here.
+                  <p className="knowledge-message">
+                    אף ריצה כאן לא נוקדה, ולכן אין עדיין טיעונים מנצחים.
+                  </p>
+                ) : null}
+
+                {blockers.length ? (
+                  <p className="knowledge-message">
+                    {`החסם השכיח כאן: ${BLOCKER_LABELS[blockers[0]!.blocker]} — נתקלו בו ${blockers[0]!.encountered} פעמים, נשבר ב-${blockers[0]!.overcome}.`}
+                  </p>
+                ) : null}
+              </>
             ) : null}
           </section>
         ) : null}
