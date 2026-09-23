@@ -1,3 +1,4 @@
+import { DEFAULT_RULES } from './engine/rules'
 import type { ArgumentCategory, Outcome, RunScore, Turn } from './engine/types'
 import type { Reason, WorldState } from './engine/world'
 
@@ -29,6 +30,18 @@ export interface EffectivenessRun {
   fatigue: number
   /** The model id per role that produced the run. Null on rows predating it. */
   models?: Record<string, string> | null
+  /**
+   * The fatigue threshold this run's own RuleConfig used to decide
+   * `stopped_fatigue`. Null on rows predating the column, which is exactly
+   * the population that ran under DEFAULT_RULES and so used 0.7 anyway.
+   *
+   * `fatigueThreshold` is an ordinary, unbounded RuleConfig field ("above 1
+   * disables the check", per rules.ts) that an experiment or a sweep is free
+   * to set to anything -- not only below the default, as the backstop below
+   * used to assume by hardcoding 0.7 for every run regardless of which
+   * threshold it was actually judged against.
+   */
+  fatigueThreshold?: number | null
 }
 
 export interface Slice {
@@ -231,17 +244,21 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       //
       // Two signals, not one: `stopped_fatigue` is the engine's own verdict,
       // reached against whatever fatigueThreshold that run's RuleConfig
-      // actually used -- which an experiment is free to set below 0.7 (it is
-      // an ordinary field on RuleConfig, see experiments.ts). A run that
-      // stopped at 0.4 under a lowered threshold is not less worn down than
-      // one that reached 0.7 under the default; checking only the fixed bar
-      // silently undercounts exactly the runs an experiment on this setting
-      // exists to compare. The fixed bar stays, for the case this outcome
-      // doesn't cover: an agreed run where fatigue crept high without ever
-      // tripping the stop.
+      // actually used -- which a sweep or an experiment is free to set to
+      // anything (it is an ordinary, unbounded field on RuleConfig; "above 1
+      // disables the check" per rules.ts). A run that stopped at 0.4 under a
+      // lowered threshold is not less worn down than one that reached 0.7
+      // under the default, and a run that reached 0.8 under a threshold
+      // deliberately raised to 0.9 is not MORE worn down than one -- so the
+      // backstop below is judged against that same run's own threshold, not
+      // a hardcoded 0.7 that only happens to match rows using the default.
+      // The backstop still exists for the case `stopped_fatigue` doesn't
+      // cover: an agreed run where fatigue crept past its own threshold
+      // without ever tripping the stop.
       at.offeredCount += 1
       if (informative && isWin && !offered.includes(category)) at.offPlan += 1
-      if (run.outcome === 'stopped_fatigue' || run.fatigue >= 0.7) at.negative += 1
+      const threshold = run.fatigueThreshold ?? DEFAULT_RULES.fatigueThreshold
+      if (run.outcome === 'stopped_fatigue' || run.fatigue >= threshold) at.negative += 1
       byCategory.set(category, at)
     }
   }

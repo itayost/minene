@@ -33,7 +33,7 @@ async function main(): Promise<void> {
   const rows = await readAll((from, to) =>
     db
       .from('simulations')
-      .select('outcome,turns,state,score,world,persona_id,plan,models')
+      .select('outcome,turns,state,score,world,persona_id,plan,models,rules')
       .order('created_at', { ascending: true })
       .order('id', { ascending: true })
       .range(from, to),
@@ -48,6 +48,10 @@ async function main(): Promise<void> {
       personaId: row.persona_id,
       fatigue: row.state?.fatigue ?? 0,
       models: row.models ?? null,
+      // A sweep can carry its own RuleConfig (queueSweep's `rules` override),
+      // not only an experiment arm, so this cannot be inferred from
+      // `experiment`/`variant` -- it has to be read off the row itself.
+      fatigueThreshold: row.rules?.fatigueThreshold ?? null,
     },
     // What the plan actually put on the table. A technique the plan never
     // offered cannot be credited or blamed for the outcome.

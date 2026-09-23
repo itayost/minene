@@ -31,6 +31,7 @@ const input = (
   personaId: string,
   offered: ArgumentCategory[] = ['personal_benefit', 'social_proof'],
   fatigue = 0,
+  fatigueThreshold: number | null = null,
 ): EffectivenessInput => ({
   run: {
     outcome: outcome as EffectivenessInput['run']['outcome'],
@@ -41,6 +42,7 @@ const input = (
     world: world(reason),
     personaId,
     fatigue,
+    fatigueThreshold,
   },
   offered,
 })
@@ -117,6 +119,26 @@ describe('what a technique report says', () => {
     // whether that score also clears the fixed 0.7 bar this report checks.
     const reports = buildEffectiveness([
       input('stopped_fatigue', null, 'no_time', 'adi', ['personal_benefit'], 0.4),
+    ])
+    expect(reports[0]!.negativeReactionPct).toBe(100)
+  })
+
+  test('does not call an agreed run worn down when it stayed under its OWN raised fatigue threshold', () => {
+    // fatigueThreshold is unbounded ("above 1 disables the check", per
+    // rules.ts) and a sweep can override it directly (queueSweep's `rules`),
+    // not only an experiment arm. A run whose RuleConfig deliberately raised
+    // the bar to 0.9 and ended at 0.8 was never close to its own stop
+    // condition -- it should read exactly like any other clean win, not get
+    // flagged by a fixed 0.7 that only happens to match the default.
+    const reports = buildEffectiveness([
+      input('agreed', 'personal_benefit', 'no_time', 'adi', ['personal_benefit'], 0.8, 0.9),
+    ])
+    expect(reports[0]!.negativeReactionPct).toBe(0)
+  })
+
+  test('still calls it worn down once fatigue clears that same raised threshold', () => {
+    const reports = buildEffectiveness([
+      input('agreed', 'personal_benefit', 'no_time', 'adi', ['personal_benefit'], 0.95, 0.9),
     ])
     expect(reports[0]!.negativeReactionPct).toBe(100)
   })
