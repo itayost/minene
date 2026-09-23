@@ -115,6 +115,21 @@ export function propose(
       caveats.push(`${report.negativeReactionPct}% מהשיחות הסתיימו בעייפות`)
     }
 
+    // isArtefact above only drops a report where off-plan wins are the
+    // MAJORITY of runs -- a minority still inflates winPct and the ratio
+    // computed from it, and formatTechnique() already warns a terminal reader
+    // about exactly this (see effectiveness.ts's offPlanWins line). This is
+    // the path that actually turns evidence into a weight someone can
+    // promote, so the same warning belongs here, not only in the report
+    // nobody promotes from.
+    if (report.offPlanWins > 0) {
+      const share = Math.round((report.offPlanWins / report.runs) * 100)
+      caveats.push(
+        `${report.offPlanWins} מתוך ${report.runs} ריצות נספרו רק כי ניצחו מחוץ לתוכנית ` +
+          `(${share}%) — הפסדים מהסוג הזה לא נרשמים`,
+      )
+    }
+
     return {
       industry: options.industry ?? 'retail',
       jobRoleName: options.jobRoleName ?? null,
