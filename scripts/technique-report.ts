@@ -12,6 +12,7 @@ import {
   buildEffectiveness,
   distinctModelFingerprints,
   type EffectivenessInput,
+  experimentRuns,
   formatTechnique,
   unrecordedModels,
 } from '../src/persuade/effectiveness'
@@ -33,7 +34,7 @@ async function main(): Promise<void> {
   const rows = await readAll((from, to) =>
     db
       .from('simulations')
-      .select('outcome,turns,state,score,world,persona_id,plan,models')
+      .select('outcome,turns,state,score,world,persona_id,plan,models,experiment')
       .order('created_at', { ascending: true })
       .order('id', { ascending: true })
       .range(from, to),
@@ -48,6 +49,7 @@ async function main(): Promise<void> {
       personaId: row.persona_id,
       fatigue: row.state?.fatigue ?? 0,
       models: row.models ?? null,
+      experiment: row.experiment ?? null,
     },
     // What the plan actually put on the table. A technique the plan never
     // offered cannot be credited or blamed for the outcome.
@@ -87,6 +89,20 @@ async function main(): Promise<void> {
     console.log(
       `\nמוצג: ${withWorld.length} הריצות עם עולם בלבד. ` +
         `${worldless.length} ריצות ישנות הושמטו — הן מהגדרה אחרת ואין להן סיבה. ל--all כדי לכלול.`,
+    )
+  }
+
+  // An experiment arm runs under a deliberately different RuleConfig (see
+  // experiments.ts), so buildEffectiveness excludes it from every technique's
+  // numbers -- silently, on purpose. This is the one place that silence gets
+  // undone: `--all` does not bring these back, because pooling them was never
+  // the ambiguous case worldless runs are; report:experiment is where they
+  // belong.
+  const experiments = experimentRuns(used)
+  if (experiments > 0) {
+    console.log(
+      `\nשים לב: ${experiments} מהריצות המוצגות שייכות לניסוי — ` +
+        'רצו על RuleConfig שונה מברירת המחדל והושמטו מהמספרים. ל-report:experiment להשוואה שלהן.',
     )
   }
 
