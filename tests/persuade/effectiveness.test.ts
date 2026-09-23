@@ -213,6 +213,44 @@ describe('whether the technique comparison crosses a model change', () => {
     expect(distinctModelFingerprints(inputs)).toBe(1)
     expect(unrecordedModels(inputs)).toBe(2)
   })
+
+  test('a report carries how many models actually back it, the same signal propose() needs', () => {
+    // report:techniques computes distinctModelFingerprints() over the whole
+    // input set and prints a warning in the terminal. But propose() (lib/
+    // technique-weights.ts) never sees that input set -- it only receives the
+    // TechniqueReport[] this function returns, which has nowhere to carry the
+    // fact that a category's win rate was built from two persuader models.
+    // Without a field here, a model swap that the terminal report warns about
+    // reaches propose() -- the function that actually turns evidence into a
+    // promotable weight -- with no trace at all.
+    const reports = buildEffectiveness([
+      withModels({ persuader: 'gpt-4o-mini' }),
+      withModels({ persuader: 'gpt-5' }),
+    ])
+    const personal = reports.find((r) => r.category === 'personal_benefit')!
+    expect(personal.distinctModels).toBe(2)
+  })
+
+  test('one model throughout reads as one, not zero or two', () => {
+    const reports = buildEffectiveness([
+      withModels({ persuader: 'gpt-5' }),
+      withModels({ persuader: 'gpt-5' }),
+    ])
+    expect(reports[0]!.distinctModels).toBe(1)
+  })
+
+  test('runs with no model recorded do not count as a second model', () => {
+    // Same exclusion distinctModelFingerprints already applies: an unrecorded
+    // run is an unknown, not evidence of a swap. Without it, every category
+    // whose history spans the day `models` started being written would read
+    // as model-mixed on no real evidence.
+    const reports = buildEffectiveness([
+      withModels({ persuader: 'gpt-5' }),
+      withModels(null),
+      withModels(null),
+    ])
+    expect(reports[0]!.distinctModels).toBe(1)
+  })
 })
 
 describe('the rendered report', () => {

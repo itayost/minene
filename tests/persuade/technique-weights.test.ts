@@ -13,6 +13,7 @@ const report = (
   runs = 20,
   negativeReactionPct: number | null = 0,
   offPlanWins = 0,
+  distinctModels = 1,
 ): TechniqueReport =>
   ({
     category,
@@ -22,6 +23,7 @@ const report = (
     avgMessagesToWin: 3,
     negativeReactionPct,
     offPlanWins,
+    distinctModels,
     byReason: [{ key: 'forgot', runs, wins: 1, winPct }],
     byPersona: [],
   }) as TechniqueReport
@@ -205,5 +207,32 @@ describe('off-plan artefacts never become weights', () => {
   it('keeps a report where off-plan credit is a small minority', () => {
     const out = propose([report('social_proof', 30, 400, 0, 2), report('scarcity', 40, 100)])
     expect(out.map((p) => p.category).sort()).toEqual(['scarcity', 'social_proof'])
+  })
+})
+
+describe('a proposal built from more than one persuader model', () => {
+  it('warns, the same way report:techniques already warns a terminal reader for the identical evidence', () => {
+    // distinctModelFingerprints() already makes report:techniques print
+    // "הריצות המוצגות מגיעות מ-2 צירופי מודלים שונים" for a pool like this.
+    // propose() is the function that actually turns a TechniqueReport into a
+    // promotable weight (the terminal report never writes anything), so a
+    // reviewer approving a proposal built from the exact same evidence sees
+    // no warning at all -- a technique_weights row can be promoted from
+    // runs that measure a persuader-model swap as much as the technique,
+    // with nothing here to say so.
+    const proposals = propose([
+      report('numbers', 70, 40, 0, 0, 2),
+      report('authority', 30, 40, 0, 0, 1),
+    ])
+
+    const numbers = proposals.find((p) => p.category === 'numbers')!
+    const authority = proposals.find((p) => p.category === 'authority')!
+    expect(numbers.caveat).toMatch(/מודל/)
+    expect(authority.caveat).toBeNull()
+  })
+
+  it('says nothing when every run behind the report shares one model', () => {
+    const proposals = propose([report('numbers', 70, 40, 0, 0, 1)])
+    expect(proposals[0]!.caveat).toBeNull()
   })
 })
