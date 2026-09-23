@@ -56,7 +56,17 @@ export interface SourceRun {
 
 export interface ExportReport {
   examples: TrainingExample[]
-  /** Every reason a turn was dropped, counted. A silent filter is unreadable. */
+  /**
+   * Every reason a turn was dropped, in persuader turns forgone -- the same
+   * unit whether the reason rejected one turn on its own
+   * (`turn-broke-a-rule`, `turn-missing-structured-output`) or threw out a
+   * whole run before the turn loop ever started (`run-not-agreed`,
+   * `run-unscored`, `run-below-grade`, `persona-unresolvable`). Counting the
+   * latter as a flat one-per-run would mix two different currencies under one
+   * label: a run with ten persuader turns would report the same "1" as a run
+   * with a single turn, understating exactly the reason that cost the most
+   * training data.
+   */
   rejected: Record<string, number>
 }
 
@@ -115,6 +125,18 @@ const reject = (report: Record<string, number>, reason: string) => {
 }
 
 /**
+ * Rejects a run before its turn loop ever runs, in the same unit the loop
+ * itself counts in: persuader turns forgone, not runs. A run with ten
+ * persuader turns that never agreed cost ten potential examples, not the one
+ * a flat per-run count would show next to a single-turn run rejected for the
+ * same reason.
+ */
+const rejectRun = (report: Record<string, number>, reason: string, run: Run) => {
+  const potential = run.turns.filter((t) => t.role === 'persuader').length
+  report[reason] = (report[reason] ?? 0) + potential
+}
+
+/**
  * Rebuilds the exact prompt the model saw, turn by turn.
  *
  * Replayed rather than stored, because the prompt is a pure function of the
@@ -140,21 +162,21 @@ export function examplesFromRun(
   // removed: a system prompt claiming no recipient was stated, paired with an
   // answer produced under a real one.
   if (run.personaId && !persona) {
-    reject(report, 'persona-unresolvable')
+    rejectRun(report, 'persona-unresolvable', run)
     return examples
   }
 
   if (filter.requireAgreed && run.state.outcome !== 'agreed') {
-    reject(report, 'run-not-agreed')
+    rejectRun(report, 'run-not-agreed', run)
     return examples
   }
   if (filter.minGrade > 0) {
     if (!score) {
-      reject(report, 'run-unscored')
+      rejectRun(report, 'run-unscored', run)
       return examples
     }
     if (score.grade < filter.minGrade) {
-      reject(report, 'run-below-grade')
+      rejectRun(report, 'run-below-grade', run)
       return examples
     }
   }

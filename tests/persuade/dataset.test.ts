@@ -103,6 +103,31 @@ describe('what gets into the training set', () => {
     expect(rejected['run-not-agreed']).toBe(1)
   })
 
+  test('a run rejected whole counts every persuader turn it forgoes, not one', () => {
+    // Three persuader turns here would each have produced one training
+    // example. `turn-broke-a-rule` and `turn-missing-structured-output`
+    // already count per turn (see the tests below) -- a run rejected before
+    // that loop even starts must count the same currency, or the reason that
+    // costs the most examples can read as the smallest number in the report.
+    const { examples, rejected } = buildDataset([
+      source({
+        run: run(
+          [
+            persuader(),
+            target('אני צריכה לחשוב על זה'),
+            persuader({ interaction: 2 }),
+            target('אולי מחר'),
+            persuader({ interaction: 3 }),
+          ],
+          'refused',
+        ),
+      }),
+    ])
+
+    expect(examples).toHaveLength(0)
+    expect(rejected['run-not-agreed']).toBe(3)
+  })
+
   test('a low-graded run is dropped whole', () => {
     const { examples, rejected } = buildDataset([source({ score: score(40) })])
     expect(examples).toHaveLength(0)
