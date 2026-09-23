@@ -231,6 +231,22 @@ describe('whether the comparison is worth reading yet', () => {
     ]
     expect(readiness(compareArms(runs), 10, runs).join(' ')).toMatch(/סולם/)
   })
+
+  test('does not warn about scale drift from a run that belongs to no arm', () => {
+    // 'a run belonging to no arm is not counted into one' (above) already
+    // establishes that a hand-started, variant-less run never enters any
+    // arm's meanGrade -- compareArms drops it. The model-fingerprint check
+    // just above this one already agrees: it filters to `r.variant` before
+    // looking for a swap. This check does not, so a stray pre-scale-fix score
+    // on a run that was never part of the comparison still fires a warning
+    // that claims meanGrade above is corrupted, when meanGrade never saw it.
+    const runs = [
+      ...Array.from({ length: 20 }, () => run('a', 'agreed', 80, 2)),
+      ...Array.from({ length: 20 }, () => run('b', 'refused', 40, 4)),
+      run(null, 'agreed', 8.4, 1),
+    ]
+    expect(readiness(compareArms(runs), 10, runs).join(' ')).not.toMatch(/סולם/)
+  })
 })
 
 describe('sweeping the world space', () => {
