@@ -151,6 +151,20 @@ describe('turning evidence into a suggestion', () => {
     expect(harsh.find((p) => p.category === 'numbers')!.caveat).toMatch(/עייפות/)
   })
 
+  it('flags a weight computed against a peer group too thin to be a baseline', () => {
+    // "numbers" has abundant evidence (100 runs) and clears every existing
+    // caveat: its own runs pass minRuns, byReason covers all of it, and
+    // negativeReactionPct is 0. But its peer group -- everything the ratio is
+    // actually computed against -- is "authority" alone, at 3 runs. A weight
+    // this confident (well above 1) built on a 3-run baseline is exactly the
+    // kind of weak evidence `caveat` exists to name, and today it says nothing.
+    const proposals = propose([report('numbers', 80, 100), report('authority', 33, 3)])
+    const numbers = proposals.find((p) => p.category === 'numbers')!
+
+    expect(numbers.weight).toBeGreaterThan(1)
+    expect(numbers.caveat).toMatch(/ריצות בלבד אצל המתחרות/)
+  })
+
   it('flags a whole set built from runs with no world', () => {
     const worldless = { ...report('numbers', 60), byReason: [] } as TechniqueReport
     expect(propose([worldless, report('authority', 20)])[0]!.caveat).toMatch(/בלי עולם/)
