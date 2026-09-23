@@ -52,6 +52,20 @@ export interface SourceRun {
   score: RunScore | null
   rules: RuleConfig | null
   persona: Recipient | null
+  /**
+   * The experiment key this run belongs to, null for an ordinary run.
+   *
+   * `queueExperiment` (lib/experiments.ts) runs an arm under a `RuleConfig`
+   * deliberately different from the deployed default -- `messageLengthExperiment`'s
+   * `short-25` arm caps replies at 25 words where the deployed default allows
+   * more. A training example built from that run would not teach the model the
+   * category it won with, it would teach it the arm's constraint as if it were
+   * the deployed default's own behaviour -- the same "pooling populations that
+   * are not comparable" failure `effectiveness.ts`'s `buildEffectiveness` and
+   * `matrix-data.ts`'s `matrixFrom` already exclude these runs from their own
+   * numbers for.
+   */
+  experiment: string | null
 }
 
 export interface ExportReport {
@@ -70,6 +84,8 @@ export interface DatasetSourceRow {
   state: Run['state']
   score: RunScore | null
   rules: RuleConfig | null
+  /** The experiment key this run belongs to, null for an ordinary run. See SourceRun.experiment. */
+  experiment: string | null
 }
 
 /**
@@ -107,6 +123,7 @@ export function sourceRunsFromRows(
     // genuinely unresolvable -- a row with no persona_id at all -- rather
     // than whenever the caller did not bother to look one up.
     persona: row.persona_id ? (personas.get(row.persona_id) ?? null) : null,
+    experiment: row.experiment,
   }))
 }
 
@@ -129,8 +146,17 @@ export function examplesFromRun(
   filter: Required<DatasetFilter>,
   report: Record<string, number>,
 ): TrainingExample[] {
-  const { run, score, rules, persona } = source
+  const { run, score, rules, persona, experiment } = source
   const examples: TrainingExample[] = []
+
+  // See SourceRun.experiment: an arm run under a non-default RuleConfig is not
+  // evidence of how the deployed default should answer, so it is dropped
+  // whole rather than folded into the training set as if it were an ordinary
+  // sweep run.
+  if (experiment) {
+    reject(report, 'experiment-arm')
+    return examples
+  }
 
   // A row that carried a persona_id was handed a real recipient at generation
   // time -- runSimulation never passes null. If that persona cannot be
