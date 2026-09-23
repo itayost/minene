@@ -150,8 +150,19 @@ function categoriesInPlay(
  * plan offered would be the same "0 where the honest answer is null" mistake
  * `pct()` exists to prevent, just reached through the numerator's inputs
  * instead of the ratio itself.
+ *
+ * `no_response` is the same mistake from a different direction. It is reached
+ * only when `responsiveness: 'silent'` (engine/world.ts's `staysSilent`) forces
+ * every target turn silent from the opening message on -- `targetReply` is
+ * never even called, so no argument was heard, let alone rejected. That is a
+ * fact about the world, decided before the persuader wrote a word, not a
+ * verdict on whichever category the plan happened to offer. Counting it as a
+ * loss pools a third of the world space (every `silent` cell) into every
+ * offered technique's denominator for a reason that has nothing to do with
+ * the technique.
  */
 function isInformative(run: EffectivenessRun): boolean {
+  if (run.outcome === 'no_response') return false
   return run.outcome !== 'agreed' || run.score?.winningCategory != null
 }
 
