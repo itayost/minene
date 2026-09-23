@@ -138,6 +138,25 @@ describe('turning evidence into a suggestion', () => {
     expect(numbers.weight).toBeLessThan(0.5)
   })
 
+  it('rates a technique above average when its peer has genuinely never won', () => {
+    // As the peer average approaches zero from above, the ratio climbs toward
+    // the ceiling: a peer winning just 2 of 50 already earns "numbers" the max
+    // weight (see the next test). But `average === 0` is special-cased back to
+    // a neutral ratio of 1, so at the one point where the peer's evidence is
+    // strongest -- a real 0% across 50 runs, not a thin sample -- the technique
+    // that wins 90% of the time reads as merely "average" instead of the clear
+    // best. Genuinely tied evidence (both at 0%) should stay neutral; this
+    // is not that case.
+    const proposals = propose([report('numbers', 90, 50), report('authority', 0, 50)])
+    const numbers = proposals.find((p) => p.category === 'numbers')!
+    expect(numbers.weight).toBeGreaterThan(1)
+  })
+
+  it('still rates two techniques that both never won as neutral, not favoring either', () => {
+    const proposals = propose([report('numbers', 0, 50), report('authority', 0, 50)])
+    expect(proposals.every((p) => p.weight === 1)).toBe(true)
+  })
+
   it('carries the evidence, so a promotion can record what it was based on', () => {
     const [proposal] = propose([report('numbers', 60, 42)])
     expect(proposal!.evidence).toEqual({ runs: 42, winPct: 60, negativeReactionPct: 0 })
