@@ -126,6 +126,19 @@ export function createSimulationsStore(client: SupabaseClient) {
      * with no caller anywhere in the repo, which is a second way to pay the
      * cost this method exists to avoid -- someone reaching for the wrong one
      * out of habit. It was removed rather than kept "just in case".
+     *
+     * Oldest-first, with `id` as a tiebreaker -- not newest-first. The worker
+     * writes concurrently (up to `PERSUADER_TICK_CONCURRENCY` jobs at once,
+     * every ten minutes), and a newest-first page re-requested against a
+     * table with a live writer shifts every unread row down by one each time
+     * a new row lands in front of it: the row at the trailing edge of the
+     * page just read reappears at the leading edge of the next one, counted
+     * twice, while the row that actually landed sorts ahead of a cursor that
+     * has already moved past it and is never read at all. Oldest-first has
+     * the opposite shape -- a new row always sorts behind wherever the cursor
+     * already is, so it is read exactly once, on a later page, same as any
+     * other row. `id` breaks ties between rows sharing a `created_at`, which
+     * two runs saved in the same tick can.
      */
     async listSimulationSummaries(pageSize = 1000): Promise<StoredSimulation[]> {
       const rows: SimulationRow[] = []
@@ -138,7 +151,8 @@ export function createSimulationsStore(client: SupabaseClient) {
         const { data, error } = await client
           .from('simulations')
           .select(SUMMARY_COLUMNS)
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
           .range(from, from + pageSize - 1)
 
         if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
@@ -166,6 +180,15 @@ export function createSimulationsStore(client: SupabaseClient) {
      * created_at, and `gt` past the newest one held would step over its twin
      * and lose it silently, which is the one failure this table must never
      * have.
+     *
+     * Oldest-first with `id` as a tiebreaker, for the same reason
+     * `listSimulationSummaries` reads that way: a newest-first page is one a
+     * live insert can shift out from under a multi-page read, duplicating the
+     * page boundary's row while the row that actually landed is never read.
+     * A single-page read (the common case here, since this only covers what
+     * landed since the last poll) cannot show the failure, but nothing stops
+     * this from paging past one once the loop is mid-tick and the gap since
+     * the last poll has grown.
      */
     async listSimulationSummariesSince(iso: string, pageSize = 1000): Promise<StoredSimulation[]> {
       const rows: SimulationRow[] = []
@@ -174,7 +197,8 @@ export function createSimulationsStore(client: SupabaseClient) {
           .from('simulations')
           .select(SUMMARY_COLUMNS)
           .gte('created_at', iso)
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
           .range(from, from + pageSize - 1)
 
         if (error) throw new Error(`קריאת הסימולציות נכשלה: ${error.message}`)
