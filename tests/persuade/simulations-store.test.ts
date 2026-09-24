@@ -16,6 +16,7 @@ function fake(rows: Row[] = []) {
   const client = {
     from: (tableName: string) => {
       table = tableName
+      const orderCols: { column: string; ascending: boolean }[] = []
       const q = {
         insert: (values: Row) => {
           inserted.push(values)
@@ -27,20 +28,28 @@ function fake(rows: Row[] = []) {
         },
         // A real read is select().order().range(from, to) -- paged, so a table
         // bigger than one page has to come back as more than one page.
+        //
+        // Real order() chains: each call adds a column, and later ones only
+        // break ties in the columns before it. A fake that returned a
+        // narrower object after the first call (one with no `order` of its
+        // own) would make a second `.order('id', ...)` throw, or silently
+        // drop it if it returned `q` but forgot the column -- either way it
+        // could never exercise a caller that added a tiebreaker.
         order: (column: string, options?: { ascending?: boolean }) => {
+          orderCols.push({ column, ascending: options?.ascending !== false })
+          return q
+        },
+        range: async (from: number, to: number) => {
           const sorted = [...rows].sort((a, b) => {
-            const left = String(a[column] ?? '')
-            const right = String(b[column] ?? '')
-            return options?.ascending === false
-              ? right.localeCompare(left)
-              : left.localeCompare(right)
+            for (const { column, ascending } of orderCols) {
+              const left = String(a[column] ?? '')
+              const right = String(b[column] ?? '')
+              if (left === right) continue
+              return ascending ? left.localeCompare(right) : right.localeCompare(left)
+            }
+            return 0
           })
-          return {
-            range: async (from: number, to: number) => ({
-              data: sorted.slice(from, to + 1),
-              error: null,
-            }),
-          }
+          return { data: sorted.slice(from, to + 1), error: null }
         },
         gte: (column: string, value: unknown) => {
           gteCall = { column, value }
@@ -205,6 +214,99 @@ describe('reading without the conversations', () => {
     // would also return "some" rows, just the same three over and over. Every
     // id appearing exactly once is what shows the window actually advanced.
     expect(new Set(all.map((s) => s.id)).size).toBe(total)
+  })
+})
+
+/**
+ * Simulates a row landing between two paged requests, the way the worker's
+ * concurrent job runners do against a real table mid-poll: `rows` mutates
+ * partway through the loop instead of staying fixed for the whole read.
+ */
+function fakeWithConcurrentInsert(initialRows: Row[], insertBeforeCall: number) {
+  let rows = [...initialRows]
+  let calls = 0
+  const client = {
+    from: () => {
+      const orderCols: { column: string; ascending: boolean }[] = []
+      const q = {
+        select: () => q,
+        gte: () => q,
+        order: (column: string, options?: { ascending?: boolean }) => {
+          orderCols.push({ column, ascending: options?.ascending !== false })
+          return q
+        },
+        range: async (from: number, to: number) => {
+          calls += 1
+          if (calls === insertBeforeCall) {
+            // A run the worker just saved: newer than everything already
+            // read, so it sorts to the very front of a newest-first query.
+            rows = [
+              {
+                id: 'sim-new',
+                industry: 'retail',
+                job_role_id: 'r1',
+                persona_id: 'rona',
+                plan: { id: 'p1' },
+                state: { outcome: 'agreed', blockers: [], interaction: 1 },
+                score: null,
+                created_at: '2099-01-01T00:00:00Z',
+              },
+              ...rows,
+            ]
+          }
+          const sorted = [...rows].sort((a, b) => {
+            for (const { column, ascending } of orderCols) {
+              const left = String(a[column] ?? '')
+              const right = String(b[column] ?? '')
+              if (left === right) continue
+              return ascending ? left.localeCompare(right) : right.localeCompare(left)
+            }
+            return 0
+          })
+          return { data: sorted.slice(from, to + 1), error: null }
+        },
+      }
+      return q
+    },
+  } as never
+  return createSimulationsStore(client)
+}
+
+describe('reading while the worker keeps writing', () => {
+  it('does not double-count or drop a run saved mid-page', async () => {
+    // listSimulationSummaries reads newest-first with no tiebreaker at all --
+    // the same shape scripts/lib/db.ts's readAll and both report scripts
+    // already read oldest-first with `id` as a tiebreaker to avoid, and the
+    // one #52 found for this same reader's now-deleted predecessor
+    // (`listSimulations`). This function was introduced after that fix was
+    // written and carries the identical exposure: a newest-first page,
+    // re-requested after a live insert, shifts every unread row down by one.
+    // The row at the trailing edge of the page just read reappears at the
+    // leading edge of the next one -- counted twice -- while the row that
+    // actually landed sorts ahead of a cursor that has already moved past
+    // it, and is never read at all. This is the function the lab's live
+    // matrix and bank are built from (`load()` in lab-client.tsx), so a run
+    // the worker just saved can be silently absent from both.
+    const row = (i: number): Row => ({
+      id: `sim-${i}`,
+      industry: 'retail',
+      job_role_id: 'r1',
+      persona_id: 'rona',
+      plan: { id: 'p1' },
+      state: { outcome: 'agreed', blockers: [], interaction: 1 },
+      score: null,
+      created_at: new Date(2026, 0, 1, 0, 0, i).toISOString(),
+    })
+    const initial = Array.from({ length: 8 }, (_, i) => row(i))
+    // Page size 5 forces a second request, and the insert lands right before
+    // it -- the same window a live worker tick falls into.
+    const store = fakeWithConcurrentInsert(initial, 2)
+
+    const all = await store.listSimulationSummaries(5)
+    const ids = all.map((s) => s.id)
+
+    expect(new Set(ids).size).toBe(9)
+    expect(ids).toContain('sim-new')
   })
 })
 
