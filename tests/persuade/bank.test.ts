@@ -109,4 +109,34 @@ describe('what stopped the conversations', () => {
     expect(overloaded).toMatchObject({ encountered: 1, overcome: 0 })
     expect(noPrice).toMatchObject({ encountered: 1, overcome: 0 })
   })
+
+  it('does not report no_reply as a blocker at all', () => {
+    // `no_reply` is set on the persuader's own turn whenever the immediately
+    // preceding target turn was silent (engine/prompts.ts's silenceNote: "סמן
+    // blocker כ-no_reply") -- it is not a diagnosis read out of anything the
+    // counterpart said, it is what the field holds when there is nothing to
+    // read. types.ts says as much about BlockerId's own 'no_reply' entry: "there
+    // is nothing to read here". Reporting it beside 'afraid' or 'overloaded'
+    // states a psychological obstacle that was never actually diagnosed.
+    const blockers = blockersIn([run({ outcome: 'agreed', blockers: ['no_reply'] })])
+
+    expect(blockers.find((b) => b.blocker === 'no_reply')).toBeUndefined()
+  })
+
+  it('does not let a silent opener block credit for the blocker that actually was overcome', () => {
+    // `slow` responsiveness ignores exactly the opening message, so `no_reply`
+    // lands in `state.blockers` on nearly every such run before the
+    // conversation has said anything real -- see world.ts's RESPONSIVENESS
+    // and staysSilent. `state.blockers` only ever grows, so it stays there for
+    // the rest of the run. Left in the ambiguity check, it makes an otherwise
+    // single-blocker, unambiguously-agreed run read as two blockers and
+    // silently withholds credit from the one that was actually diagnosed and
+    // broken.
+    const blockers = blockersIn([run({ outcome: 'agreed', blockers: ['no_reply', 'overloaded'] })])
+
+    expect(blockers.find((b) => b.blocker === 'overloaded')).toMatchObject({
+      encountered: 1,
+      overcome: 1,
+    })
+  })
 })
