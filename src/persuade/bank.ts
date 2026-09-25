@@ -63,12 +63,26 @@ export function buildBank(runs: readonly Run[]): BankEntry[] {
  * blocker was broken") the run cannot support; the honest answer for an ambiguous
  * run is to leave `overcome` where it was, not to guess with a coin flip that
  * always lands credit.
+ *
+ * `no_reply` is excluded before any of that runs. It is not read out of
+ * anything the counterpart said -- engine/prompts.ts's silence note tells the
+ * persuader to "mark blocker as no_reply" on its own turn whenever the turn
+ * before it was silent, which is a fact about the CLOCK, not a diagnosis of a
+ * psychological obstacle (see BlockerId's own comment on it: "there is nothing
+ * to read here"). Reporting it here would rank silence beside `afraid` or
+ * `overloaded` as if it were another objection the persuader broke. Worse,
+ * left in the ambiguity check above it also breaks the other blockers' own
+ * numbers: a `slow` world ignores exactly the opening message (world.ts), so
+ * `no_reply` lands in `state.blockers` -- which only ever grows -- on nearly
+ * every such run before the conversation has said anything real, and then
+ * silently withholds credit from whatever real blocker the run's actual
+ * objection and agreement earned.
  */
 export function blockersIn(runs: readonly Run[]): BlockerStat[] {
   const stats = new Map<BlockerId, { encountered: number; overcome: number }>()
 
   for (const run of runs) {
-    const distinct = [...new Set(run.state.blockers)]
+    const distinct = [...new Set(run.state.blockers)].filter((b) => b !== 'no_reply')
     const unambiguous = agreed(run) && distinct.length === 1
     for (const blocker of distinct) {
       const entry = stats.get(blocker) ?? { encountered: 0, overcome: 0 }
