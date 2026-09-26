@@ -81,6 +81,39 @@ describe('coverage of a set of runs', () => {
   it('is null, never zero, when nothing has been run', () => {
     expect(coverageOf([])).toEqual({ runs: 0, persuasionRate: null })
   })
+
+  it('does not count a counterpart who never answered as a refusal', () => {
+    // 'no_response' (engine/world.ts's `staysSilent`) means every target turn
+    // was forced silent from the opening message on -- no argument was ever
+    // heard, let alone rejected. Folding it into the denominator the same way
+    // as 'refused' pools "the technique failed" and "nobody ever engaged"
+    // into one number, and understates the cell's real rate.
+    const placed = placeAll(index, [
+      sim('gen-retail-ceo-profitability', 'agreed'),
+      sim('gen-retail-ceo-profitability', 'agreed'),
+      sim('gen-retail-ceo-profitability', 'no_response'),
+    ])
+
+    expect(coverageOf(placed.runsByCell.get('retail/ceo/profitability') ?? [])).toEqual({
+      runs: 2,
+      persuasionRate: 100,
+    })
+  })
+
+  it('is null, not zero, when every run in the cell went unanswered', () => {
+    // The same "0 where the honest answer is null" mistake `coverageOf`
+    // already guards against for an empty cell, reached instead through a
+    // cell that was swept but never once got a reply.
+    const placed = placeAll(index, [
+      sim('gen-retail-ceo-profitability', 'no_response'),
+      sim('gen-retail-ceo-profitability', 'no_response'),
+    ])
+
+    expect(coverageOf(placed.runsByCell.get('retail/ceo/profitability') ?? [])).toEqual({
+      runs: 0,
+      persuasionRate: null,
+    })
+  })
 })
 
 describe('the grid', () => {
