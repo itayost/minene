@@ -41,11 +41,19 @@ export function placeAll(index: CellIndex, sims: readonly StoredSimulation[]): P
  * Null, never 0, when nothing has been run. "Nobody has tried this cell" and
  * "everybody refused here" are opposite facts; the second is a finding and the
  * first is an absence, and the heat scale renders them differently.
+ *
+ * `no_response` (engine/world.ts's `staysSilent`) is excluded outright, not
+ * counted as a refusal. It means every target turn was forced silent from the
+ * opening message on -- no argument was ever heard, let alone rejected -- so
+ * folding it in would pool "the technique failed here" and "nobody ever
+ * engaged" into one number, reaching the same 0-for-null mistake through a
+ * cell that was swept but never once got a reply.
  */
 export function coverageOf(runs: readonly Run[]): { runs: number; persuasionRate: number | null } {
-  if (runs.length === 0) return { runs: 0, persuasionRate: null }
-  const agreed = runs.filter((run) => run.state.outcome === 'agreed').length
-  return { runs: runs.length, persuasionRate: Math.round((agreed / runs.length) * 100) }
+  const heard = runs.filter((run) => run.state.outcome !== 'no_response')
+  if (heard.length === 0) return { runs: 0, persuasionRate: null }
+  const agreed = heard.filter((run) => run.state.outcome === 'agreed').length
+  return { runs: heard.length, persuasionRate: Math.round((agreed / heard.length) * 100) }
 }
 
 export function runsForRole(
