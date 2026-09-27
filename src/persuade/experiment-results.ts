@@ -56,9 +56,16 @@ export function compareArms(runs: readonly ExperimentRun[]): ArmResult[] {
   return [...byVariant.entries()]
     .map(([variant, armRuns]) => {
       const agreedRuns = armRuns.filter((r) => r.outcome === 'agreed')
+      // A fractional grade is a row scored before the judge was pinned to a
+      // whole number on 0-100 (see the schema comment on `grade` in
+      // engine/score.ts) -- proof it is on an unknown, incompatible scale, not
+      // merely a low-precision 0-100 one. `readiness` below only warns that
+      // such rows are present; averaging one into meanGrade regardless would
+      // still produce a number that describes neither scale, so it is excluded
+      // here rather than pooled.
       const grades = armRuns
         .map((r) => r.score?.grade)
-        .filter((g): g is number => typeof g === 'number')
+        .filter((g): g is number => typeof g === 'number' && Number.isInteger(g))
 
       return {
         variant,

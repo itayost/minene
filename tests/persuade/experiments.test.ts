@@ -167,6 +167,21 @@ describe('reading the result', () => {
     expect(arms[0]?.agreedPct).toBe(100)
     expect(arms[0]?.meanGrade).toBeNull()
   })
+
+  test('excludes an old-scale (fractional) grade from meanGrade, not just warning about it', () => {
+    // A fractional grade is a row scored before the judge was pinned to a whole
+    // number on 0-100 (see the schema comment on `grade` in engine/score.ts) --
+    // it is on an unknown, incompatible scale. readiness() below warns that such
+    // rows exist, but that warning does nothing to the number this test reads:
+    // averaging an old-scale 8.4 in with proper 0-100 grades produces a mean
+    // that is neither an old-scale nor a new-scale figure.
+    const arms = compareArms([
+      run('a', 'agreed', 80, 2),
+      run('a', 'agreed', 90, 2),
+      run('a', 'refused', 8.4, 4),
+    ])
+    expect(arms[0]?.meanGrade).toBe(85)
+  })
 })
 
 describe('whether the comparison is worth reading yet', () => {
