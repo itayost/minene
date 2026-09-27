@@ -293,4 +293,39 @@ describe('a win the plan never offered', () => {
     // A category the plan did offer carries no such flag.
     expect(reports.find((r) => r.category === 'personal_benefit')?.offPlanWins).toBe(0)
   })
+
+  test('does not carry an exhaustion rate lower than the plan it never appeared on', () => {
+    // The docstring on `negativeReactionPct` says this number is "identical
+    // across categories" within one plan, because exhaustion is a property of
+    // the whole conversation and every technique the plan offered shares the
+    // blame. That invariant silently breaks for a category credited only by
+    // an off-plan win: `categoriesInPlay` adds such a category to `attempted`
+    // solely on the run it won, never on a run it lost (a loss has no winner
+    // to credit), so its exhaustion denominator is exactly its own win count
+    // -- a population that, by construction, contains no loss to ever count
+    // as a negative reaction.
+    //
+    // Both runs below come from the very same plan (identical `offered`).
+    // One is a clean off-plan win for `authority`; the other is a refusal,
+    // from the same plan, that wore the counterpart down while
+    // `personal_benefit` and `numbers` were genuinely on the table.
+    const reports = buildEffectiveness([
+      input('agreed', 'authority', 'forgot', 'adi', ['personal_benefit', 'numbers'], 0.2),
+      input('refused', null, 'forgot', 'rona', ['personal_benefit', 'numbers'], 0.9),
+    ])
+
+    const authority = reports.find((r) => r.category === 'authority')!
+    const personal = reports.find((r) => r.category === 'personal_benefit')!
+
+    // The plan's genuinely offered categories correctly see the exhausting
+    // refusal in their denominator.
+    expect(personal.negativeReactionPct).toBe(50)
+    // `authority` was on the very same plan, in a conversation the plan wore
+    // the counterpart down in -- it just never lost, so it was never asked
+    // to answer for that conversation. A category with no evidence on this
+    // axis should read `null`, the same "no evidence is not evidence of
+    // success" rule `winPct` already follows, not a rate lower than every
+    // technique that shared the plan with it.
+    expect(authority.negativeReactionPct).toBeNull()
+  })
 })
