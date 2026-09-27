@@ -213,6 +213,27 @@ describe('whether the technique comparison crosses a model change', () => {
     expect(distinctModelFingerprints(inputs)).toBe(1)
     expect(unrecordedModels(inputs)).toBe(2)
   })
+
+  test('a judge- or target-only model change is not a persuader swap', () => {
+    // The doc comment on distinctModelFingerprints and every existing fixture
+    // above frame this purely in terms of the PERSUADER model: "the message
+    // came from a specific persuader model", and every input above sets only
+    // `persuader`. But `models` carries three independent roles (persuader,
+    // target, judge -- see lib/simulations.ts), and the current
+    // implementation fingerprints the whole object. So swapping the grading
+    // model, with the persuader held constant, still reads as more than one
+    // fingerprint here and trips technique-report.ts's "the comparison may be
+    // measuring the model swap, not the technique" warning -- pointing a
+    // reader at a persuader change that never happened, while a real judge
+    // swap (which does confound grades, just not win/category attribution)
+    // goes unnamed.
+    const count = distinctModelFingerprints([
+      withModels({ persuader: 'gpt-5', judge: 'gpt-5' }),
+      withModels({ persuader: 'gpt-5', judge: 'gpt-5.1' }),
+      withModels({ persuader: 'gpt-5', target: 'gpt-5.1' }),
+    ])
+    expect(count).toBe(1)
+  })
 })
 
 describe('the rendered report', () => {
