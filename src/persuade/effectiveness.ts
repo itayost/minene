@@ -272,6 +272,13 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
  * one -- so the caller should treat more than one fingerprint here as reason
  * to distrust the comparison the same way.
  *
+ * Keyed on `models.persuader` alone, not the whole `models` object: `target`
+ * and `judge` are independent roles (see `lib/simulations.ts`) that can change
+ * -- a grading-model upgrade is routine -- without the persuader that actually
+ * wrote the winning message ever changing. Fingerprinting the whole object
+ * named a persuader swap that never happened on every such upgrade, while
+ * saying nothing about the judge swap that did occur.
+ *
  * Runs with nothing recorded are not counted, for the same reason `readiness`
  * stopped counting them: an unrecorded run is an unknown, not a second model.
  * They are not only old rows either -- /api/persuade/simulate stores a run
@@ -280,12 +287,13 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
  * `unrecordedModels` for the gap and say that separately.
  */
 export function distinctModelFingerprints(inputs: readonly EffectivenessInput[]): number {
-  return new Set(inputs.filter((i) => i.run.models).map((i) => JSON.stringify(i.run.models))).size
+  return new Set(inputs.filter((i) => i.run.models?.persuader).map((i) => i.run.models?.persuader))
+    .size
 }
 
-/** Runs carrying no model fingerprint at all -- an unknown, reported as one. */
+/** Runs carrying no persuader-model fingerprint at all -- an unknown, reported as one. */
 export function unrecordedModels(inputs: readonly EffectivenessInput[]): number {
-  return inputs.filter((i) => !i.run.models).length
+  return inputs.filter((i) => !i.run.models?.persuader).length
 }
 
 /**
