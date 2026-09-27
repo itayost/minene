@@ -85,8 +85,13 @@ export interface TechniqueReport {
    * Carries the same caveat as `runs`, more sharply: exhaustion is a property
    * of the whole conversation, so every technique the plan offered shares the
    * blame. Within one plan this number is therefore identical across
-   * categories, and only tells techniques apart across plans that offer
-   * different sets.
+   * categories the plan actually offered, and only tells techniques apart
+   * across plans that offer different sets.
+   *
+   * Null, not 0, for a category credited only by an off-plan win: such a
+   * category has no run in its history that was not an agreement (a loss has
+   * no winner to credit it as), so it has nothing to say about exhaustion --
+   * counting it would report the one thing this rate cannot be measured on.
    */
   negativeReactionPct: number | null
   /**
@@ -229,19 +234,33 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       // uninformative run still belongs in this ratio even though it sits out
       // the win rate above.
       //
-      // Two signals, not one: `stopped_fatigue` is the engine's own verdict,
-      // reached against whatever fatigueThreshold that run's RuleConfig
-      // actually used -- which an experiment is free to set below 0.7 (it is
-      // an ordinary field on RuleConfig, see experiments.ts). A run that
-      // stopped at 0.4 under a lowered threshold is not less worn down than
-      // one that reached 0.7 under the default; checking only the fixed bar
-      // silently undercounts exactly the runs an experiment on this setting
-      // exists to compare. The fixed bar stays, for the case this outcome
-      // doesn't cover: an agreed run where fatigue crept high without ever
-      // tripping the stop.
-      at.offeredCount += 1
-      if (informative && isWin && !offered.includes(category)) at.offPlan += 1
-      if (run.outcome === 'stopped_fatigue' || run.fatigue >= 0.7) at.negative += 1
+      // Gated on `offered.includes(category)`, unlike `runs`/`wins` above: an
+      // off-plan category joins `attempted` only on the run it WON (a loss has
+      // no winner to credit -- see `categoriesInPlay`), so its exhaustion
+      // denominator would otherwise be exactly its own win count. A population
+      // that by construction contains no loss can never register a negative
+      // reaction, so it would always read near 0% -- not because the technique
+      // is gentle, but because it was never asked to answer for a conversation
+      // it did not win. Leaving `offeredCount` at 0 for such a category means
+      // `negativeReactionPct` reports `null`, the same "no evidence" rule
+      // `winPct` already follows, instead of a rate that looks better than
+      // every technique that actually shared the plan with it.
+      const wasOffered = offered.includes(category)
+      if (wasOffered) {
+        // Two signals, not one: `stopped_fatigue` is the engine's own verdict,
+        // reached against whatever fatigueThreshold that run's RuleConfig
+        // actually used -- which an experiment is free to set below 0.7 (it is
+        // an ordinary field on RuleConfig, see experiments.ts). A run that
+        // stopped at 0.4 under a lowered threshold is not less worn down than
+        // one that reached 0.7 under the default; checking only the fixed bar
+        // silently undercounts exactly the runs an experiment on this setting
+        // exists to compare. The fixed bar stays, for the case this outcome
+        // doesn't cover: an agreed run where fatigue crept high without ever
+        // tripping the stop.
+        at.offeredCount += 1
+        if (run.outcome === 'stopped_fatigue' || run.fatigue >= 0.7) at.negative += 1
+      }
+      if (informative && isWin && !wasOffered) at.offPlan += 1
       byCategory.set(category, at)
     }
   }
