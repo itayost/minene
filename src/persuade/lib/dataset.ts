@@ -153,6 +153,19 @@ export function examplesFromRun(
       reject(report, 'run-unscored')
       return examples
     }
+    // A fractional grade is a row scored before the judge was pinned to a
+    // whole number on 0-100 (see the schema comment on `grade` in
+    // engine/score.ts) -- proof it is on an unknown, incompatible scale, not
+    // merely a low one. Nothing rewrites those old rows, so they are still
+    // read here. Comparing 8.4 against a 0-100 `minGrade` reads as a failing
+    // score and drops the row as 'run-below-grade' -- the same label a
+    // genuinely bad run gets -- even when 8.4 was a near-perfect result on
+    // the old 0-10 scale. Rejected for the scale mismatch instead, so the
+    // count does not claim to know the run was low quality.
+    if (!Number.isInteger(score.grade)) {
+      reject(report, 'run-old-grade-scale')
+      return examples
+    }
     if (score.grade < filter.minGrade) {
       reject(report, 'run-below-grade')
       return examples
