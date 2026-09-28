@@ -109,6 +109,23 @@ describe('what gets into the training set', () => {
     expect(rejected['run-below-grade']).toBe(1)
   })
 
+  test('an old-scale (fractional) grade is dropped for its scale, not folded into run-below-grade', () => {
+    // engine/score.ts's own schema comment on `grade` explains the fixture: the
+    // judge used to pick a scale per run before `grade` was pinned to a whole
+    // number on 0-100, so a three-message agreement once came back as 8.4 while
+    // a deferred one came back as 72 -- both defensible on their own scale, and
+    // nothing rewrites a row scored before that fix. 8.4 on the OLD scale was a
+    // near-perfect run; compared against the 0-100 `minGrade` default of 70 it
+    // reads as a failing 8.4/100 and is dropped under 'run-below-grade', the
+    // same label a genuinely bad 0-100 run gets. That miscounts a good run as
+    // bad and hides the real reason (a scale mismatch) behind a label that
+    // claims to know the run was low quality.
+    const { examples, rejected } = buildDataset([source({ score: score(8.4) })])
+    expect(examples).toHaveLength(0)
+    expect(rejected['run-below-grade']).toBeUndefined()
+    expect(rejected['run-old-grade-scale']).toBe(1)
+  })
+
   test('an unscored run is dropped rather than assumed good', () => {
     const { examples, rejected } = buildDataset([source({ score: null })])
     expect(examples).toHaveLength(0)
