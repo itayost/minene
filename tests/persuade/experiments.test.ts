@@ -167,6 +167,20 @@ describe('reading the result', () => {
     expect(arms[0]?.agreedPct).toBe(100)
     expect(arms[0]?.meanGrade).toBeNull()
   })
+
+  test('a no_response run counts toward the rate but not toward the grade', () => {
+    // scoreRun grades every finished run, no_response included -- the judge is
+    // handed a transcript of nothing but "(לא ענה)" lines and still returns a
+    // grade (score.ts's responseValidity: 'none' exists for exactly this
+    // transcript). That grade measures how the persuader read against silence,
+    // not conversation quality, so it is not the same kind of number as a grade
+    // earned against a counterpart who actually replied. Pooling it into
+    // meanGrade lets an arm that happened to draw more silent worlds read as
+    // the worse technique when nobody there ever heard an argument.
+    const arms = compareArms([run('a', 'agreed', 90, 2), run('a', 'no_response', 10, 1)])
+    expect(arms[0]?.runs).toBe(2)
+    expect(arms[0]?.meanGrade).toBe(90)
+  })
 })
 
 describe('whether the comparison is worth reading yet', () => {
