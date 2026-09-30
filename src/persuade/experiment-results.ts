@@ -56,7 +56,15 @@ export function compareArms(runs: readonly ExperimentRun[]): ArmResult[] {
   return [...byVariant.entries()]
     .map(([variant, armRuns]) => {
       const agreedRuns = armRuns.filter((r) => r.outcome === 'agreed')
+      // scoreRun grades every finished run, no_response included: the judge
+      // still returns a grade for a transcript of nothing but silence (see
+      // score.ts's responseValidity: 'none'). That grade measures the
+      // persuader's performance against a counterpart who never once replied,
+      // not the quality of a conversation -- a different kind of number than a
+      // grade earned against someone who actually answered, so it does not
+      // belong in the same average.
       const grades = armRuns
+        .filter((r) => r.outcome !== 'no_response')
         .map((r) => r.score?.grade)
         .filter((g): g is number => typeof g === 'number')
 
