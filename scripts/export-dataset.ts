@@ -15,6 +15,7 @@ import { getPersona } from '../src/persuade/lib/content'
 import {
   buildDataset,
   type DatasetSourceRow,
+  distinctTeacherModels,
   sourceRunsFromRows,
   toJsonl,
 } from '../src/persuade/lib/dataset'
@@ -79,16 +80,15 @@ async function main(): Promise<void> {
     }
   }
 
-  // A model swap invalidates a comparison; for a training set it is milder but
-  // still worth seeing, since examples from two different teachers are two
-  // different behaviours being averaged.
-  // A row with nothing recorded is an unknown, not a second teacher: counting
-  // it as one made this line claim two teachers for every table that spans the
-  // day models started being recorded (and /api/persuade/simulate still writes
-  // rows without them), which is a stronger statement than the evidence.
-  const teachers = new Set(rows.filter((r) => r.models).map((r) => JSON.stringify(r.models)))
-  if (teachers.size > 1) {
-    console.log(`\nשים לב: הדוגמאות מגיעות מ-${teachers.size} צירופי מודלים שונים.`)
+  // A persuader-model swap invalidates a comparison; for a training set it is
+  // milder but still worth seeing, since examples from two different teachers
+  // are two different behaviours being averaged. Keyed on the persuader alone
+  // -- see distinctTeacherModels -- because target and judge are independent
+  // roles that can change (a grading-model upgrade is routine) without the
+  // persuader that wrote the exported turns ever changing.
+  const teachers = distinctTeacherModels(rows.map((r) => r.models))
+  if (teachers > 1) {
+    console.log(`\nשים לב: הדוגמאות מגיעות מ-${teachers} מודלי שכנוע שונים.`)
   }
   const unrecorded = rows.filter((r) => !r.models).length
   if (unrecorded > 0) {
