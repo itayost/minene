@@ -89,8 +89,13 @@ export function propose(
     // "peers" meaning the others.
     const peerRuns = totalRuns - report.runs
     const peerWins = totalWins - report.wins
-    const average = peerRuns === 0 ? 0 : (peerWins / peerRuns) * 100
-    const ratio = average === 0 ? 1 : win / average
+    // null, not 0, when there is no peer group: `average === 0` must mean
+    // "peers really did lose every run", not "there is nothing to compare
+    // against" -- those get told apart below instead of collapsing into the
+    // same neutral ratio.
+    const average = peerRuns === 0 ? null : (peerWins / peerRuns) * 100
+    const ratio =
+      average === null ? 1 : average === 0 ? (win === 0 ? 1 : WEIGHT_CEILING) : win / average
     const weight = Math.min(WEIGHT_CEILING, Math.max(WEIGHT_FLOOR, Number(ratio.toFixed(2))))
 
     const caveats: string[] = []

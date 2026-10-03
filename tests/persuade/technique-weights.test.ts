@@ -186,6 +186,20 @@ describe('turning evidence into a suggestion', () => {
       expect(p.weight).toBeLessThanOrEqual(3)
     }
   })
+
+  it('rates a technique against a peer group that genuinely never won, not a peer group with no data', () => {
+    // "authority" is not thin and not an off-plan artefact -- it ran 50 times
+    // and really did lose every one of them. That is peer evidence, just
+    // unanimous evidence. `average === 0` here means "we measured zero", not
+    // "we measured nothing", but the ratio arithmetic treats both the same
+    // way and falls back to the neutral 1 -- the same number a technique with
+    // zero peer runs gets. "numbers" wins 80% of 50 runs against that peer and
+    // should read as the best-evidenced row in the table, not as "average".
+    const proposals = propose([report('numbers', 80, 50), report('authority', 0, 50)])
+    const numbers = proposals.find((p) => p.category === 'numbers')!
+
+    expect(numbers.weight).toBeGreaterThan(1)
+  })
 })
 
 describe('off-plan artefacts never become weights', () => {
