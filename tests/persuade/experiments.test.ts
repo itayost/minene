@@ -210,6 +210,28 @@ describe('whether the comparison is worth reading yet', () => {
     expect(readiness(compareArms(runs), 10, runs).join(' ')).toMatch(/החלפת המודל/)
   })
 
+  test('does not claim a swap when only the judge model changed', () => {
+    // effectiveness.ts's distinctModelFingerprints is keyed on `models.persuader`
+    // alone, precisely because target and judge are independent roles that can
+    // change -- a grading-model upgrade is routine -- without the persuader that
+    // wrote the actual messages ever changing (see that file's doc comment).
+    // readiness() never got the same fix: it fingerprints the whole `models`
+    // object, so a judge-only swap between arms reads as "the comparison
+    // measures the model swap" even though agreedPct and meanTurnsToYes here
+    // depend on nothing but the persuader and the target, both held constant.
+    const runs = [
+      ...Array.from({ length: 20 }, () => run('a', 'agreed', 80, 2)),
+      ...Array.from({ length: 20 }, () =>
+        run('b', 'refused', 40, 4, {
+          persuader: 'gpt-5.5',
+          target: 'gpt-5.4-mini',
+          judge: 'gpt-5.6',
+        }),
+      ),
+    ]
+    expect(readiness(compareArms(runs), 10, runs).join(' ')).not.toMatch(/החלפת המודל/)
+  })
+
   test('says so when nothing recorded which models ran', () => {
     const runs = [
       ...Array.from({ length: 20 }, () => run('a', 'agreed', 80, 2, null)),
