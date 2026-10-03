@@ -93,24 +93,34 @@ export function readiness(
   /**
    * The check that invalidates everything else when it fires.
    *
-   * Two arms run against different models are not two arms, they are two
-   * experiments. This is the failure that looks most like a result: a clean,
-   * large, confident difference that is entirely the model swap. Reported
-   * first because no other warning matters if this one is true.
+   * Two arms run against different PERSUADER models are not two arms, they
+   * are two experiments. This is the failure that looks most like a result: a
+   * clean, large, confident difference that is entirely the model swap.
+   * Reported first because no other warning matters if this one is true.
+   *
+   * Keyed on `models.persuader` alone, not the whole `models` object, for the
+   * same reason `distinctModelFingerprints` in effectiveness.ts is (see its
+   * doc comment): `target` and `judge` are independent roles that can change
+   * -- a grading-model upgrade is routine -- without the persuader that wrote
+   * the messages ever changing. `agreedPct` and `meanTurnsToYes` above depend
+   * on nothing but the persuader and the target the counterpart was played
+   * by; fingerprinting the judge too meant a routine judge upgrade mid-pool
+   * raised this comparison's strongest alarm over two metrics it cannot
+   * possibly have touched.
    */
   const fingerprints = new Set(
-    runs.filter((r) => r.variant).map((r) => JSON.stringify(r.models ?? null)),
+    runs.filter((r) => r.variant).map((r) => r.models?.persuader ?? null),
   )
-  // A run with no models recorded is an unknown, not a second model. Counting
-  // it as one turns "some rows predate the recording" into "this comparison
-  // measures a model swap" -- a far stronger claim, and the one that was
-  // actually being made: every pool mixing pre- and post-recording runs
-  // reported a confirmed swap it had no evidence for.
-  const recorded = new Set([...fingerprints].filter((f) => f !== 'null'))
+  // A run with no persuader model recorded is an unknown, not a second model.
+  // Counting it as one turns "some rows predate the recording" into "this
+  // comparison measures a model swap" -- a far stronger claim, and the one
+  // that was actually being made: every pool mixing pre- and post-recording
+  // runs reported a confirmed swap it had no evidence for.
+  const recorded = new Set([...fingerprints].filter((f): f is string => f !== null))
   if (recorded.size > 1) {
-    warnings.push('הריצות רצו על יותר מצירוף מודלים אחד — ההשוואה מודדת את החלפת המודל')
+    warnings.push('הריצות רצו על יותר ממודל שכנוע אחד — ההשוואה מודדת את החלפת המודל')
   }
-  if (fingerprints.has('null')) {
+  if (fingerprints.has(null)) {
     warnings.push(
       recorded.size === 0
         ? 'לא נרשם אילו מודלים הריצו — אי אפשר לדעת אם כולן רצו על אותו דבר'
