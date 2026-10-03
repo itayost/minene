@@ -5,7 +5,12 @@ import { describe, expect, test } from 'vitest'
 import { SILENT_TURN_MARKER } from '../../src/persuade/engine/prompts'
 import { DEFAULT_RULES } from '../../src/persuade/engine/rules'
 import type { Run, RunScore, Turn } from '../../src/persuade/engine/types'
-import { buildDataset, type SourceRun, sourceRunsFromRows } from '../../src/persuade/lib/dataset'
+import {
+  buildDataset,
+  distinctTeacherModels,
+  type SourceRun,
+  sourceRunsFromRows,
+} from '../../src/persuade/lib/dataset'
 import { TEST_PLAN } from './helpers'
 
 const output = (over: Record<string, unknown> = {}) => ({
@@ -235,6 +240,35 @@ describe('resolving the recipient the persuader actually saw', () => {
 
     expect(examples).toHaveLength(0)
     expect(rejected['persona-unresolvable']).toBe(1)
+  })
+})
+
+describe('how many teachers the export mixes', () => {
+  // The export's own warning is about who wrote the exported assistant
+  // turns -- the persuader. `target` and `judge` are independent roles that
+  // can change (a grading-model upgrade is routine) without the persuader
+  // that produced the training text ever changing, exactly the distinction
+  // effectiveness.ts's distinctModelFingerprints and experiment-results.ts's
+  // readiness() already draw for the same reason.
+  test('a judge-only swap is not a second teacher', () => {
+    const count = distinctTeacherModels([
+      { persuader: 'gpt-5', target: 'gpt-5.4-mini', judge: 'gpt-5.5' },
+      { persuader: 'gpt-5', target: 'gpt-5.4-mini', judge: 'gpt-5.6' },
+    ])
+    expect(count).toBe(1)
+  })
+
+  test('a genuine persuader swap still counts as more than one', () => {
+    const count = distinctTeacherModels([
+      { persuader: 'gpt-4o-mini', target: 'gpt-5.4-mini', judge: 'gpt-5.5' },
+      { persuader: 'gpt-5', target: 'gpt-5.4-mini', judge: 'gpt-5.5' },
+    ])
+    expect(count).toBe(2)
+  })
+
+  test('a row with no persuader recorded is an unknown, not a second teacher', () => {
+    const count = distinctTeacherModels([{ persuader: 'gpt-5' }, null, undefined])
+    expect(count).toBe(1)
   })
 })
 

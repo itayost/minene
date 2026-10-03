@@ -277,3 +277,26 @@ export function buildDataset(
 
 export const toJsonl = (examples: readonly TrainingExample[]): string =>
   examples.map((e) => JSON.stringify(e)).join('\n')
+
+/**
+ * How many distinct persuader models actually wrote the exported turns.
+ *
+ * Keyed on `models.persuader` alone, not the whole `models` object -- the
+ * same fix `effectiveness.ts`'s `distinctModelFingerprints` and
+ * `experiment-results.ts`'s `readiness()` already carry, for the same
+ * reason: `target` and `judge` are independent roles that can change (a
+ * grading-model upgrade is routine) without the persuader that produced the
+ * exported assistant turns ever changing. Export's own warning is about who
+ * taught the model being trained, so fingerprinting the whole object means a
+ * judge-only swap between two export runs reads as "these examples come
+ * from two different model combinations" about a training set that, in
+ * fact, has exactly one teacher.
+ *
+ * A row with no persuader recorded is an unknown, not a second teacher, so
+ * it is left out rather than counted as its own value.
+ */
+export function distinctTeacherModels(
+  models: readonly (Record<string, string> | null | undefined)[],
+): number {
+  return new Set(models.map((m) => m?.persuader).filter((p): p is string => !!p)).size
+}
