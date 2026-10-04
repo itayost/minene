@@ -47,6 +47,22 @@ export function persuasionsFor(plan: PersuasionPlan | null, runs: readonly Run[]
   const byCategory = new Map(bank.map((entry) => [entry.category, entry]))
   const written = new Set(plan.arguments.map((argument) => argument.category))
 
+  // A win is "written" if EITHER the plan fetched just now offers it, or the
+  // run's own plan did when the run actually happened. `pnpm lab:generate
+  // --force` upserts a need's plan in place under the same plan_key, so a
+  // category an earlier version offered -- and a run won -- can vanish from
+  // `plan` while the run that won it stays in the bank forever. Checking only
+  // the live `plan` would relabel that run's genuinely on-plan win as "the
+  // persuader improvised and it worked", which is the opposite of what
+  // happened; `run.plan` is the snapshot saved alongside the run, so it still
+  // answers what was on the table the day it ran.
+  const offeredWhenWon = new Set(
+    runs
+      .filter((run) => run.state.outcome === 'agreed' && run.score?.winningCategory)
+      .filter((run) => run.plan?.arguments?.some((a) => a.category === run.score?.winningCategory))
+      .map((run) => run.score?.winningCategory as ArgumentCategory),
+  )
+
   return {
     arguments: plan.arguments.map((argument) => {
       const entry = byCategory.get(argument.category)
@@ -60,7 +76,7 @@ export function persuasionsFor(plan: PersuasionPlan | null, runs: readonly Run[]
       }
     }),
     unwrittenWins: bank
-      .filter((entry) => !written.has(entry.category))
+      .filter((entry) => !written.has(entry.category) && !offeredWhenWon.has(entry.category))
       .map((entry) => ({
         category: entry.category,
         categoryLabel: CATEGORY_LABELS[entry.category],

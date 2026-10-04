@@ -11,9 +11,15 @@ const plan = {
   ],
 } as unknown as PersuasionPlan
 
-const run = (outcome: string, category: string | null, sentence: string | null): Run =>
+const run = (
+  outcome: string,
+  category: string | null,
+  sentence: string | null,
+  ownPlan: PersuasionPlan = plan,
+): Run =>
   ({
     state: { outcome },
+    plan: ownPlan,
     score: category
       ? { winningCategory: category, winningArgument: sentence, persuaded: 'yes' }
       : null,
@@ -66,6 +72,26 @@ describe('annotating what was handed over', () => {
     expect(unwrittenWins).toHaveLength(1)
     expect(unwrittenWins[0]).toMatchObject({ category: 'less_work_later', wonCount: 1 })
     expect(unwrittenWins[0]?.categoryLabel).toMatch(/[֐-׿]/)
+  })
+
+  it('does not call a regenerated plan’s dropped category "unwritten"', () => {
+    // pnpm lab:generate --force upserts a need's plan in place under the same
+    // plan_key, so a category an earlier version offered can vanish from the
+    // plan this screen fetches live while the run that won it, scored against
+    // its OWN plan at the time, stays in the bank forever. The run below won
+    // on "authority", which its own (prior) plan offered -- the CURRENT plan
+    // (regenerated, "authority" dropped) does not. That must not read as an
+    // improvisation.
+    const regeneratedPlan = {
+      ...plan,
+      arguments: plan.arguments.filter((a) => a.category !== 'authority'),
+    } as unknown as PersuasionPlan
+
+    const { unwrittenWins } = persuasionsFor(regeneratedPlan, [
+      run('agreed', 'authority', 'המנכ"ל ביקש', plan),
+    ])
+
+    expect(unwrittenWins.find((w) => w.category === 'authority')).toBeUndefined()
   })
 
   it('counts how many runs were scored at all', () => {
