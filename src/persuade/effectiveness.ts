@@ -87,6 +87,12 @@ export interface TechniqueReport {
    * blame. Within one plan this number is therefore identical across
    * categories, and only tells techniques apart across plans that offer
    * different sets.
+   *
+   * Excludes `no_response` runs from its denominator: a counterpart who never
+   * answered a single message was never actually worn down by anything, and
+   * the fatigue signal structurally cannot register for one (see the build
+   * loop below), so counting it would only ever dilute this rate, never earn
+   * its place in it.
    */
   negativeReactionPct: number | null
   /**
@@ -239,9 +245,22 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       // exists to compare. The fixed bar stays, for the case this outcome
       // doesn't cover: an agreed run where fatigue crept high without ever
       // tripping the stop.
-      at.offeredCount += 1
+      //
+      // `no_response` is excluded from this denominator outright, not merely
+      // undercounted. engine/rules.ts's fatigueScore() filters out silent
+      // turns before it scores anything and returns 0 once none are left --
+      // exactly every target turn in a 'no_response' run (every turn forced
+      // silent by engine/world.ts's `staysSilent`). So a run like that can
+      // never trip `fatigue >= 0.7` or end in `stopped_fatigue`: it is
+      // guaranteed to add to `offeredCount` and never to `negative`. Pooling
+      // it in dilutes every technique's exhaustion rate toward 0 in
+      // proportion to how often its plan drew a silent world, for a reason
+      // that has nothing to do with the technique.
+      if (run.outcome !== 'no_response') {
+        at.offeredCount += 1
+        if (run.outcome === 'stopped_fatigue' || run.fatigue >= 0.7) at.negative += 1
+      }
       if (informative && isWin && !offered.includes(category)) at.offPlan += 1
-      if (run.outcome === 'stopped_fatigue' || run.fatigue >= 0.7) at.negative += 1
       byCategory.set(category, at)
     }
   }

@@ -140,6 +140,27 @@ describe('what a technique report says', () => {
     expect(personal.winPct).toBe(100)
   })
 
+  test('a counterpart who never answered at all does not dilute the exhaustion rate', () => {
+    // engine/rules.ts's fatigueScore() filters out silent turns before it
+    // scores anything ("const answered = targetTurns.filter((t) => !t.silent)")
+    // and returns 0 outright once none are left -- which is exactly every
+    // target turn in a 'no_response' run (engine/world.ts's `staysSilent`
+    // forces silence on all of them). So a no_response run can structurally
+    // never trip `fatigue >= 0.7` or land on `stopped_fatigue`: it is
+    // guaranteed to sit in offeredCount without ever being able to reach
+    // `negative`. Pooling it in dilutes negativeReactionPct toward 0 no
+    // matter how exhausting every conversation that actually happened was --
+    // the one real conversation below stopped on fatigue outright, so the
+    // honest rate is 100%, not 50%.
+    const reports = buildEffectiveness([
+      input('stopped_fatigue', null, 'no_time', 'adi', ['personal_benefit'], 0.9),
+      input('no_response', null, 'no_time', 'rona', ['personal_benefit'], 0),
+    ])
+
+    const personal = reports.find((r) => r.category === 'personal_benefit')!
+    expect(personal.negativeReactionPct).toBe(100)
+  })
+
   test('an unscored agreed run still counts toward exhaustion, on its own denominator', () => {
     // Sitting out the win/loss count is not the same as never having happened:
     // the fatigue signal comes straight off the run, not off the scorer, so an
