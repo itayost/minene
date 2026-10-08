@@ -18,6 +18,17 @@ export interface StoredSimulation {
   id: string
   cell: { industry: string; jobRoleId: string | null }
   run: Run
+  /**
+   * The model id per role that produced the run. Null on rows predating the
+   * column, and on rows the API never recorded it for.
+   *
+   * Carried as a sibling of `run` rather than folded into it: `Run` is the
+   * engine's own domain type, used well beyond reporting, and every other
+   * reader that needs this (effectiveness.ts's EffectivenessRun,
+   * experiment-results.ts's ExperimentRun) keeps it the same way, for the
+   * same reason.
+   */
+  models?: Record<string, string> | null
 }
 
 /**
@@ -31,9 +42,15 @@ export interface StoredSimulation {
  * `score` is the one column here that matters most and is easiest to drop by
  * habit: buildBank keys off `run.score?.winningCategory`, so a bank assembled
  * from rows that never carried it comes back empty however many were scored.
+ *
+ * `models` is read for the same reason effectiveness.ts's technique report and
+ * experiment-results.ts's readiness() already read it: a cell's persuasion
+ * rate pools whatever rows land in it, and a persuader-model swap mid-history
+ * is exactly the kind of change that can make two incomparable populations
+ * read as one clean number.
  */
 const SUMMARY_COLUMNS =
-  'id,industry,job_role_id,need,persona_id,plan,state,outcome,score,created_at'
+  'id,industry,job_role_id,need,persona_id,plan,state,outcome,score,models,created_at'
 
 interface SimulationRow {
   id: string
@@ -46,6 +63,7 @@ interface SimulationRow {
   turns?: Run['turns'] | null
   state: Run['state']
   score: Run['score'] | null
+  models?: Record<string, string> | null
   created_at: string
 }
 
@@ -68,6 +86,7 @@ const toStored = (row: SimulationRow): StoredSimulation => {
       violations: turns.flatMap((t) => t.violations ?? []),
       ...(row.score ? { score: row.score } : {}),
     },
+    models: row.models ?? null,
   }
 }
 

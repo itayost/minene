@@ -18,6 +18,13 @@ export type MatrixCell = {
    * finding while the first is an absence.
    */
   persuasionRate: number | null
+  /**
+   * Set when the cell pools runs from more than one recorded persuader model.
+   * A model upgrade mid-history can make two incomparable populations read as
+   * one clean rate -- the same confound effectiveness.ts's technique report
+   * and experiment-results.ts's arm comparison already warn about.
+   */
+  modelsMixed?: boolean
 }
 
 /**
@@ -96,18 +103,20 @@ export function Matrix({
                 }
 
                 const measured = cell.persuasionRate !== null
+                const mixedNote = cell.modelsMixed ? ', כולל ריצות מיותר מצירוף מודלים אחד' : ''
                 return (
                   <td
                     // The row and column headers are out of reach for a screen
                     // reader moving cell to cell, so the cell says where it is.
                     aria-label={
                       measured
-                        ? `${cell.industryLabel}, ${cell.roleLabel}, ${cell.persuasionRate} אחוז, ${cell.runs} ריצות`
+                        ? `${cell.industryLabel}, ${cell.roleLabel}, ${cell.persuasionRate} אחוז, ${cell.runs} ריצות${mixedNote}`
                         : `${cell.industryLabel}, ${cell.roleLabel}, אין ריצות`
                     }
                     aria-selected={selected ? cellKey(selected) === cellKey(cell) : undefined}
                     className="cell"
                     data-heat={measured ? heatStep(cell.persuasionRate as number) : 'none'}
+                    data-models-mixed={cell.modelsMixed ? 'true' : undefined}
                     key={slug}
                     onClick={() => onSelect(cell)}
                     onKeyDown={(event) => {
@@ -117,7 +126,10 @@ export function Matrix({
                     tabIndex={0}
                   >
                     <b>{measured ? `${cell.persuasionRate}%` : '—'}</b>
-                    <span>{measured ? `${cell.runs} ריצות` : 'אין ריצות'}</span>
+                    <span>
+                      {measured ? `${cell.runs} ריצות` : 'אין ריצות'}
+                      {cell.modelsMixed ? ' *' : ''}
+                    </span>
                   </td>
                 )
               })}

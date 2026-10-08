@@ -1,5 +1,4 @@
 import { type CellIndex, cellKey, cellKeyOf, placeRun } from './cell'
-import type { Run } from './engine/types'
 import type { StoredSimulation } from './lib/simulations'
 import type { MatrixCell } from './Matrix'
 import type { TaxonomyIndustry } from './taxonomy'
@@ -14,12 +13,12 @@ import type { TaxonomyIndustry } from './taxonomy'
  * hint which of the two numbers to believe.
  */
 export interface Placed {
-  runsByCell: ReadonlyMap<string, Run[]>
+  runsByCell: ReadonlyMap<string, StoredSimulation[]>
   unplaced: number
 }
 
 export function placeAll(index: CellIndex, sims: readonly StoredSimulation[]): Placed {
-  const runsByCell = new Map<string, Run[]>()
+  const runsByCell = new Map<string, StoredSimulation[]>()
   let unplaced = 0
 
   for (const sim of sims) {
@@ -30,22 +29,49 @@ export function placeAll(index: CellIndex, sims: readonly StoredSimulation[]): P
     }
     const key = cellKey(cell)
     const existing = runsByCell.get(key)
-    if (existing) existing.push(sim.run)
-    else runsByCell.set(key, [sim.run])
+    if (existing) existing.push(sim)
+    else runsByCell.set(key, [sim])
   }
 
   return { runsByCell, unplaced }
 }
 
 /**
+ * How many distinct persuader-model fingerprints a cell's runs carry.
+ *
+ * Mirrors effectiveness.ts's distinctModelFingerprints and
+ * experiment-results.ts's readiness(): a run with nothing recorded is an
+ * unknown, not a second model, so it is never counted -- otherwise every cell
+ * spanning the day `models` started being written would read as mixed on no
+ * evidence at all.
+ */
+function distinctModelFingerprints(sims: readonly StoredSimulation[]): number {
+  return new Set(sims.filter((s) => s.models).map((s) => JSON.stringify(s.models))).size
+}
+
+/**
  * Null, never 0, when nothing has been run. "Nobody has tried this cell" and
  * "everybody refused here" are opposite facts; the second is a finding and the
  * first is an absence, and the heat scale renders them differently.
+ *
+ * `modelsMixed` is the same guard this lab's other reports already carry for a
+ * technique's win rate (effectiveness.ts) and an experiment's arm comparison
+ * (experiment-results.ts): a cell pools whatever runs land in it with no
+ * regard for which persuader model produced them, so a model upgrade
+ * mid-history can make two incomparable populations read as one clean rate.
  */
-export function coverageOf(runs: readonly Run[]): { runs: number; persuasionRate: number | null } {
-  if (runs.length === 0) return { runs: 0, persuasionRate: null }
-  const agreed = runs.filter((run) => run.state.outcome === 'agreed').length
-  return { runs: runs.length, persuasionRate: Math.round((agreed / runs.length) * 100) }
+export function coverageOf(sims: readonly StoredSimulation[]): {
+  runs: number
+  persuasionRate: number | null
+  modelsMixed: boolean
+} {
+  if (sims.length === 0) return { runs: 0, persuasionRate: null, modelsMixed: false }
+  const agreed = sims.filter((s) => s.run.state.outcome === 'agreed').length
+  return {
+    runs: sims.length,
+    persuasionRate: Math.round((agreed / sims.length) * 100),
+    modelsMixed: distinctModelFingerprints(sims) > 1,
+  }
 }
 
 export function runsForRole(
@@ -53,7 +79,7 @@ export function runsForRole(
   industry: string,
   roleSlug: string,
   needs: readonly { needKey: string }[],
-): Run[] {
+): StoredSimulation[] {
   return needs.flatMap(
     (need) => placed.runsByCell.get(cellKeyOf(industry, roleSlug, need.needKey)) ?? [],
   )

@@ -77,11 +77,18 @@ const NEEDS = [
   },
 ]
 
-const summary = (planId: string, outcome: string, score: unknown = null) =>
+let summaryCount = 0
+const summary = (
+  planId: string,
+  outcome: string,
+  score: unknown = null,
+  models: Record<string, string> | null = null,
+) =>
   ({
-    id: `s-${planId}-${outcome}`,
+    id: `s-${planId}-${outcome}-${summaryCount++}`,
     cell: { industry: 'retail', jobRoleId: null },
     run: { plan: { id: planId }, state: { outcome, blockers: [] }, score },
+    models,
   }) as never
 
 const setup = () => {
@@ -158,6 +165,29 @@ describe('the grid is drawn from the taxonomy', () => {
     const grid = await screen.findByRole('grid')
     expect(within(grid).getByText('תשתיות')).toBeInTheDocument()
     expect(within(grid).getByText('קמעונאות')).toBeInTheDocument()
+  })
+
+  it('warns when the selected cell pools runs from more than one persuader model', async () => {
+    search = new URLSearchParams('industry=retail&role=ceo')
+    sims.listSimulationSummaries.mockResolvedValue([
+      summary('gen-retail-ceo-profitability', 'refused', null, { persuader: 'old-model' }),
+      summary('gen-retail-ceo-profitability', 'agreed', null, { persuader: 'new-model' }),
+    ])
+    setup()
+
+    expect(await screen.findByText(/יותר מצירוף מודלים אחד/)).toBeInTheDocument()
+  })
+
+  it('does not warn when a cell’s runs share one persuader model', async () => {
+    search = new URLSearchParams('industry=retail&role=ceo')
+    sims.listSimulationSummaries.mockResolvedValue([
+      summary('gen-retail-ceo-profitability', 'refused', null, { persuader: 'same-model' }),
+      summary('gen-retail-ceo-profitability', 'agreed', null, { persuader: 'same-model' }),
+    ])
+    setup()
+
+    await screen.findByRole('grid')
+    expect(screen.queryByText(/יותר מצירוף מודלים אחד/)).not.toBeInTheDocument()
   })
 
   it('says how many runs it could not place instead of dropping them', async () => {

@@ -148,6 +148,12 @@ describe('reading without the conversations', () => {
     expect(selectedColumns()).not.toContain('turns')
     expect(selectedColumns()).toContain('score')
     expect(selectedColumns()).toContain('state')
+    // The matrix's persuasion rate pools whatever rows land in a cell with no
+    // regard for which persuader model produced them -- the same confound
+    // effectiveness.ts's technique report and experiment-results.ts's arm
+    // comparison already guard against. Without this column selected, the
+    // cell-level rate has no way to even ask the question.
+    expect(selectedColumns()).toContain('models')
   })
 
   it('still produces a usable run for the bank and the rate', async () => {
@@ -161,6 +167,7 @@ describe('reading without the conversations', () => {
         plan: { id: 'gen-retail-ceo-profitability' },
         state: { outcome: 'agreed', blockers: ['overloaded'], interaction: 3 },
         score: { winningCategory: 'numbers', winningArgument: 'המספרים', persuaded: 'yes' },
+        models: { persuader: 'gpt-5' },
         created_at: '2026-09-22T10:00:00Z',
       },
     ])
@@ -173,6 +180,26 @@ describe('reading without the conversations', () => {
     // empty list rather than as undefined.
     expect(rows[0]?.run.turns).toEqual([])
     expect(rows[0]?.run.violations).toEqual([])
+    expect(rows[0]?.models).toEqual({ persuader: 'gpt-5' })
+  })
+
+  it('carries a missing models column as null, not undefined', async () => {
+    const { store } = fake([
+      {
+        id: 'sim-1',
+        industry: 'retail',
+        job_role_id: null,
+        persona_id: null,
+        plan: { id: 'p1' },
+        state: { outcome: 'refused', blockers: [] },
+        score: null,
+        created_at: '2026-09-22T10:00:00Z',
+      },
+    ])
+
+    const rows = await store.listSimulationSummaries()
+
+    expect(rows[0]?.models).toBeNull()
   })
 
   it('reads every page, not just the newest one', async () => {
