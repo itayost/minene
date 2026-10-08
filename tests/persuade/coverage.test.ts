@@ -23,11 +23,16 @@ const needs = [
 const taxonomy = taxonomyFrom(needs.map((n, i) => ({ ...n, needOrder: i + 1 })))
 const index = cellIndex(needs)
 
-const sim = (planId: string, outcome: string): StoredSimulation =>
+const sim = (
+  planId: string,
+  outcome: string,
+  models?: Record<string, string> | null,
+): StoredSimulation =>
   ({
     id: `s-${planId}-${outcome}-${Math.random()}`,
     cell: { industry: 'ignored', jobRoleId: null },
     run: { plan: { id: planId }, state: { outcome, blockers: [] } },
+    models: models ?? null,
   }) as never
 
 describe('placing runs on the taxonomy', () => {
@@ -75,11 +80,45 @@ describe('coverage of a set of runs', () => {
     expect(coverageOf(placed.runsByCell.get('retail/ceo/profitability') ?? [])).toEqual({
       runs: 4,
       persuasionRate: 50,
+      modelsMixed: false,
     })
   })
 
   it('is null, never zero, when nothing has been run', () => {
-    expect(coverageOf([])).toEqual({ runs: 0, persuasionRate: null })
+    expect(coverageOf([])).toEqual({ runs: 0, persuasionRate: null, modelsMixed: false })
+  })
+
+  it('flags a cell pooling runs from more than one persuader model', () => {
+    // Ten runs on an older model, all refused; ten on an upgraded model, all
+    // agreed. The pooled rate (50%) reads as a coin-flip cell -- the honest
+    // fact is that the two models behaved nothing alike, and nothing on this
+    // path has ever been able to say so, unlike effectiveness.ts's
+    // distinctModelFingerprints and experiment-results.ts's readiness(),
+    // which both guard the same comparison elsewhere.
+    const placed = placeAll(index, [
+      ...Array.from({ length: 10 }, () =>
+        sim('gen-retail-ceo-profitability', 'refused', { persuader: 'old-model' }),
+      ),
+      ...Array.from({ length: 10 }, () =>
+        sim('gen-retail-ceo-profitability', 'agreed', { persuader: 'new-model' }),
+      ),
+    ])
+
+    const coverage = coverageOf(placed.runsByCell.get('retail/ceo/profitability') ?? [])
+    expect(coverage.modelsMixed).toBe(true)
+  })
+
+  it('does not flag a cell where every run shares one model, or carries none', () => {
+    const placed = placeAll(index, [
+      sim('gen-retail-ceo-profitability', 'agreed', { persuader: 'same-model' }),
+      sim('gen-retail-ceo-profitability', 'refused', { persuader: 'same-model' }),
+      // A row predating the models column is an unknown, not a second model --
+      // the same distinction distinctModelFingerprints/readiness already draw.
+      sim('gen-retail-ceo-profitability', 'refused', null),
+    ])
+
+    const coverage = coverageOf(placed.runsByCell.get('retail/ceo/profitability') ?? [])
+    expect(coverage.modelsMixed).toBe(false)
   })
 })
 

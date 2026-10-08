@@ -111,6 +111,25 @@ describe('the matrix', () => {
     expect(absent?.getAttribute('aria-label')).not.toMatch(/אין ריצות/)
   })
 
+  it('names a cell pooling more than one persuader model, and does not name a clean one', () => {
+    render(
+      <Matrix
+        cells={[
+          cell({ roleSlug: 'mixed', modelsMixed: true }),
+          cell({ roleSlug: 'clean', modelsMixed: false }),
+        ]}
+        onSelect={vi.fn()}
+        selected={null}
+      />,
+    )
+
+    const cells = screen.getAllByRole('gridcell')
+    const mixed = cells.find((c) => c.getAttribute('data-models-mixed') === 'true')
+    const clean = cells.find((c) => c.getAttribute('data-models-mixed') !== 'true')
+    expect(mixed?.getAttribute('aria-label')).toMatch(/צירוף מודלים/)
+    expect(clean?.getAttribute('aria-label')).not.toMatch(/צירוף מודלים/)
+  })
+
   it('does not let an absent cell be selected', async () => {
     const onSelect = vi.fn()
     const { default: userEvent } = await import('@testing-library/user-event')

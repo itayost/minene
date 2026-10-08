@@ -198,13 +198,14 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
     [cells, industry, role],
   )
 
-  const needRuns = useMemo(
+  const needSims = useMemo(
     () =>
       industry && role && need
         ? (placed.runsByCell.get(cellKeyOf(industry, role, need)) ?? [])
         : [],
     [industry, need, placed, role],
   )
+  const needRuns = useMemo(() => needSims.map((sim) => sim.run), [needSims])
 
   // The plan is fetched per need rather than all 131 at once: the screen shows
   // one at a time, and each is a full plan with arguments and objections.
@@ -322,6 +323,16 @@ export function LabClient({ personas, plans, dailyCap }: LabClientProps) {
                 התפקיד לא קיים בענף — לא תא ריק
               </span>
             </div>
+
+            {/* The caveat the technique report and the experiment comparison
+                already carry for the same reason: a cell's rate pools whatever
+                ran there with no regard for which persuader model produced it. */}
+            {selectedCell?.modelsMixed ? (
+              <p className="knowledge-message">
+                התא הנבחר כולל ריצות מיותר מצירוף מודלים אחד — שיעור השכנוע עלול למדוד את החלפת
+                המודל ולא את הענף או התפקיד.
+              </p>
+            ) : null}
           </>
         ) : null}
 
