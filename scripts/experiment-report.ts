@@ -20,6 +20,8 @@ interface ExperimentRow {
   turns: ExperimentRun['turns'] | null
   score: ExperimentRun['score'] | null
   models: ExperimentRun['models']
+  persona_id: string | null
+  plan: { id?: string } | null
 }
 
 async function main(): Promise<void> {
@@ -33,7 +35,7 @@ async function main(): Promise<void> {
   const rows = await readAll<ExperimentRow>((from, to) =>
     db
       .from('simulations')
-      .select('experiment,variant,outcome,turns,score,models')
+      .select('experiment,variant,outcome,turns,score,models,persona_id,plan')
       .not('experiment', 'is', null)
       .order('created_at', { ascending: true })
       .order('id', { ascending: true })
@@ -66,6 +68,10 @@ async function main(): Promise<void> {
     turns: r.turns ?? [],
     score: r.score ?? null,
     models: r.models ?? null,
+    // The pair the run was queued against, so readiness can check every arm
+    // actually covered the same ones -- see the paired-design check there.
+    personaId: r.persona_id,
+    planId: r.plan?.id ?? null,
   }))
 
   const arms = compareArms(runs)
