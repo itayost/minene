@@ -233,6 +233,41 @@ describe('whether the comparison is worth reading yet', () => {
   })
 })
 
+describe('arms that did not run against the same pairs', () => {
+  // The design is paired: every arm runs against every (persona, plan) pair,
+  // so the arms differ by the config alone. A job that fails is marked and
+  // never retried, and a report read mid-experiment sees one arm finished and
+  // the other partway down its pairs -- either way the arms can end up
+  // averaging different people, and the arm sizes stay close enough that the
+  // lopsided-arms check says nothing.
+  const onPair = (r: ExperimentRun, personaId: string, planId: string): ExperimentRun => ({
+    ...r,
+    personaId,
+    planId,
+  })
+
+  test('warns when one arm is missing a pair the other ran', () => {
+    const runs = [
+      ...Array.from({ length: 10 }, () => onPair(run('a', 'agreed', 80, 2), 'easy', 'p')),
+      ...Array.from({ length: 10 }, () => onPair(run('a', 'refused', 30, 5), 'hard', 'p')),
+      // Arm b's runs against the hard persona never landed.
+      ...Array.from({ length: 12 }, () => onPair(run('b', 'agreed', 80, 2), 'easy', 'p')),
+    ]
+    const warnings = readiness(compareArms(runs), 10, runs)
+    expect(warnings.join(' ')).toMatch(/אותם צמדים/)
+  })
+
+  test('stays quiet when every arm covered the same pairs', () => {
+    const runs = [
+      ...Array.from({ length: 10 }, () => onPair(run('a', 'agreed', 80, 2), 'easy', 'p')),
+      ...Array.from({ length: 10 }, () => onPair(run('a', 'refused', 30, 5), 'hard', 'p')),
+      ...Array.from({ length: 10 }, () => onPair(run('b', 'agreed', 80, 2), 'easy', 'p')),
+      ...Array.from({ length: 10 }, () => onPair(run('b', 'refused', 30, 5), 'hard', 'p')),
+    ]
+    expect(readiness(compareArms(runs), 10, runs)).toEqual([])
+  })
+})
+
 describe('sweeping the world space', () => {
   test('gives every job a world, and the experiment arms none', () => {
     // The two halves of the loop. An experiment varies a setting and holds the

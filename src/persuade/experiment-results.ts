@@ -15,6 +15,9 @@ export interface ExperimentRun {
   score: RunScore | null
   /** The model id per role that produced the run. Null on rows predating it. */
   models?: Record<string, string> | null
+  /** The (persona, plan) pair the run was queued against. Absent when not read. */
+  personaId?: string | null
+  planId?: string | null
 }
 
 export interface ArmResult {
@@ -136,6 +139,37 @@ export function readiness(
   if (arms.length < 2) {
     warnings.push('פחות משתי זרועות עם תוצאות — אין השוואה')
     return warnings
+  }
+
+  /**
+   * The paired design, checked rather than assumed.
+   *
+   * experiments.ts queues every arm against every (persona, plan) pair, and
+   * that pairing is the only thing that lets a difference between arms be read
+   * as the config. But a failed job is marked and never retried, and a report
+   * read mid-experiment sees one arm finished and the other partway down its
+   * pairs. Either way an arm can end up missing its runs against the hard
+   * persona while the other kept them: the arm sizes stay close enough for the
+   * lopsided check below to say nothing, and the gap in agreement is who each
+   * arm happened to talk to. Only runs that recorded their pair are compared,
+   * so a caller that never read the pair gets no claim either way.
+   */
+  const pairsByArm = new Map<string, Set<string>>()
+  for (const r of runs) {
+    if (!r.variant || !r.personaId || !r.planId) continue
+    const pairs = pairsByArm.get(r.variant) ?? new Set<string>()
+    pairs.add(JSON.stringify([r.personaId, r.planId]))
+    pairsByArm.set(r.variant, pairs)
+  }
+  const pairSets = [...pairsByArm.values()]
+  const [first] = pairSets
+  if (
+    first &&
+    pairSets.some((set) => set.size !== first.size || [...set].some((p) => !first.has(p)))
+  ) {
+    warnings.push(
+      'הזרועות לא רצו מול אותם צמדים של דמות ותוכנית — ההבדל ביניהן עשוי להיות מי שהן פגשו ולא ההגדרה',
+    )
   }
 
   for (const arm of arms) {
