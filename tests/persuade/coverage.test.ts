@@ -23,10 +23,11 @@ const needs = [
 const taxonomy = taxonomyFrom(needs.map((n, i) => ({ ...n, needOrder: i + 1 })))
 const index = cellIndex(needs)
 
-const sim = (planId: string, outcome: string): StoredSimulation =>
+const sim = (planId: string, outcome: string, experiment: string | null = null): StoredSimulation =>
   ({
     id: `s-${planId}-${outcome}-${Math.random()}`,
     cell: { industry: 'ignored', jobRoleId: null },
+    experiment,
     run: { plan: { id: planId }, state: { outcome, blockers: [] } },
   }) as never
 
@@ -61,6 +62,34 @@ describe('placing runs on the taxonomy', () => {
     const inCells = [...placed.runsByCell.values()].reduce((n, runs) => n + runs.length, 0)
     expect(inCells + placed.unplaced).toBe(sims.length)
   })
+
+  it('excludes an experiment-arm run from its cell entirely', () => {
+    // queueExperiment() stamps the same industry/plan an ordinary sweep job
+    // would carry for the same cell (planExperiment in experiments.ts), and
+    // runJob() writes the row with that cell's plan id. An arm run under a
+    // RuleConfig nobody deployed is not comparable to the cell's ordinary
+    // runs -- pooling it in is the same "pooling populations that are not
+    // comparable" failure #48 already fixed for the matrix this screen
+    // replaced (matrix-data.ts, deleted 2026-09-22) and never reached here.
+    const placed = placeAll(index, [
+      sim('gen-retail-ceo-profitability', 'agreed'),
+      sim('gen-retail-ceo-profitability', 'refused', 'message-length'),
+    ])
+
+    expect(placed.runsByCell.get('retail/ceo/profitability')).toHaveLength(1)
+  })
+
+  it('does not count an excluded experiment-arm run as unplaced either', () => {
+    // It has a real, resolvable cell -- it is excluded for comparability, not
+    // because the taxonomy does not know it. Counting it as unplaced would
+    // misreport it as a taxonomy gap instead of a deliberate exclusion.
+    const placed = placeAll(index, [
+      sim('gen-retail-ceo-profitability', 'agreed', 'message-length'),
+    ])
+
+    expect(placed.runsByCell.has('retail/ceo/profitability')).toBe(false)
+    expect(placed.unplaced).toBe(0)
+  })
 })
 
 describe('coverage of a set of runs', () => {
@@ -80,6 +109,24 @@ describe('coverage of a set of runs', () => {
 
   it('is null, never zero, when nothing has been run', () => {
     expect(coverageOf([])).toEqual({ runs: 0, persuasionRate: null })
+  })
+
+  it('is not moved by an experiment arm run under the cell', () => {
+    // Same concrete case as #48 made for the old matrix: queue
+    // messageLengthExperiment against a (persona, plan) pair tied to this
+    // cell, and its losing arm's refusal would otherwise drag the headline
+    // rate down for a setting nobody deployed.
+    const placed = placeAll(index, [
+      sim('gen-retail-ceo-profitability', 'agreed'),
+      sim('gen-retail-ceo-profitability', 'agreed'),
+      sim('gen-retail-ceo-profitability', 'refused', 'message-length'),
+      sim('gen-retail-ceo-profitability', 'refused', 'message-length'),
+    ])
+
+    expect(coverageOf(placed.runsByCell.get('retail/ceo/profitability') ?? [])).toEqual({
+      runs: 2,
+      persuasionRate: 100,
+    })
   })
 })
 

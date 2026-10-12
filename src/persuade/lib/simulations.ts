@@ -17,6 +17,8 @@ export interface SimulationCell {
 export interface StoredSimulation {
   id: string
   cell: { industry: string; jobRoleId: string | null }
+  /** Null for an ordinary run. Set by queueExperiment's jobs, carried through by runJob. */
+  experiment: string | null
   run: Run
 }
 
@@ -33,7 +35,7 @@ export interface StoredSimulation {
  * from rows that never carried it comes back empty however many were scored.
  */
 const SUMMARY_COLUMNS =
-  'id,industry,job_role_id,need,persona_id,plan,state,outcome,score,created_at'
+  'id,industry,job_role_id,need,persona_id,plan,state,outcome,score,created_at,experiment'
 
 interface SimulationRow {
   id: string
@@ -47,6 +49,10 @@ interface SimulationRow {
   state: Run['state']
   score: Run['score'] | null
   created_at: string
+  // Absent on a row predating the column, exactly like turns above -- and the
+  // same `?? null` treats "absent" as "ordinary run", which is what every row
+  // before experiments existed actually was.
+  experiment?: string | null
 }
 
 const toStored = (row: SimulationRow): StoredSimulation => {
@@ -54,6 +60,7 @@ const toStored = (row: SimulationRow): StoredSimulation => {
   return {
     id: row.id,
     cell: { industry: row.industry, jobRoleId: row.job_role_id },
+    experiment: row.experiment ?? null,
     run: {
       id: row.id,
       createdAt: row.created_at,
