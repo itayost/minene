@@ -175,6 +175,60 @@ describe('reading without the conversations', () => {
     expect(rows[0]?.run.violations).toEqual([])
   })
 
+  it('asks for the experiment column, because an arm run is not comparable to a sweep run', () => {
+    const { store, selectedColumns } = fake([])
+    void store.listSimulationSummaries()
+
+    // coverage.ts's isComparable reads StoredSimulation.experiment to keep an
+    // experiment arm's runs out of the taxonomy grid and the bank -- it can
+    // only do that if this column was actually selected.
+    expect(selectedColumns()).toContain('experiment')
+  })
+
+  it('carries the experiment column through to the stored run', async () => {
+    const { store } = fake([
+      {
+        id: 'sim-arm',
+        industry: 'retail',
+        job_role_id: null,
+        need: 'profitability',
+        persona_id: 'rona',
+        plan: { id: 'gen-retail-ceo-profitability' },
+        state: { outcome: 'refused', blockers: [], interaction: 3 },
+        score: null,
+        created_at: '2026-09-22T10:00:00Z',
+        experiment: 'message-length',
+      },
+    ])
+
+    const rows = await store.listSimulationSummaries()
+
+    expect(rows[0]?.experiment).toBe('message-length')
+  })
+
+  it('treats a row with no experiment column at all as an ordinary run', async () => {
+    // Every row predating the column has no such field, the same way a row
+    // predating `turns` has none -- and the honest reading of "never had one"
+    // is "not an arm", not "unknown".
+    const { store } = fake([
+      {
+        id: 'sim-old',
+        industry: 'retail',
+        job_role_id: null,
+        need: 'profitability',
+        persona_id: 'rona',
+        plan: { id: 'gen-retail-ceo-profitability' },
+        state: { outcome: 'agreed', blockers: [], interaction: 2 },
+        score: null,
+        created_at: '2026-08-01T10:00:00Z',
+      },
+    ])
+
+    const rows = await store.listSimulationSummaries()
+
+    expect(rows[0]?.experiment).toBeNull()
+  })
+
   it('reads every page, not just the newest one', async () => {
     // The matrix and the bank read this list and trust it is the whole table
     // -- neither warns about a sample. A `.limit(n)` here would silently drop
