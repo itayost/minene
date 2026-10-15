@@ -90,7 +90,13 @@ export function propose(
     const peerRuns = totalRuns - report.runs
     const peerWins = totalWins - report.wins
     const average = peerRuns === 0 ? 0 : (peerWins / peerRuns) * 100
-    const ratio = average === 0 ? 1 : win / average
+    // average === 0 is two different things: no peer evidence at all
+    // (peerRuns === 0, nothing to compare against -- stay neutral), and real
+    // peer evidence that happens to show zero wins (peerRuns > 0). The second
+    // case is the strongest possible signal when this technique wins anything
+    // at all, not a reason to call it average.
+    const ratio =
+      peerRuns === 0 ? 1 : average === 0 ? (win === 0 ? 1 : WEIGHT_CEILING) : win / average
     const weight = Math.min(WEIGHT_CEILING, Math.max(WEIGHT_FLOOR, Number(ratio.toFixed(2))))
 
     const caveats: string[] = []

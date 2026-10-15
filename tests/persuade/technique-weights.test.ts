@@ -177,6 +177,19 @@ describe('turning evidence into a suggestion', () => {
     expect(propose([report('numbers', null)])).toEqual([])
   })
 
+  it('does not read a real zero peer average as neutral', () => {
+    // "numbers" wins 70% of the time. Its only peer, "social_proof", has a
+    // real sample of 20 runs and won NONE of them -- a genuine zero, not a
+    // missing-evidence one (peerRuns > 0). `average === 0 ? 1 : ...` treats
+    // this exactly like the case where there is no peer evidence at all, so
+    // numbers reads as merely average (weight 1) instead of strictly
+    // dominant over a peer that, with real volume, never won.
+    const proposals = propose([report('numbers', 70, 40), report('social_proof', 0, 20)])
+    const numbers = proposals.find((p) => p.category === 'numbers')!
+
+    expect(numbers.weight).toBeGreaterThan(1)
+  })
+
   it('never proposes a weight outside what the column allows', () => {
     // The check constraint is 0..3; a proposal that violates it fails on
     // insert, which is a promotion that breaks at the worst moment.
