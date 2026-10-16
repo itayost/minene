@@ -116,6 +116,9 @@ const run = (
   grade: number | null,
   persuaderTurns: number,
   models: Record<string, string> | null = SAME_MODELS,
+  // Defaults to persuaderTurns so existing fixtures that never cared about the
+  // greeting-turn offset keep their old (turn-count) meanTurnsToYes unchanged.
+  interactionsUsed: number = persuaderTurns,
 ): ExperimentRun => ({
   variant,
   models,
@@ -125,7 +128,7 @@ const run = (
     text: 'x',
     interaction: 1,
   })),
-  score: grade === null ? null : ({ grade } as ExperimentRun['score']),
+  score: grade === null ? null : ({ grade, interactionsUsed } as ExperimentRun['score']),
 })
 
 describe('reading the result', () => {
@@ -148,6 +151,27 @@ describe('reading the result', () => {
     // the same yes, reached in fewer messages.
     expect(short.meanTurnsToYes).toBe(3)
     expect(long.meanTurnsToYes).toBe(5)
+  })
+
+  test("counts messages to yes from the engine's own attempt count, not every persuader turn", () => {
+    // The first persuader turn is always the greeting -- engine/turn.ts
+    // explicitly excludes it from `interaction` ("the opener buys goodwill,
+    // it does not spend one of the four attempts"). A run with 4 persuader
+    // turns (greeting + 3 real attempts) took 3 attempts to reach a yes, not 4.
+    const [arm] = compareArms([run('short-25', 'agreed', 80, 4, SAME_MODELS, 3)])
+    expect(arm!.meanTurnsToYes).toBe(3)
+  })
+
+  test('an agreed run with no score sits out meanTurnsToYes rather than falling back to turns', () => {
+    // A run can agree and never get scored (the route stores it anyway with
+    // score: null), which means there is no interactionsUsed to read for it.
+    // Counting its raw turns instead would quietly mix the two different
+    // measures back together.
+    const [arm] = compareArms([
+      run('short-25', 'agreed', null, 3, SAME_MODELS),
+      run('short-25', 'agreed', 80, 4, SAME_MODELS, 3),
+    ])
+    expect(arm!.meanTurnsToYes).toBe(3)
   })
 
   test('a run belonging to no arm is not counted into one', () => {

@@ -66,8 +66,15 @@ export function compareArms(runs: readonly ExperimentRun[]): ArmResult[] {
         agreed: agreedRuns.length,
         agreedPct: pct(agreedRuns.length, armRuns.length),
         meanGrade: mean(grades),
+        // The engine's own attempt count, not every persuader turn: the first
+        // persuader turn is always the greeting, which engine/turn.ts
+        // explicitly excludes from `interaction` ("the opener buys goodwill, it
+        // does not spend one of the four attempts"). Counting turns instead
+        // overstated every run by exactly one message. An agreed run nobody
+        // scored has no interactionsUsed to read, so it sits out this mean
+        // rather than falling back to the turn count it was meant to replace.
         meanTurnsToYes: mean(
-          agreedRuns.map((r) => r.turns.filter((t) => t.role === 'persuader').length),
+          agreedRuns.flatMap((r) => (r.score ? [r.score.interactionsUsed] : [])),
         ),
       }
     })

@@ -294,3 +294,26 @@ describe('a win the plan never offered', () => {
     expect(reports.find((r) => r.category === 'personal_benefit')?.offPlanWins).toBe(0)
   })
 })
+
+describe('messages to win', () => {
+  test('counts the attempt the engine counted, not every persuader turn', () => {
+    // The first persuader turn is always the greeting -- engine/turn.ts
+    // explicitly excludes it from `interaction` ("the opener buys goodwill,
+    // it does not spend one of the four attempts"). A run with 3 persuader
+    // turns (greeting + 2 real attempts) took 2 attempts to win, not 3.
+    const won: EffectivenessInput = {
+      run: {
+        outcome: 'agreed',
+        turns: turns(3),
+        score: { winningCategory: 'personal_benefit', interactionsUsed: 2 } as RunScore,
+        world: world('no_value'),
+        personaId: 'adi',
+        fatigue: 0,
+      },
+      offered: ['personal_benefit'],
+    }
+
+    const [report] = buildEffectiveness([won])
+    expect(report!.avgMessagesToWin).toBe(2)
+  })
+})
