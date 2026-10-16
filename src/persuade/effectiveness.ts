@@ -213,9 +213,16 @@ export function buildEffectiveness(inputs: readonly EffectivenessInput[]): Techn
       // one, since the run says nothing about any of them.
       if (informative) {
         at.runs += 1
-        if (isWin) {
+        // isWin true implies run.score is set (won comes from
+        // run.score?.winningCategory), so this narrowing cannot drop a real win.
+        if (isWin && run.score) {
           at.wins += 1
-          at.messages.push(run.turns.filter((t) => t.role === 'persuader').length)
+          // The engine's own attempt count, not every persuader turn: the first
+          // persuader turn is always the greeting, which engine/turn.ts
+          // explicitly excludes from `interaction` ("the opener buys goodwill,
+          // it does not spend one of the four attempts"). Counting turns
+          // instead overstated every win by exactly one message.
+          at.messages.push(run.score.interactionsUsed)
         }
         at.reasons.push({ key: run.world?.reason ?? null, won: isWin })
         at.personas.push({ key: run.personaId, won: isWin })
